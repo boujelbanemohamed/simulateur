@@ -67,7 +67,7 @@ function bitmapHex(presentFields, lo) {
 
 /**
  * Encode an ISO 8583 message.
- * @param {Object} msg { mti: "0200", fields: { 2:"4111...", 4:"000000001550", ... } }
+ * @param {Object} msg { mti: "1200", fields: { 2:"4111...", 4:"000000001550", ... } }
  * @returns {string} the ASCII wire message
  */
 export function encode({ mti, fields }) {

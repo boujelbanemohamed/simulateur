@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
-import { encode, encodeSegments } from "./iso8583.js";
+import { encode, encodeSegments, MTI_INFO } from "./iso8583.js";
 import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS } from "./cards.js";
 import Decoder from "./Decoder.jsx";
 
 const pad = (n, w) => String(n).padStart(w, "0");
+const MTI = "1200";
+const mtiInfo = MTI_INFO(MTI);
 function nowParts() {
   const d = new Date();
   const MM = pad(d.getUTCMonth() + 1, 2), DD = pad(d.getUTCDate(), 2);
@@ -43,10 +45,10 @@ export default function Terminal() {
   }, [amount, card, currency, approved, merchant, stan]);
 
   const segments = useMemo(() => {
-    try { return { segs: encodeSegments({ mti: "0200", fields }), error: null }; }
+    try { return { segs: encodeSegments({ mti: MTI, fields }), error: null }; }
     catch (e) { return { segs: [], error: e.message }; }
   }, [fields]);
-  const wire = useMemo(() => { try { return encode({ mti: "0200", fields }); } catch { return ""; } }, [fields]);
+  const wire = useMemo(() => { try { return encode({ mti: MTI, fields }); } catch { return ""; } }, [fields]);
 
   const press = (d) => setAmount((a) => (a + d).replace(/^0+(?=\d)/, "").slice(0, 10));
   const back = () => setAmount((a) => a.slice(0, -1));
@@ -104,13 +106,14 @@ export default function Terminal() {
         </section>
 
         <section className="panel wire" aria-label="Message ISO 8583">
-          <h2 className="wire-title">Message ISO 8583 <span className="wire-sub">tel qu'envoyé au switch</span></h2>
+          <h2 className="wire-title">Message ISO 8583 <span className="iso-version-badge">ISO 8583:{mtiInfo.version}</span> <span className="wire-sub">tel qu'envoyé au switch</span></h2>
           {segments.error ? (
             <p className="encode-error">Encodage impossible : {segments.error}</p>
           ) : (
             <div className="wire-string">{segments.segs.map((s, i) => <span key={i} className={`seg seg-${s.kind}`} title={s.label}>{s.text}</span>)}</div>
           )}
-          <div className="wire-meta"><span>{wire.length} caractères</span><span>MTI 0200 · {segments.segs.filter((s) => s.kind === "field").length} champs</span></div>
+          <div className="wire-meta"><span>{wire.length} caractères</span><span>MTI {MTI} · {segments.segs.filter((s) => s.kind === "field").length} champs</span></div>
+          <div className="mti-breakdown">{mtiInfo.version} · {mtiInfo.classe} · {mtiInfo.fonction} · {mtiInfo.origine}</div>
           <table className="fieldtable"><tbody>
             {segments.segs.filter((s) => s.kind === "field").map((s) => (
               <tr key={s.field}><td className="ft-num">DE{s.field}</td><td className="ft-label">{FIELD_LABELS[s.field] || ""}</td><td className="ft-val">{s.field === 2 ? maskPan(fields[2]) : s.text.trim()}</td></tr>
