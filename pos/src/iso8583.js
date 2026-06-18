@@ -28,6 +28,47 @@ export const FIELD_DEFS = {
   63: [999, true, "an"], 64: [16, false, "b"],
 };
 
+// Reference labels for DE positions outside FIELD_DEFS.
+// Used by IsoIndex.jsx for documentary display.
+// Fields absent from this table => "Réservé / non documenté".
+// Only fields 2–128 are parseable by the engine (primary+secondary bitmap).
+export const ISO_DE_REFERENCE = {
+  2:"PAN (numéro de carte)",3:"Code de traitement",4:"Montant de la transaction",
+  5:"Montant de règlement",6:"Montant facturé porteur",7:"Date/heure de transmission (MMDDhhmmss)",
+  8:"Frais facturés porteur",9:"Taux de conversion règlement",10:"Taux de conversion facturation",
+  11:"STAN (numéro de trace)",12:"Heure locale (hhmmss)",13:"Date locale (MMDD)",14:"Date d'expiration",
+  15:"Date de règlement",16:"Date de conversion",17:"Date de capture",18:"Code catégorie marchand (MCC)",
+  19:"Code pays acquéreur",20:"Code pays PAN étendu",21:"Code pays institution émettrice du message",
+  22:"Mode de saisie POS",23:"Numéro de séquence de carte",24:"Code fonction (NII en 1987)",
+  25:"Code condition POS",26:"Code capture POS",27:"Longueur réponse d'autorisation",
+  28:"Montant frais de transaction",29:"Montant frais de règlement",30:"Montant frais de traitement transaction",
+  31:"Montant frais de traitement règlement",32:"Code institution acquéreur",33:"Code institution émettrice du message",
+  34:"PAN étendu",35:"Données piste 2",36:"Données piste 3",37:"Référence de récupération (RRN)",
+  38:"Code d'autorisation",39:"Code réponse",40:"Code restriction de service",
+  41:"Identifiant terminal accepteur",42:"Identifiant accepteur de carte",43:"Nom/localisation accepteur",
+  44:"Données réponse additionnelles",45:"Données piste 1",46:"Données additionnelles (ISO)",
+  47:"Données additionnelles (national)",48:"Données additionnelles (privé)",49:"Devise de la transaction",
+  50:"Devise de règlement",51:"Devise de facturation porteur",52:"Données PIN",
+  53:"Information de contrôle sécurité",54:"Montants additionnels",55:"Données ICC / EMV",
+  56:"Réservé ISO",57:"Réservé national",58:"Réservé national",59:"Réservé national",
+  60:"Réservé privé (avis/raison)",61:"Réservé privé",62:"Réservé privé",63:"Réservé privé",
+  64:"MAC (code d'authentification du message)",
+  66:"Code de règlement",67:"Code paiement étendu",68:"Code pays institution réceptrice",
+  69:"Code pays institution de règlement",70:"Code information gestion réseau",71:"Numéro de message",
+  72:"Données / numéro dernier message",73:"Date d'action",74:"Nombre de crédits",
+  75:"Nombre de crédits annulés",76:"Nombre de débits",77:"Nombre de débits annulés",
+  78:"Nombre de transferts",79:"Nombre de transferts annulés",80:"Nombre d'interrogations",
+  81:"Nombre d'autorisations",82:"Montant frais de traitement crédits",83:"Montant frais de transaction crédits",
+  84:"Montant frais de traitement débits",85:"Montant frais de transaction débits",86:"Montant des crédits",
+  87:"Montant des crédits annulés",88:"Montant des débits",89:"Montant des débits annulés",
+  90:"Éléments de données d'origine",91:"Code de mise à jour de fichier",92:"Code de sécurité de fichier",
+  93:"Code institution destinataire",94:"Code institution origine",95:"Montants de remplacement",
+  96:"Code sécurité message / montant net règlement",97:"Montant net de règlement",98:"Bénéficiaire",
+  99:"Code institution de règlement",100:"Code institution réceptrice",101:"Nom de fichier",
+  102:"Identification de compte 1",103:"Identification de compte 2",104:"Description de transaction",
+  128:"MAC (code d'authentification du message)",
+};
+
 const isNumericType = (t) => t === "n" || t === "xn";
 
 function padFixed(value, len, type) {

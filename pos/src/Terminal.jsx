@@ -15,6 +15,8 @@ function nowParts() {
 const randomDigits = (n) => Array.from({ length: n }, () => Math.floor(Math.random() * 10)).join("");
 const formatAmount = (minor) => (Number(minor || "0") / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+export const REQUIRED_DES = [2, 3, 4, 7, 11, 12, 13, 14, 18, 19, 22, 32, 37, 39, 41, 42, 43, 49];
+
 const MERCHANT_DEFAULTS = {
   mcc: "5812", acquirerId: "40010001234", acquirerCountry: "788",
   terminalId: "10000001", acceptorId: "000000000012345",
