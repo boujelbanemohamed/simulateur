@@ -276,6 +276,90 @@ export function decodeMessage(raw) {
   };
 }
 
+// --- MTI breakdown helper ---
+
+const _VER = {0:"ISO 8583:1987",1:"1993",2:"2003",8:"National",9:"Privé"};
+const _CLA = {1:"Autorisation",2:"Financière",3:"Action fichier",4:"Extourne/reversal",5:"Réconciliation",6:"Administrative",7:"Frais",8:"Gestion réseau",9:"Réservé"};
+const _FCT = {0:"Demande",1:"Réponse à demande",2:"Avis",3:"Réponse à avis",4:"Notification",5:"Acquittement notification",6:"Instruction",7:"Acquittement instruction"};
+const _ORI = {0:"Acquéreur",1:"Acquéreur (répétition)",2:"Émetteur",3:"Émetteur (répétition)",4:"Autre",5:"Autre (répétition)"};
+const _FMT = {n:"Numérique",a:"Alphabétique",an:"Alphanumérique",ans:"Alphanumérique+spéciaux",b:"Binaire",z:"Piste (track)",xn:"Numérique signé"};
+
+export function MTI_INFO(mti) {
+  if (!mti || mti.length !== 4) return null;
+  const d = mti.split("").map(Number);
+  return {
+    version: _VER[d[0]] || "réservé/inconnu",
+    classe: _CLA[d[1]] || "réservé/inconnu",
+    fonction: _FCT[d[2]] || "réservé/inconnu",
+    origine: _ORI[d[3]] || "réservé/inconnu",
+  };
+}
+
+export function formatInfo(field) {
+  const def = FIELD_DEFS[field];
+  if (!def) return null;
+  const [maxLen, variable, type] = def;
+  const longueur = variable
+    ? (maxLen > 99 ? `LLLVAR (max ${maxLen})` : `LLVAR (max ${maxLen})`)
+    : `fixe ${maxLen}`;
+  return { code: type, libelle: _FMT[type] || type, longueur };
+}
+
+// --- framed decoder (length-prefixed stream) ---
+
+export function decodeFramed(raw, prefixWidth = 4) {
+  const errors = [];
+  const messages = [];
+  const cleaned = raw.replace(/[\r\n]/g, "").trim();
+  let cursor = 0;
+
+  while (cursor < cleaned.length) {
+    if (cursor + prefixWidth > cleaned.length) {
+      errors.push(`préfixe incomplet en fin de flux (${cleaned.length - cursor} caractères orphelins)`);
+      break;
+    }
+    const prefix = cleaned.slice(cursor, cursor + prefixWidth);
+    if (!/^\d{4}$/.test(prefix)) {
+      errors.push(`transaction ${messages.length + 1}: préfixe de longueur non numérique "${prefix}"`);
+      break;
+    }
+    const declaredLen = parseInt(prefix, 10);
+    cursor += prefixWidth;
+    if (declaredLen === 0) {
+      errors.push(`transaction ${messages.length + 1}: longueur nulle`);
+      break;
+    }
+    if (cursor + declaredLen > cleaned.length) {
+      const available = cleaned.length - cursor;
+      const partial = cleaned.slice(cursor);
+      errors.push(`transaction ${messages.length + 1} tronquée: longueur déclarée ${declaredLen} mais seulement ${available} caractères disponibles`);
+      messages.push({
+        index: messages.length + 1,
+        declaredLength: declaredLen,
+        raw: partial,
+        decoded: decodeMessage(partial),
+        truncated: true,
+      });
+      break;
+    }
+    const slice = cleaned.slice(cursor, cursor + declaredLen);
+    messages.push({
+      index: messages.length + 1,
+      declaredLength: declaredLen,
+      raw: slice,
+      decoded: decodeMessage(slice),
+    });
+    cursor += declaredLen;
+  }
+
+  return {
+    ok: errors.length === 0 && messages.every((m) => m.decoded.ok),
+    count: messages.length,
+    messages,
+    errors,
+  };
+}
+
 // --- decoder that mirrors Iso8583Parser, for self-tests only ---
 export function decode(message) {
   const hexToBits = (hex) => {

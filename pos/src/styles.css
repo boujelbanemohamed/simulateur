@@ -172,3 +172,16 @@ body {
 .decode-input::placeholder { color: var(--muted); opacity: .7; }
 .decode-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
 .decode-err-line { font-family: var(--mono); font-size: 12px; margin: 2px 0; color: var(--red); }
+
+.decode-mode-tabs { display: flex; gap: 4px; margin-bottom: 12px; }
+
+.msg-card {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px; margin-bottom: 14px;
+}
+.msg-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+
+.mti-breakdown {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  margin: 2px 0 8px; display: flex; gap: 2px; flex-wrap: wrap;
+}
