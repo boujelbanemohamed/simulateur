@@ -1,0 +1,32 @@
+// Test cards (well-known test PANs) + reference data for the terminal.
+
+export const TEST_CARDS = [
+  { id: "visa1", scheme: "Visa", pan: "4111111111111111", expiry: "2812", label: "Visa •••• 1111" },
+  { id: "visa2", scheme: "Visa", pan: "4532015112830366", expiry: "2705", label: "Visa •••• 0366" },
+  { id: "mc1", scheme: "Mastercard", pan: "5413330089020011", expiry: "2903", label: "Mastercard •••• 0011" },
+  { id: "mc2", scheme: "Mastercard", pan: "2223000048400011", expiry: "2711", label: "Mastercard (2-series) •••• 0011" },
+];
+
+export const CURRENCIES = [
+  { code: "788", label: "TND — Dinar tunisien", symbol: "DT" },
+  { code: "840", label: "USD — Dollar US", symbol: "$" },
+  { code: "978", label: "EUR — Euro", symbol: "€" },
+  { code: "826", label: "GBP — Livre sterling", symbol: "£" },
+];
+
+// Human labels for the decoded-field table (subset we care about).
+export const FIELD_LABELS = {
+  2: "PAN", 3: "Code traitement", 4: "Montant", 7: "Date/heure transmission",
+  11: "STAN", 12: "Heure locale", 13: "Date locale", 14: "Expiration",
+  18: "MCC", 19: "Pays acquéreur", 22: "Mode saisie POS", 32: "ID acquéreur",
+  37: "RRN", 38: "Code autorisation", 39: "Code réponse", 41: "ID terminal",
+  42: "ID accepteur", 43: "Nom/lieu accepteur", 49: "Devise",
+  "2_PAN_tokenized": "PAN (tokenisé)", "52_CVV_tokenized": "CVV (tokenisé)",
+};
+
+export const RESPONSE_LABELS = {
+  "00": "Approuvée",
+  "05": "Refusée (ne pas honorer)",
+  "51": "Provision insuffisante",
+  "14": "Carte invalide",
+};

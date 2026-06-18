@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+target/
+.gradle/
+build/
+node_modules/
+*.log
+.env
+*.ipr
+*.iws
+*.iml
+.idea/
+*.swp
+*.swo
+out/
