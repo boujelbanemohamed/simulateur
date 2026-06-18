@@ -113,6 +113,169 @@ export function encodeSegments({ mti, fields }) {
   return segs;
 }
 
+// --- public decoder (robust, never throws) ---
+
+function hexToBits(hex) {
+  const bits = [];
+  for (let i = 0; i < 16; i++) {
+    const val = parseInt(hex[i], 16);
+    for (let bit = 0; bit < 4; bit++) bits[i * 4 + bit] = (val & (1 << (3 - bit))) !== 0;
+  }
+  return bits;
+}
+
+/**
+ * Decode an ISO 8583 ASCII message without throwing.
+ * Returns as much info as possible even on errors.
+ */
+export function decodeMessage(raw) {
+  const errors = [];
+  const segments = [];
+  const fields = [];
+
+  const msg = raw.trim();
+
+  for (let i = 0; i < msg.length; i++) {
+    const code = msg.charCodeAt(i);
+    if (code < 32 || code > 126) {
+      errors.push(`caractère non conforme à la position ${i + 1}`);
+      return { ok: false, mti: null, bitmapHex: null, secondaryHex: null, presentFields: [], segments, fields, errors };
+    }
+  }
+
+  if (msg.length < 20) {
+    errors.push(`message trop court (${msg.length} caractères, min 20)`);
+    return { ok: false, mti: null, bitmapHex: null, secondaryHex: null, presentFields: [], segments, fields, errors };
+  }
+
+  let cursor = 0;
+
+  const mti = msg.slice(0, 4);
+  if (!/^\d{4}$/.test(mti)) {
+    errors.push(`MTI invalide : "${mti}" n'est pas 4 chiffres`);
+    return { ok: false, mti: null, bitmapHex: null, secondaryHex: null, presentFields: [], segments, fields, errors };
+  }
+  segments.push({ kind: "mti", label: "MTI", text: mti });
+  cursor = 4;
+
+  const primaryHex = msg.slice(cursor, cursor + 16);
+  if (!/^[0-9A-Fa-f]{16}$/.test(primaryHex)) {
+    errors.push(`bitmap primaire invalide : "${primaryHex}" n'est pas 16 caractères hexadécimaux`);
+    return { ok: false, mti, bitmapHex: null, secondaryHex: null, presentFields: [], segments, fields, errors };
+  }
+  segments.push({ kind: "bitmap", label: "Bitmap", text: primaryHex });
+  cursor += 16;
+
+  const primaryBits = hexToBits(primaryHex);
+  let combined = primaryBits.slice();
+  let secondaryHex = null;
+
+  if (primaryBits[0]) {
+    if (cursor + 16 > msg.length) {
+      errors.push("bitmap secondaire manquant (bit 1 du primaire positionné mais message trop court)");
+    } else {
+      secondaryHex = msg.slice(cursor, cursor + 16);
+      if (!/^[0-9A-Fa-f]{16}$/.test(secondaryHex)) {
+        errors.push(`bitmap secondaire invalide : "${secondaryHex}" n'est pas 16 caractères hexadécimaux`);
+        secondaryHex = null;
+      }
+    }
+    if (secondaryHex) {
+      segments.push({ kind: "bitmap", label: "Bitmap 2", text: secondaryHex });
+      const secondaryBits = hexToBits(secondaryHex);
+      for (let i = 0; i < 64; i++) combined[i + 64] = secondaryBits[i];
+      cursor += 16;
+    }
+  }
+
+  const presentFields = [];
+  for (let f = 2; f <= 128; f++) {
+    if (combined[f - 1]) presentFields.push(f);
+  }
+
+  let fieldError = false;
+  for (const f of presentFields) {
+    if (fieldError) {
+      fields.push({ field: f, label: "", error: "décodage arrêté après une erreur précédente" });
+      continue;
+    }
+
+    const def = FIELD_DEFS[f];
+    if (!def) {
+      errors.push(`DE${f} non supporté`);
+      fields.push({ field: f, label: "", error: "non supporté" });
+      continue;
+    }
+
+    const [maxLen, variable, type] = def;
+
+    if (variable) {
+      const ld = maxLen > 99 ? 3 : 2;
+      if (cursor + ld > msg.length) {
+        errors.push(`DE${f}: préfixe de longueur manquant, message tronqué`);
+        fieldError = true;
+        continue;
+      }
+      const lenStr = msg.slice(cursor, cursor + ld);
+      if (!/^\d+$/.test(lenStr)) {
+        errors.push(`DE${f}: préfixe de longueur "${lenStr}" non numérique à la position ${cursor + 1}`);
+        fieldError = true;
+        continue;
+      }
+      const declaredLen = parseInt(lenStr, 10);
+      cursor += ld;
+
+      if (declaredLen > maxLen) {
+        errors.push(`DE${f}: longueur déclarée ${declaredLen} dépasse le max ${maxLen}`);
+      }
+      if (cursor + declaredLen > msg.length) {
+        errors.push(`DE${f}: message tronqué, attendu ${declaredLen} caractères, il en reste ${msg.length - cursor}`);
+        fieldError = true;
+        continue;
+      }
+      const value = msg.slice(cursor, cursor + declaredLen);
+
+      if ((f === 2 || f === 3 || f === 4 || f === 11) && !/^\d+$/.test(value)) {
+        errors.push(`DE${f} doit être numérique, reçu "${value}"`);
+      }
+
+      segments.push({ kind: "field", field: f, label: `DE${f}`, text: lenStr + value });
+      fields.push({ field: f, type, variable: true, declaredLength: declaredLen, value });
+      cursor += declaredLen;
+    } else {
+      if (cursor + maxLen > msg.length) {
+        errors.push(`DE${f} (fixe ${maxLen}): message tronqué, attendu ${maxLen} caractères, il en reste ${msg.length - cursor}`);
+        fieldError = true;
+        continue;
+      }
+      const value = msg.slice(cursor, cursor + maxLen);
+
+      if ((f === 3 || f === 4 || f === 11) && !/^\d+$/.test(value)) {
+        errors.push(`DE${f} doit être numérique, reçu "${value}"`);
+      }
+
+      segments.push({ kind: "field", field: f, label: `DE${f}`, text: value });
+      fields.push({ field: f, type, variable: false, declaredLength: maxLen, value });
+      cursor += maxLen;
+    }
+  }
+
+  if (cursor < msg.length) {
+    errors.push(`longueur incohérente : ${msg.length - cursor} caractère(s) en trop après le dernier champ`);
+  }
+
+  return {
+    ok: errors.length === 0,
+    mti,
+    bitmapHex: primaryHex,
+    secondaryHex,
+    presentFields,
+    segments,
+    fields,
+    errors,
+  };
+}
+
 // --- decoder that mirrors Iso8583Parser, for self-tests only ---
 export function decode(message) {
   const hexToBits = (hex) => {

@@ -163,3 +163,12 @@ body {
 .file-name { font-family: var(--mono); font-size: 12px; }
 .tag-exp { color: var(--cyan); background: rgba(91,192,235,.12); }
 .runlog { font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; color: #b9c2da; }
+
+.decode-input {
+  width: 100%; min-height: 80px; resize: vertical; box-sizing: border-box;
+  font-family: var(--mono); font-size: 13px; padding: 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--panel-2); color: var(--ink);
+}
+.decode-input::placeholder { color: var(--muted); opacity: .7; }
+.decode-actions { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.decode-err-line { font-family: var(--mono); font-size: 12px; margin: 2px 0; color: var(--red); }
