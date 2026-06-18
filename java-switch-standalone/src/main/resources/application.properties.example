@@ -1,0 +1,47 @@
+spring.application.name=java-switch-standalone
+
+# =====================================================================
+# PostgreSQL (override via env: DB_URL / DB_USER / DB_PASSWORD)
+# On a Homebrew PostgreSQL, your macOS user is superuser with no password,
+# so launch with:  DB_USER=$(whoami) DB_PASSWORD=
+# =====================================================================
+spring.datasource.url=${DB_URL:jdbc:postgresql://localhost:5432/flossx83}
+spring.datasource.username=${DB_USER:flossx83}
+spring.datasource.password=${DB_PASSWORD:flossx83}
+spring.datasource.driver-class-name=org.postgresql.Driver
+
+spring.jpa.hibernate.ddl-auto=none
+spring.jpa.open-in-view=false
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
+
+# Create the table from the bundled DDL at startup (idempotent).
+spring.sql.init.mode=always
+
+server.port=8080
+
+# =====================================================================
+# Clearing PAN encryption-at-rest (AES-256-GCM).
+# MUST be the SAME Base64 32-byte key as the Python batch CLEARING_PAN_KEY,
+# otherwise the batch cannot decrypt what this app encrypts.
+# =====================================================================
+clearing.pan-encryption-key=${CLEARING_PAN_KEY:CHANGE_ME_SET_CLEARING_PAN_KEY_ENV}
+
+# =====================================================================
+# Dashboard (LAB ONLY — not production authentication)
+# =====================================================================
+admin.username=${ADMIN_USER:admin}
+admin.password=${ADMIN_PASSWORD:flossx83}
+
+# "Générer les fichiers" button: how to invoke the Python clearing batch.
+# Paths are relative to where the switch is launched (java-switch-standalone/).
+clearing.batch-dir=${CLEARING_BATCH_DIR:../clearing-batch}
+clearing.python=${CLEARING_PYTHON:../clearing-batch/.venv/bin/python3}
+clearing.outbound-root=${CLEARING_OUTBOUND_ROOT:../clearing-batch/out}
+
+# DB creds injected into the Python subprocess (default to libpq env vars).
+clearing.pg-host=${PGHOST:localhost}
+clearing.pg-port=${PGPORT:5432}
+clearing.pg-database=${PGDATABASE:flossx83}
+clearing.pg-user=${PGUSER:flossx83}
+clearing.pg-password=${PGPASSWORD:}
+
