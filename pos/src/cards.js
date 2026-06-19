@@ -16,7 +16,8 @@ export const CURRENCIES = [
 
 // Human labels for the decoded-field table (subset we care about).
 export const FIELD_LABELS = {
-  2: "PAN", 3: "Code traitement", 4: "Montant", 7: "Date/heure transmission",
+  2: "PAN", 3: "Code traitement", 4: "Montant", 5: "Montant règlement",
+  6: "Montant facturation", 7: "Date/heure transmission",
   11: "STAN", 12: "Heure locale", 13: "Date locale", 14: "Expiration",
   18: "MCC", 19: "Pays acquéreur", 22: "Mode saisie POS", 32: "ID acquéreur",
   37: "RRN", 38: "Code autorisation", 39: "Code réponse", 41: "ID terminal",
@@ -27,6 +28,15 @@ export const FIELD_LABELS = {
 export const RESPONSE_LABELS = {
   "00": "Approuvée",
   "05": "Refusée (ne pas honorer)",
-  "51": "Provision insuffisante",
   "14": "Carte invalide",
+  "51": "Provision insuffisante",
+};
+
+// Codes supplémentaires pertinents pour le DAB (indicatifs — spec réseau).
+export const DAB_RESPONSE_LABELS = {
+  "54": "Carte expirée",
+  "55": "PIN incorrect",
+  "61": "Dépasse limite de retrait",
+  "75": "Tentatives PIN dépassées",
+  "91": "Émetteur indisponible",
 };

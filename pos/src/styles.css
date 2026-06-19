@@ -230,3 +230,35 @@ body {
 .sep-line { display: flex; align-items: center; gap: 12px; }
 .sep-line::before, .sep-line::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .sep-label { font-family: var(--mono); font-size: 12px; color: var(--cyan); white-space: nowrap; }
+
+/* ---- clearing impact ---- */
+.clearing-impact {
+  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
+  background: var(--panel-2); border: 1px solid var(--line);
+  font-size: 12px; line-height: 1.7; color: var(--muted);
+}
+.clr-badge {
+  display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700;
+  padding: 1px 7px; border-radius: 999px; margin-right: 6px; vertical-align: middle;
+}
+.clr-debit { color: var(--red); background: rgba(255,107,107,.12); }
+.clr-credit { color: var(--green); background: rgba(61,214,140,.12); }
+.clr-neutral { color: var(--amber); background: rgba(242,182,90,.14); }
+.clr-note { font-style: italic; opacity: .65; font-size: 11px; }
+
+/* ---- DAB amounts ---- */
+.dab-amounts { margin-bottom: 8px; }
+
+/* ---- void history ---- */
+.void-history { margin: 8px 0 16px; }
+.void-history-note { font-size: 11px; color: var(--muted); margin: 0 0 8px; line-height: 1.5; }
+.void-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+.void-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--ink); font-family: var(--mono); font-size: 12px;
+  cursor: pointer; text-align: left; transition: background .12s;
+}
+.void-item:hover { background: var(--panel-2); }
+.void-item-on { border-color: var(--cyan); background: rgba(91,192,235,.08); }
+.void-item-meta { color: var(--muted); font-size: 11px; margin-left: auto; }
