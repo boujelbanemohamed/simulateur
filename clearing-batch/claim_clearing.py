@@ -13,6 +13,10 @@ Design recap
   pending backlog with FOR UPDATE SKIP LOCKED and flips it to 'EXPORTING' in the
   same breath, RETURNING the claimed rows. This is the canonical job-queue
   pattern: no race, no double-claim across concurrent runs.
+- Les lignes de classe extourse (MTI 14xx) sont exclues du présentment filaire
+  par un filtre dans _CLAIM_SQL, car un reversal n'est pas un présentment.
+  Elles restent en base (status APPROVED) jusqu'à ce que le générateur de
+  reversal (TC 25/26/27) soit implémenté séparément.
 - The rows are only marked 'EXPORTED' *after* the file is written and
   checksummed (Stage 2/3, "Temps 2"). A crash in between leaves them in
   'EXPORTING'; `requeue_stale` reverts those, so nothing is lost or duplicated.
@@ -105,6 +109,8 @@ WITH claimed AS (
     WHERE status = 'APPROVED'
       AND response_code = '00'
       AND network = %(network)s
+      AND substring(mti from 2 for 1) <> '4'  -- exclut la classe extourse (14xx) du présentment ;
+                                               -- le reversal (TC 25/26/27) sera traité séparément
       {day_filter}
     ORDER BY id
     FOR UPDATE SKIP LOCKED
