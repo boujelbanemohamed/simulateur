@@ -205,7 +205,7 @@ class TestMastercardIpm(unittest.TestCase):
         data, count, total = mc.generate_ipm_bytes(
             rows, KEY, terminal_type="  Z", tcc="T", txn_env="0", created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
-        trailer = next(r for r in recs if r.get("MTI") == "1644" and r.get("DE24") == "696")
+        trailer = next(r for r in recs if r.get("MTI") == "1644" and r.get("DE24") == "695")
         # Control totals now live in DE-48 PDS, not DE-4/DE-71.
         self.assertNotIn("DE4", trailer)
         self.assertEqual(int(trailer["PDS0306"]), count)      # message count

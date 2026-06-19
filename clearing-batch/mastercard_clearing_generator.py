@@ -19,7 +19,7 @@ File envelope
 -------------
     MTI 1644  File Header   (DE24 function code = 697)
     MTI 1240  First Presentment (one per approved Mastercard transaction)
-    MTI 1644  File Trailer  (DE24 function code = 696) — carries control totals
+    MTI 1644  File Trailer  (DE24 function code = 695) — carries control totals
 
 DE-48 (Private Data) — PDS / TLV
 -------------------------------
@@ -34,7 +34,7 @@ Field mapping (per spec request)
 -------------------------------
     DE2  <- decrypt_pan(pan_enc)          DE3  <- processing_code
     DE4  <- txn_amount (minor units, int) DE49 <- txn_currency
-    DE24 <- function code (200 presentment / 697 header / 696 trailer)
+    DE24 <- function code (200 presentment / 697 header / 695 trailer)
     DE71 <- sequential message number
     DE48 <- PDS subelements (terminal type, transaction environment, TCC*)
 
@@ -98,7 +98,7 @@ MTI_PRESENTMENT = "1240"      # First Presentment
 MTI_FILE_CONTROL = "1644"     # File Header / Trailer (Advice)
 FUNC_PRESENTMENT = "200"      # DE24 — First Presentment, full
 FUNC_FILE_HEADER = "697"      # DE24 — File header
-FUNC_FILE_TRAILER = "696"     # DE24 — File trailer
+FUNC_FILE_TRAILER = "695"     # DE24 — File trailer
 
 # DE-48 PDS tags (numeric, 4 digits). Names per Mastercard_Parsing decoding.
 PDS_TERMINAL_TYPE = "0023"    # Terminal Type
@@ -179,7 +179,7 @@ def build_file_trailer(msg_number: int, presentment_count: int, amount_total: in
                        processor_id: str = "00000000000",
                        file_seq: str = "00001") -> dict[str, Any]:
     """
-    MTI 1644 / DE24 696 file trailer.
+    MTI 1644 / DE24 695 file trailer.
 
     Control totals are now carried OFFICIALLY as DE-48 PDS (TLV) rather than in
     DE-4/DE-71:
