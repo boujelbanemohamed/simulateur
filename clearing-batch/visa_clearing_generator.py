@@ -9,8 +9,9 @@ Visa BASE II Clearing Transaction File (CTF): an ASCII, fixed-length,
 File envelope
 -------------
     TC 90   File Header          (1 record)
-    TC 05   First Presentment    (1 per approved Visa purchase/withdrawal)  -- TCR 0
+    TC 05   First Presentment    (1 per approved Visa purchase)            -- TCR 0
     TC 06   Credit Voucher       (1 per approved Visa refund)              -- TCR 0 (même layout)
+    TC 07   Cash Disbursement    (1 per approved Visa ATM withdrawal)      -- TCR 0 (même layout)
     TC 92   File Trailer         (1 record: count + hash total)
 
 Offsets are taken from the provided reference repos:
@@ -57,8 +58,9 @@ from claim_clearing import (
 
 RECORD_LEN = 168
 HEADER_TC = "90"
-DRAFT_TC = "05"          # First Presentment, Sales Draft (purchase / withdrawal default)
+DRAFT_TC = "05"          # First Presentment, Sales Draft (purchase default)
 REFUND_TC = "06"         # Credit Voucher / Refund (also TCR-0, same 168-byte layout)
+CASH_TC = "07"           # Cash Disbursement / ATM withdrawal (also TCR-0, same 168-byte layout)
 BATCH_TC = "91"          # Batch Trailer
 TRAILER_TC = "92"        # File Trailer (NOT 99 -- see module docstring)
 ARN_MODE = "0"           # ARN position 1 (acquirer processing mode)
@@ -74,14 +76,12 @@ def _txn_type_from_pc(processing_code: str) -> str:
     Return 'purchase', 'refund', 'withdrawal', or 'purchase' (default).
 
     DE-3 first 2 digits: 00=purchase, 01=withdrawal, 20=refund.
-    Withdrawal est traité comme purchase (TC 05) pour l'instant — TODO:
-    ajouter TC 07 quand le retrait sera supporté dans le générateur.
     """
     prefix = (processing_code or "000000")[:2]
     if prefix == "20":
         return "refund"
     if prefix == "01":
-        return "withdrawal"   # TODO: map to TC 07 when withdrawal is implemented
+        return "withdrawal"
     return "purchase"
 
 
@@ -176,10 +176,10 @@ def build_header(sending_id: str, receiving_id: str, created: datetime,
 
 def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
                txn_type: str = "purchase") -> str:
-    """TC 05 / TC 06 / TCR 0 — First Presentment (purchase/refund).
+    """TC 05 / TC 06 / TC 07 / TCR 0 — First Presentment (purchase/refund/withdrawal).
     Offsets per TCR0_DRAFT schema. Le TC est dérivé du type d'opération :
-    purchase/withdrawal -> TC 05, refund -> TC 06. Le layout est identique
-    (mêmes offsets, même longueur 168)."""
+    purchase -> TC 05, refund -> TC 06, withdrawal -> TC 07. Le layout est
+    identique (mêmes offsets, même longueur 168)."""
     dt = row["transmission_ts"]
     if not isinstance(dt, datetime):
         dt = datetime.now(timezone.utc)
@@ -193,11 +193,11 @@ def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
     pan_main = pan[:16].ljust(16, "0")                 # account number (16)
     pan_ext = numeric(pan[16:19], 3) if len(pan) > 16 else "000"
 
-    txn_code = REFUND_TC if txn_type == "refund" else DRAFT_TC
+    txn_code = REFUND_TC if txn_type == "refund" else CASH_TC if txn_type == "withdrawal" else DRAFT_TC
 
     buf = [" "] * RECORD_LEN
     place = _placer(buf)
-    place(1, 2, txn_code)                              # Transaction Code (05 or 06)
+    place(1, 2, txn_code)                              # Transaction Code (05, 06 or 07)
     place(3, 1, "0")                                   # TC Qualifier (Default)
     place(4, 1, "0")                                   # TCR Sequence No
     place(5, 16, pan_main)                             # Account Number (PAN)
@@ -308,9 +308,12 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
     # simple des montants (txn_amount). Visa Base II peut attendre un signe
     # différent pour les crédits (TC 06) dans le hash — ce comportement n'est
     # PAS implémenté ici faute de source fiable sur le sens exact attendu par
-    # le réseau. Si le récepteur rejette les totaux pour les fichiers contenant
-    # des TC 06, le hash devra être adapté (ex. soustraire les montants crédit
-    # au lieu de les additionner). À valider avec la spec réseau réelle.
+    # le réseau. Les TC 05 (achat) et TC 07 (retrait) sont des débits, leur
+    # montant s'additionne normalement ; le TC 06 (remboursement) est un
+    # crédit, son signe dans le hash est incertain. Si le récepteur rejette
+    # les totaux pour les fichiers contenant des TC 06, le hash devra être
+    # adapté (ex. soustraire les montants crédit au lieu de les additionner).
+    # À valider avec la spec réseau réelle.
     lines.append(build_count_trailer(
         TRAILER_TC, count, file_hash,
         processing=created, batch_number=max(batch_number, 1)))
@@ -368,8 +371,10 @@ def run(out_dir: str, *, sending_id: str, receiving_id: str,
         n_batches = sum(1 for ln in lines if ln[:2] == BATCH_TC)
         path, sha = write_ctf_file(lines, out_dir, result.batch_id)
         ref_count = sum(1 for r in result.rows if _txn_type_from_pc(r.get("processing_code")) == "refund")
+        cash_count = sum(1 for r in result.rows if _txn_type_from_pc(r.get("processing_code")) == "withdrawal")
+        draft_count = count - ref_count - cash_count
         print(f"[VISA] wrote {path}")
-        print(f"[VISA] records: 1 header + {count - ref_count} TC05 / {ref_count} TC06"
+        print(f"[VISA] records: 1 header + {draft_count} TC05 / {ref_count} TC06 / {cash_count} TC07"
               f" + {n_batches} TC91 + 1 TC92 | "
               f"hash_total(minor units)={hash_total} | sha256={sha[:16]}…")
 

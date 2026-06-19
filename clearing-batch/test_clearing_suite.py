@@ -132,20 +132,37 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(len(lines[1]), visa.RECORD_LEN)
         self.assertEqual(lines[1][61:73], "000000005000")  # amount unchanged
 
-    def test_mixed_tc05_tc06_in_same_file(self):
-        """Achat + remboursement dans le même fichier : TC 05 et TC 06."""
-        rows = sample_rows(["4111111111111111", "5413330089020011"])
-        rows[0]["processing_code"] = "000000"              # purchase -> TC 05
-        rows[0]["txn_amount"] = 1000
-        rows[1]["processing_code"] = "200000"              # refund -> TC 06
-        rows[1]["txn_amount"] = 500
+    def test_tc07_withdrawal(self):
+        """Withdrawal (DE-3 prefix 01) produces TC 07, same 168-byte layout."""
+        rows = sample_rows(["4111111111111111"])
+        rows[0]["processing_code"] = "010000"
+        rows[0]["txn_amount"] = 3000
         lines, count, _ = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
-        self.assertEqual(count, 2)
+        self.assertEqual(count, 1)
+        tc = lines[1][:2]
+        self.assertEqual(tc, "07")
+        self.assertEqual(len(lines[1]), visa.RECORD_LEN)
+        self.assertEqual(lines[1][61:73], "000000003000")
+
+    def test_mixed_tc05_tc06_tc07_in_same_file(self):
+        """Achat + remboursement + retrait dans le même fichier."""
+        rows = sample_rows(["4111111111111111", "5413330089020011", "4532015112830366"])
+        rows[0]["processing_code"] = "000000"              # purchase  -> TC 05
+        rows[0]["txn_amount"] = 1000
+        rows[1]["processing_code"] = "200000"              # refund    -> TC 06
+        rows[1]["txn_amount"] = 500
+        rows[2]["processing_code"] = "010000"              # withdrawal -> TC 07
+        rows[2]["txn_amount"] = 200
+        lines, count, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 3)
         self.assertEqual(lines[1][:2], "05")               # TC 05
         self.assertEqual(lines[2][:2], "06")               # TC 06
-        for ln in lines[1:3]:
+        self.assertEqual(lines[3][:2], "07")               # TC 07
+        for ln in lines[1:4]:
             self.assertEqual(len(ln), visa.RECORD_LEN)
 
 
