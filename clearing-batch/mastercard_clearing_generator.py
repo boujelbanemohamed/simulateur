@@ -22,7 +22,7 @@ File envelope
     MTI 1644  File Trailer  (DE24 function code = 696) — carries control totals
 
 DE-48 (Private Data) — PDS / TLV
---------------------------------
+-------------------------------
 DE-48 is built from Private Data Subelements (PDS). Each PDS is encoded as
 ``tag(4n) + length(3n) + value`` and the PDSs are concatenated — the format
 implemented by `Mastercard_Parsing`'s `_pds_to_de`, and the same one cardutil
@@ -31,7 +31,7 @@ automatically. We populate the terminal/environment subelements used for first
 presentment and expose `extra_pds` so callers can add any tag.
 
 Field mapping (per spec request)
---------------------------------
+-------------------------------
     DE2  <- decrypt_pan(pan_enc)          DE3  <- processing_code
     DE4  <- txn_amount (minor units, int) DE49 <- txn_currency
     DE24 <- function code (200 presentment / 697 header / 696 trailer)
@@ -41,6 +41,34 @@ Field mapping (per spec request)
 * See the note on TCC in build_de48(): the Transaction Category Code placement
   varies across Mastercard spec versions; the tag used here is a documented,
   configurable constant to verify against your IPM Clearing Formats manual.
+
+  --- Analyse crédit/débit pour remboursement (ajout étape 2) ---
+  Le générateur Mastercard actuel ne porte PAS d'indicateur explicite de sens
+  (crédit/débit). Le DE-4 (montant) est toujours un entier positif ; le DE-24
+  (function code) est toujours 200 (First Presentment). Les PDS de
+  réconciliation (PDS0301 / amount checksum, PDS0306 / message count) sont des
+  cumuls non signés.
+
+  Pour distinguer un remboursement en Mastercard, il faudrait au minimum :
+    a) basculer sur un function code crédit (201 — Credit Voucher
+       Presentment) dans DE-24, ou
+    b) ajouter un indicateur C/D dans un PDS dédié (tag à confirmer dans la
+       spec IPM Clearing Formats).
+
+  Risques :
+    - cardutil/IpmWriter construit le message à partir du dict Python ; ajouter
+      un champ DE-24 différent ou un PDS supplémentaire n'est PAS cassant pour
+      le format binaire (le TLV gère la taille variable, le bloquage 1014 reste
+      correct automatiquement).
+    - En revanche, le sens attendu par le récepteur (via le réseau Mastercard)
+      n'est pas documenté dans les sources disponibles pour ce simulateur.
+      Modifier DE-24 sans spec fiable risquerait de produire un fichier rejeté
+      par le downstream.
+
+  Décision pour l'étape 1 : NE PAS modifier le générateur Mastercard. Le
+  remboursement sera traité dans une étape séparée quand les valeurs exactes
+  (DE-24 201 vs PDS dédié) seront confirmées par la documentation réseau
+  réelle.
 """
 
 from __future__ import annotations

@@ -118,6 +118,36 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(tc05[61:73], "000000001550")    # DE-4 -> pos 62, len 12
         self.assertEqual(tc05[4:20], "4111111111111111")  # PAN -> pos 5, len 16
 
+    def test_tc06_refund(self):
+        """Refund (DE-3 prefix 20) produces TC 06, same 168-byte layout."""
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "200000"
+        rows[0]["txn_amount"] = 5000
+        lines, count, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        tc = lines[1][:2]                                # pos 1-2 = Transaction Code
+        self.assertEqual(tc, "06")
+        self.assertEqual(len(lines[1]), visa.RECORD_LEN)
+        self.assertEqual(lines[1][61:73], "000000005000")  # amount unchanged
+
+    def test_mixed_tc05_tc06_in_same_file(self):
+        """Achat + remboursement dans le même fichier : TC 05 et TC 06."""
+        rows = sample_rows(["4111111111111111", "5413330089020011"])
+        rows[0]["processing_code"] = "000000"              # purchase -> TC 05
+        rows[0]["txn_amount"] = 1000
+        rows[1]["processing_code"] = "200000"              # refund -> TC 06
+        rows[1]["txn_amount"] = 500
+        lines, count, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 2)
+        self.assertEqual(lines[1][:2], "05")               # TC 05
+        self.assertEqual(lines[2][:2], "06")               # TC 06
+        for ln in lines[1:3]:
+            self.assertEqual(len(ln), visa.RECORD_LEN)
+
 
 class TestMastercardIpm(unittest.TestCase):
     def test_blocked_size_multiple_of_1014(self):
