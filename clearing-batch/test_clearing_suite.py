@@ -231,6 +231,64 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertEqual(ard[1:7], "001234", "pos 2-7 = last 6 of acquirer_id=40010001234")
         self.assertEqual(ard[22], _luhn_check_digit(ard[:22]), "Luhn mismatch at pos 23")
 
+    def test_de12_datetime_format(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        import datetime as dt_mod
+        de12 = presentment.get("DE12")
+        self.assertIsInstance(de12, dt_mod.datetime, "DE12 should be a datetime")
+        self.assertEqual(de12.strftime("%y%m%d%H%M%S"), "260615103000")
+
+    def test_de26_mcc_format(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        mcc = presentment.get("DE26")
+        self.assertEqual(mcc, 5999, "DE26 should be 5999 as int")
+
+    def test_de33_forwarding_id(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        de33 = presentment.get("DE33", "")
+        self.assertTrue(de33.isdigit(), f"DE33 must be numeric, got {de33!r}")
+        self.assertLessEqual(len(de33), 11, "DE33 max 11 digits")
+        self.assertEqual(de33, "40010001234")
+
+    def test_de43_acceptor_name_location(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+
+        self.assertIn("DE43", presentment)
+        de43 = presentment["DE43"]
+        self.assertGreater(len(de43), 20, "DE43 should carry subfields")
+        self.assertIn("DE43_NAME", presentment, "cardutil should parse subfield 1")
+        self.assertEqual(presentment["DE43_NAME"], "TEST MERCHANT")
+        self.assertIn("DE43_COUNTRY", presentment, "cardutil should parse country subfield")
+        self.assertEqual(presentment["DE43_COUNTRY"], "TUN")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

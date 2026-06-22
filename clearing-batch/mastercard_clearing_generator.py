@@ -33,10 +33,11 @@ presentment and expose `extra_pds` so callers can add any tag.
 Field mapping (per spec request)
 -------------------------------
     DE2  <- decrypt_pan(pan_enc)          DE3  <- processing_code
-    DE4  <- txn_amount (minor units, int) DE49 <- txn_currency
+    DE4  <- txn_amount (minor units, int) DE12 <- transmission_ts (YYMMDDhhmmss)
     DE24 <- function code (200 presentment / 697 header / 695 trailer)
-    DE71 <- sequential message number
-    DE31 <- ARD (n-23, 5 sous-champs, Luhn mod-10) — voir build_de31_ard()
+    DE26 <- mcc (n-4)                     DE31 <- ARD (n-23, Luhn) — build_de31_ard()
+    DE33 <- acquirer_id (n-11 LLVAR)      DE43 <- acceptor_name_loc + pays alpha-3 (LLVAR)
+    DE49 <- txn_currency                  DE71 <- sequential message number
     DE48 <- PDS subelements (terminal type, transaction environment, TCC*)
 
 * See the note on TCC in build_de48(): the Transaction Category Code placement
@@ -161,6 +162,56 @@ def build_de31_ard(acquirer_id: str | None, stan: str | None, dt: datetime) -> s
 
 
 # --------------------------------------------------------------------------- #
+# DE-33 — Forwarding Institution ID Code (n-11 LLVAR)
+# Convention simulateur : dérivé de l'acquirer_id (derniers 11 chiffres).
+# --------------------------------------------------------------------------- #
+def build_de33(acquirer_id: str | None) -> str:
+    digits = "".join(ch for ch in (acquirer_id or "") if ch.isdigit())
+    return digits[-11:] if digits else "0"
+
+
+# --------------------------------------------------------------------------- #
+# Conversion pays numérique → alpha-3 pour DE-43 (sous-champ 6).
+# Map minimal pour les tests ; étendre si nécessaire.
+# --------------------------------------------------------------------------- #
+NUMERIC_TO_ALPHA3: dict[str, str] = {
+    "788": "TUN",  # Tunisie
+    "840": "USA",  # États-Unis
+    "250": "FRA",  # France
+    "826": "GBR",  # Royaume-Uni
+    "124": "CAN",  # Canada
+    "276": "DEU",  # Allemagne
+    "380": "ITA",  # Italie
+    "724": "ESP",  # Espagne
+}
+
+
+# --------------------------------------------------------------------------- #
+# DE-43 — Card Acceptor Name/Location (ans-99 LLVAR).
+# 6 sous-champs, format cardutil : NAME\ADDRESS\CITY\POSTCODE(10)STATE(3)COUNTRY(3)
+# Les sous-champs 1 (Name), 3 (City), 6 (Country) sont obligatoires.
+# Country est en ISO alpha-3 (converti depuis merchant_country numérique).
+#
+# NOTE conformité : l'encodage interne des sous-champs suit la convention cardutil
+# (séparateur backslash NAME\\ADDR\\CITY puis POSTCODE(10)STATE(3)COUNTRY(3)). Le round-trip
+# cardutil est validé, mais cet encodage n'a PAS encore été confronté champ par champ à la
+# structure exacte décrite dans la spec IPM (longueurs ans-22/ans-13/ans-3 par sous-champ).
+# À vérifier dans un lot ultérieur. Le mapping pays NUMERIC_TO_ALPHA3 est une convention
+# simulateur limitée aux pays de test.
+# --------------------------------------------------------------------------- #
+def build_de43(card_acceptor_name: str, merchant_country: str, *,
+               city: str = "", street: str = "",
+               postcode: str = "", region: str = "") -> str:
+    country_alpha3 = NUMERIC_TO_ALPHA3.get(merchant_country, merchant_country)
+    name = card_acceptor_name[:22] if card_acceptor_name else " "
+    addr = street[:22] if street else " "
+    cty = city[:13] if city else " "
+    pc = postcode[:10]
+    st = region[:3]
+    return f"{name}\\{addr}\\{cty}\\{pc:10s}{st:3s}{country_alpha3}"
+
+
+# --------------------------------------------------------------------------- #
 # Message builders
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
@@ -170,15 +221,23 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     if not (pan.isdigit() and 13 <= len(pan) <= 19):
         raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
 
+    ts = row.get("transmission_ts") or created
+    mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
         "DE4": int(row["txn_amount"]),                # minor units, no decimal point
+        "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
         "DE24": FUNC_PRESENTMENT,                     # function code
+        "DE26": mcc,                                  # MCC (n-4)
+        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
+        "DE33": build_de33(row.get("acquirer_id")),   # forwarding institution (n-11 LLVAR)
+        "DE43": de43,                                 # card acceptor name/location (ans-99 LLVAR)
         "DE49": (row.get("txn_currency") or "000")[:3].rjust(3, "0"),
         "DE71": msg_number,                           # sequential message number
-        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
