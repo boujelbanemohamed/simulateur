@@ -289,6 +289,24 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertIn("DE43_COUNTRY", presentment, "cardutil should parse country subfield")
         self.assertEqual(presentment["DE43_COUNTRY"], "TUN")
 
+    def test_refund_processing_code(self):
+        """Refund (DE-3 prefix 20) passes through correctly. Per spec §5,
+        the network derives debit-acquirer / credit-issuer from the DE-3 prefix
+        alone — no DE-24 change or PDS needed."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "200000"
+        rows[0]["txn_amount"] = 5000
+        data, count, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        self.assertEqual(count, 1)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment["DE3"], "200000", "refund DE-3 prefix 20 must be preserved")
+        self.assertEqual(int(presentment["DE4"]), 5000)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -44,33 +44,25 @@ Field mapping (per spec request)
   varies across Mastercard spec versions; the tag used here is a documented,
   configurable constant to verify against your IPM Clearing Formats manual.
 
-  --- Analyse crédit/débit pour remboursement (ajout étape 2) ---
-  Le générateur Mastercard actuel ne porte PAS d'indicateur explicite de sens
-  (crédit/débit). Le DE-4 (montant) est toujours un entier positif ; le DE-24
-  (function code) est toujours 200 (First Presentment). Les PDS de
-  réconciliation (PDS0301 / amount checksum, PDS0306 / message count) sont des
-  cumuls non signés.
+  --- Sens crédit/débit — conforme IPM Clearing Formats, Juin 2019 §5 ---
+  Le sens n'est PAS porté par un champ explicite. Il se déduit de la
+  combinaison MTI + DE-24 + DE-3 + PDS-0025 (Message Reversal Indicator).
 
-  Pour distinguer un remboursement en Mastercard, il faudrait au minimum :
-    a) basculer sur un function code crédit (201 — Credit Voucher
-       Presentment) dans DE-24, ou
-    b) ajouter un indicateur C/D dans un PDS dédié (tag à confirmer dans la
-       spec IPM Clearing Formats).
+  Table officielle — Premier Présentment (MTI 1240, DE-24 = 200) :
 
-  Risques :
-    - cardutil/IpmWriter construit le message à partir du dict Python ; ajouter
-      un champ DE-24 différent ou un PDS supplémentaire n'est PAS cassant pour
-      le format binaire (le TLV gère la taille variable, le bloquage 1014 reste
-      correct automatiquement).
-    - En revanche, le sens attendu par le récepteur (via le réseau Mastercard)
-      n'est pas documenté dans les sources disponibles pour ce simulateur.
-      Modifier DE-24 sans spec fiable risquerait de produire un fichier rejeté
-      par le downstream.
+    DE-3 (préfixe)  PDS 0025    Sens Acquéreur (Org)    Sens Émetteur (Dst)
+    ──────────────  ─────────   ─────────────────────   ───────────────────
+    00–18, 50       —           Cr (crédit)             Dr (débit)
+    00–18, 50       R           Dr (débit)              Cr (crédit)
+    20, 28          —           Dr (débit)              Cr (crédit)   ← refund
+    20, 28          R           Cr (crédit)             Dr (débit)
 
-  Décision pour l'étape 1 : NE PAS modifier le générateur Mastercard. Le
-  remboursement sera traité dans une étape séparée quand les valeurs exactes
-  (DE-24 201 vs PDS dédié) seront confirmées par la documentation réseau
-  réelle.
+  Le générateur n'a RIEN à ajouter : le réseau calcule le sens à partir du
+  DE-3 (processing_code) déjà présent. Le refund (préfixe 20) produit
+  automatiquement un sens débit acquéreur / crédit émetteur sans modifier
+  DE-24 ni ajouter de PDS.
+  Voir §5 « Reconciliation Messages — Debit/Credit Totals » pour les totaux
+  séparés débit/crédit du file trailer (non implémentés dans ce lot).
 """
 
 from __future__ import annotations
