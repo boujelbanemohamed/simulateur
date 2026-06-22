@@ -233,6 +233,11 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    # NOTE conformité — champs système-provided non fournis ici (volontairement) : DE-5/DE-6/DE-9
+    # (montants convertis en devise de réconciliation/billing) et PDS 0002/0003 (identifiants produit
+    # GCMS) sont fournis ou enrichis par le système de clearing, pas par l'acquéreur originateur
+    # (usage Org = O ou •, Dst = M/C). Les inclure en dur serait incorrect. Le présentment fournit
+    # donc tous les champs M côté Org. Réf. IPM Clearing Formats, tables d'usage par DE.
     return msg
 
 
