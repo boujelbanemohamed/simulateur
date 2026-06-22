@@ -212,6 +212,25 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertEqual(int(trailer["PDS0301"]), total)      # amount checksum
         self.assertEqual(len(trailer["PDS0105"]), 25)         # file identification
 
+    def test_de31_ard_format(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        from visa_clearing_generator import _luhn_check_digit
+
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+
+        ard = presentment.get("DE31", "")
+        self.assertEqual(len(ard), 23, "DE31 must be 23 chars")
+        self.assertTrue(ard.isdigit(), f"DE31 must be all numeric, got {ard!r}")
+        self.assertEqual(ard[0], "0", "Mixed Use at pos 1 should be '0'")
+        self.assertEqual(ard[1:7], "001234", "pos 2-7 = last 6 of acquirer_id=40010001234")
+        self.assertEqual(ard[22], _luhn_check_digit(ard[:22]), "Luhn mismatch at pos 23")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

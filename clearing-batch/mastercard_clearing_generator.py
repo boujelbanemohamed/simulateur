@@ -36,6 +36,7 @@ Field mapping (per spec request)
     DE4  <- txn_amount (minor units, int) DE49 <- txn_currency
     DE24 <- function code (200 presentment / 697 header / 695 trailer)
     DE71 <- sequential message number
+    DE31 <- ARD (n-23, 5 sous-champs, Luhn mod-10) — voir build_de31_ard()
     DE48 <- PDS subelements (terminal type, transaction environment, TCC*)
 
 * See the note on TCC in build_de48(): the Transaction Category Code placement
@@ -93,6 +94,10 @@ from claim_clearing import (
     ensure_writable_dir,
 )
 
+# Utilitaires de format réutilisés depuis le générateur Visa (même logique Luhn,
+# date julienne, et formatage numérique pour le DE-31 ARD Mastercard).
+from visa_clearing_generator import _luhn_check_digit, _julian_yddd, numeric
+
 # MTI / function codes
 MTI_PRESENTMENT = "1240"      # First Presentment
 MTI_FILE_CONTROL = "1644"     # File Header / Trailer (Advice)
@@ -134,10 +139,33 @@ def build_de48(*, terminal_type: str, tcc: str, txn_env: str,
 
 
 # --------------------------------------------------------------------------- #
+# DE-31 ARD — IPM Clearing Formats spec (conforme juin 2019)
+# Format : n-23, 5 sous-champs : MixedUse(1) + BIN(6) + Julian(4) + Seq(11) + Luhn(1)
+# Logique identique au build_arn() Visa (1+6+4+11+1, Luhn mod-10 sur 22 premiers).
+# --------------------------------------------------------------------------- #
+# Mode d'emploi des sous-champs :
+#   1. Mixed Use = "0" (convention simulateur documentée)
+#   2. Acquirer's BIN = 6 derniers chiffres de l'acquirer_id
+#   3. Julian Processing Date = date julienne YDDD du timestamp created
+#   4. Acquirer's Sequence Number = STAN de la transaction, justifié à droite / zéro-filled
+#   5. Check Digit = Luhn mod-10 calculé sur les 22 positions précédentes
+# --------------------------------------------------------------------------- #
+def build_de31_ard(acquirer_id: str | None, stan: str | None, dt: datetime) -> str:
+    mixed = "0"
+    acq_digits = "".join(ch for ch in (acquirer_id or "") if ch.isdigit())
+    bin6 = numeric(acq_digits[-6:], 6)
+    julian = _julian_yddd(dt)
+    seq = numeric(stan, 11)
+    body = mixed + bin6 + julian + seq
+    return body + _luhn_check_digit(body)
+
+
+# --------------------------------------------------------------------------- #
 # Message builders
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
-                      terminal_type: str, tcc: str, txn_env: str) -> dict[str, Any]:
+                      terminal_type: str, tcc: str, txn_env: str,
+                      created: datetime) -> dict[str, Any]:
     """Build one MTI 1240 First Presentment message dict for cardutil."""
     if not (pan.isdigit() and 13 <= len(pan) <= 19):
         raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
@@ -150,6 +178,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE24": FUNC_PRESENTMENT,                     # function code
         "DE49": (row.get("txn_currency") or "000")[:3].rjust(3, "0"),
         "DE71": msg_number,                           # sequential message number
+        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
@@ -224,7 +253,8 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq += 1
         pan = decrypt_pan(row["pan_enc"], key)
         writer.write(build_presentment(row, pan, seq,
-                                       terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+                                       terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
+                                       created=created))
         amount_total += int(row["txn_amount"])
     count = len(rows)
     seq += 1
