@@ -254,6 +254,13 @@ def build_file_header(msg_number: int, created: datetime) -> dict[str, Any]:
     }
 
 
+# NOTE conformité (sens crédit/débit) : le sens d'une transaction est dérivé du DE-3 par le
+# réseau (voir §5, documenté plus haut). Les TOTAUX débit/crédit séparés en réconciliation
+# (PDS 0390 Debits / 0391 Credits) appartiennent aux messages Financial Position Detail/1644
+# (DE-24=685) et Settlement Position Detail/1644 (DE-24=688), une couche de réconciliation NON
+# implémentée ici. Ce file trailer (695) porte un checksum de contrôle de fichier (PDS0301),
+# pas des totaux de position signés. L'implémentation des messages 685/688 est un chantier
+# futur optionnel.
 def build_file_trailer(msg_number: int, presentment_count: int, amount_total: int, *,
                        created: datetime, file_type: str = "000",
                        processor_id: str = "00000000000",
