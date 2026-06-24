@@ -142,6 +142,12 @@ def _placer(buf: list[str]):
 # ARN (Acquirer Reference Number) — Base II uses this, not the ISO STAN.
 # 23 digits: mode(1) + acquirer BIN(6) + julian YDDD(4) + sequence(11) + Luhn(1)
 # We fold the ISO STAN into the sequence so it stays traceable.
+#
+# Conformité (Base II Clearing Services, 15 avril 2023, table CPS/ATM) :
+#   L'Acquiring Identifier est aux positions 28–33 du TCR 0. L'ARN commence en
+#   position 27 (notre place(27, 23, build_arn(...))) : son mode (pos 1 de l'ARN)
+#   tombe en position 27, et le BIN acquéreur (pos 2–7 de l'ARN) tombe donc
+#   exactement en positions 28–33 → CONFORME.
 # --------------------------------------------------------------------------- #
 def build_arn(acquirer_id: str | None, stan: str | None, dt: datetime) -> str:
     acq_digits = "".join(ch for ch in (acquirer_id or "") if ch.isdigit())
@@ -179,7 +185,14 @@ def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
     """TC 05 / TC 06 / TC 07 / TCR 0 — First Presentment (purchase/refund/withdrawal).
     Offsets per TCR0_DRAFT schema. Le TC est dérivé du type d'opération :
     purchase -> TC 05, refund -> TC 06, withdrawal -> TC 07. Le layout est
-    identique (mêmes offsets, même longueur 168)."""
+    identique (mêmes offsets, même longueur 168).
+    
+    NOTE conformité (Base II Clearing Services, 15 avril 2023, §8) :
+      Destination Amount (pos 62–73) = TADC calculé par Visa en multi-devises.
+      En mono-devise (périmètre actuel), source = destination est une simplification
+      acceptable : les deux montants sont identiques. Si le simulateur devait un jour
+      produire des transactions multi-devises, le Destination Amount devrait être laissé
+      vide ou calculé par Visa — son remplissage par l'acquéreur serait incorrect."""
     dt = row["transmission_ts"]
     if not isinstance(dt, datetime):
         dt = datetime.now(timezone.utc)

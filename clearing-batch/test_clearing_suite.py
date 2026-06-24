@@ -289,6 +289,32 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertIn("DE43_COUNTRY", presentment, "cardutil should parse country subfield")
         self.assertEqual(presentment["DE43_COUNTRY"], "TUN")
 
+    def test_de93_de94_institution_ids(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment["DE93"], "541333", "DE93 = PAN BIN (issuer)")
+        self.assertEqual(presentment["DE94"], "40010001234", "DE94 = acquirer_id")
+
+    def test_all_mandatory_de_present_after_roundtrip(self):
+        """All Org-mandatory DEs survive round-trip through IpmReader."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        mandatory = {2, 3, 4, 12, 24, 26, 31, 33, 43, 49, 71, 93, 94}
+        for bit in mandatory:
+            self.assertIn(f"DE{bit}", presentment, f"DE{bit} missing from round-trip")
+
     def test_refund_processing_code(self):
         """Refund (DE-3 prefix 20) passes through correctly. Per spec §5,
         the network derives debit-acquirer / credit-issuer from the DE-3 prefix

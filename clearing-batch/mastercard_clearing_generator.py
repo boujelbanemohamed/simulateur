@@ -38,6 +38,7 @@ Field mapping (per spec request)
     DE26 <- mcc (n-4)                     DE31 <- ARD (n-23, Luhn) — build_de31_ard()
     DE33 <- acquirer_id (n-11 LLVAR)      DE43 <- acceptor_name_loc + pays alpha-3 (LLVAR)
     DE49 <- txn_currency                  DE71 <- sequential message number
+    DE93 <- PAN BIN (destination issuer)  DE94 <- acquirer_id (originator)
     DE48 <- PDS subelements (terminal type, transaction environment, TCC*)
 
 * See the note on TCC in build_de48(): the Transaction Category Code placement
@@ -219,6 +220,8 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     ts = row.get("transmission_ts") or created
     mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
     de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+    originator_id = build_de33(row.get("acquirer_id"))
+    pan_bin = pan[:6] if pan.isdigit() else "000000"
 
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
@@ -233,6 +236,8 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE43": de43,                                 # card acceptor name/location (ans-99 LLVAR)
         "DE49": (row.get("txn_currency") or "000")[:3].rjust(3, "0"),
         "DE71": msg_number,                           # sequential message number
+        "DE93": pan_bin,                              # destination institution (issuer BIN, n-11 LLVAR)
+        "DE94": originator_id,                        # originator institution (acquirer, n-11 LLVAR)
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))

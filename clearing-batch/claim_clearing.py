@@ -23,6 +23,12 @@ Design recap
 - The real PAN lives encrypted in `pan_enc` (AES-256-GCM, iv||ct). `decrypt_pan`
   reverses the Java `ClearingPanCipher` using the SHARED key from env
   CLEARING_PAN_KEY. PANs are never printed in full.
+- Chiffrement : AES-256-GCM, nonce 12 octets, pas de padding (GCM est un mode
+  stream). Layout : iv(12) || ciphertext + tag(16). Clé 32 octets partagée entre
+  Java et Python via CLEARING_PAN_KEY (Base64). La rotation de clé n'est pas
+  encore implémentée mais le code est prêt : load_key() lit la variable
+  d'environnement, un futur mécanisme pourrait versionner la clé (ex. suffixe
+  _v2) et stocker l'index de version avec pan_enc.
 
 Environment
 -----------
