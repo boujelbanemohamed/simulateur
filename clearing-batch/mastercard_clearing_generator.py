@@ -94,15 +94,19 @@ from visa_clearing_generator import _luhn_check_digit, _julian_yddd, numeric
 
 # MTI / function codes
 MTI_PRESENTMENT = "1240"      # First Presentment
-MTI_FILE_CONTROL = "1644"     # File Header / Trailer (Advice)
-FUNC_PRESENTMENT = "200"      # DE24 — First Presentment, full
-FUNC_FILE_HEADER = "697"      # DE24 — File header
-FUNC_FILE_TRAILER = "695"     # DE24 — File trailer
+MTI_CHARGEBACK = "1442"      # Chargeback (second presentment / reprocessing)
+MTI_FILE_CONTROL = "1644"    # File Header / Trailer (Advice)
+FUNC_PRESENTMENT = "200"     # DE24 — First Presentment, full
+FUNC_REVERSAL = "202"        # DE24 — Reversal
+FUNC_CHARGEBACK = "200"      # DE24 — Chargeback (même fonction qu'un présentment)
+FUNC_FILE_HEADER = "697"     # DE24 — File header
+FUNC_FILE_TRAILER = "695"    # DE24 — File trailer
 
 # DE-48 PDS tags (numeric, 4 digits). Names per Mastercard_Parsing decoding.
 PDS_TERMINAL_TYPE = "0023"    # Terminal Type
 PDS_TXN_ENV = "0165"          # transaction environment / settlement indicator
 PDS_TCC = "0052"              # *Transaction Category indicator — VERIFY vs spec
+PDS_REVERSAL = "0025"         # Return/Reversal Indicator — "R" pour un reversal
 
 
 # --------------------------------------------------------------------------- #
@@ -119,6 +123,8 @@ def build_de48(*, terminal_type: str, tcc: str, txn_env: str,
     vs EMV tag 9F53 inside DE-55). PDS_TCC is therefore a documented, swappable
     constant — confirm the correct subelement against your IPM Clearing manual
     before production use.
+
+    When `is_reversal=True`, PDS 0025 (Return/Reversal Indicator) is set to "R".
     """
     pds: dict[str, str] = {
         f"PDS{PDS_TERMINAL_TYPE}": terminal_type,
@@ -212,8 +218,13 @@ def build_de43(card_acceptor_name: str, merchant_country: str, *,
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
                       terminal_type: str, tcc: str, txn_env: str,
-                      created: datetime) -> dict[str, Any]:
-    """Build one MTI 1240 First Presentment message dict for cardutil."""
+                      created: datetime,
+                      is_reversal: bool = False) -> dict[str, Any]:
+    """Build one MTI 1240 First Presentment message dict for cardutil.
+
+    When `is_reversal=True`, PDS 0025 = "R" is injected into DE-48 and the
+    Function Code (DE-24) changes to FUNC_REVERSAL.
+    """
     if not (pan.isdigit() and 13 <= len(pan) <= 19):
         raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
 
@@ -229,7 +240,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
         "DE4": int(row["txn_amount"]),                # minor units, no decimal point
         "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
-        "DE24": FUNC_PRESENTMENT,                     # function code
+        "DE24": FUNC_REVERSAL if is_reversal else FUNC_PRESENTMENT,
         "DE26": mcc,                                  # MCC (n-4)
         "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
         "DE33": build_de33(row.get("acquirer_id")),   # forwarding institution (n-11 LLVAR)
@@ -240,12 +251,65 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE94": originator_id,                        # originator institution (acquirer, n-11 LLVAR)
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
-    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    extra_pds = {PDS_REVERSAL: "R"} if is_reversal else None
+    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
+                          extra_pds=extra_pds))
     # NOTE conformité — champs système-provided non fournis ici (volontairement) : DE-5/DE-6/DE-9
     # (montants convertis en devise de réconciliation/billing) et PDS 0002/0003 (identifiants produit
     # GCMS) sont fournis ou enrichis par le système de clearing, pas par l'acquéreur originateur
     # (usage Org = O ou •, Dst = M/C). Les inclure en dur serait incorrect. Le présentment fournit
     # donc tous les champs M côté Org. Réf. IPM Clearing Formats, tables d'usage par DE.
+    return msg
+
+
+# --------------------------------------------------------------------------- #
+# Chargeback (MTI 1442 — second presentment / reprocessing)
+# --------------------------------------------------------------------------- #
+def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
+                     terminal_type: str, tcc: str, txn_env: str,
+                     created: datetime,
+                     chargeback_reason: str = "00") -> dict[str, Any]:
+    """Build one MTI 1442 Chargeback message dict for cardutil.
+
+    Squelette : reprend la structure du présentment (mêmes champs DE) avec :
+      - MTI = 1442
+      - DE-24 = FUNC_CHARGEBACK (200)
+      - DE-72 = chargeback_reason (Data Record — n-3 LLVAR)
+    Le PDS 0025 n'est PAS positionné (un chargeback n'est pas un reversal).
+
+    NOTE : un chargeback nécessite une transaction originale liée (DE-56
+    Original Data Elements) et un reason code valide. Les données de test
+    actuelles ne contiennent ni l'un ni l'autre ; cette fonction est un
+    squelette prêt à être complété quand le schéma et les données seront
+    disponibles. Voir IPM Clearing Formats §8.2.
+    """
+    if not (pan.isdigit() and 13 <= len(pan) <= 19):
+        raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
+
+    ts = row.get("transmission_ts") or created
+    mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+    originator_id = build_de33(row.get("acquirer_id"))
+    pan_bin = pan[:6] if pan.isdigit() else "000000"
+
+    msg: dict[str, Any] = {
+        "MTI": MTI_CHARGEBACK,
+        "DE2": pan,
+        "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
+        "DE4": int(row["txn_amount"]),
+        "DE12": ts,
+        "DE24": FUNC_CHARGEBACK,
+        "DE26": mcc,
+        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
+        "DE33": build_de33(row.get("acquirer_id")),
+        "DE43": de43,
+        "DE49": (row.get("txn_currency") or "000")[:3].rjust(3, "0"),
+        "DE71": msg_number,
+        "DE72": chargeback_reason[:3].rjust(3, "0"),  # Reason code (n-3 LLVAR)
+        "DE93": pan_bin,
+        "DE94": originator_id,
+    }
+    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
     return msg
 
 

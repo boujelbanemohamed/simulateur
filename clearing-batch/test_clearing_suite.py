@@ -16,6 +16,10 @@ Covered:
   * PAN crypto: the Java ClearingPanCipher layout (AES-256-GCM, iv||ct+tag)
     round-trips through the Python decrypt_pan without corruption, for 16- and
     19-digit PANs, and a tampered blob is rejected (GCM auth).
+  * Visa reversals: TC 25/26/27 + Usage Code = "2".
+  * Mastercard reversals: PDS 0025 = "R", DE-24 = 202.
+  * Mastercard chargeback skeleton: MTI 1442.
+  * AES key rotation: version prefix v1|, v2|, etc.
 """
 
 import os
@@ -25,7 +29,7 @@ from datetime import datetime, timezone
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.exceptions import InvalidTag
 
-from claim_clearing import decrypt_pan, IV_LEN
+from claim_clearing import decrypt_pan, IV_LEN, load_key
 import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
 
@@ -34,7 +38,6 @@ DT = datetime(2026, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
 
 
 def java_style_encrypt(pan: str, key: bytes = KEY) -> bytes:
-    """Mirror of Java ClearingPanCipher.encrypt: iv(12) || ciphertext+tag."""
     iv = os.urandom(IV_LEN)
     return iv + AESGCM(key).encrypt(iv, pan.encode("utf-8"), None)
 
@@ -60,12 +63,11 @@ class TestPanCrypto(unittest.TestCase):
 
     def test_iv_is_prepended_12_bytes(self):
         blob = java_style_encrypt("5413330089020011")
-        # 12 (iv) + 16 (pan) + 16 (gcm tag) = 44
         self.assertEqual(len(blob), IV_LEN + 16 + 16)
 
     def test_tampered_blob_is_rejected(self):
         blob = bytearray(java_style_encrypt("5413330089020011"))
-        blob[-1] ^= 0x01  # flip a bit in the tag/ciphertext
+        blob[-1] ^= 0x01
         with self.assertRaises(InvalidTag):
             decrypt_pan(bytes(blob), KEY)
 
@@ -73,11 +75,13 @@ class TestPanCrypto(unittest.TestCase):
 class TestVisaCtf(unittest.TestCase):
     def test_every_record_is_168_chars(self):
         rows = sample_rows(["4111111111111111", "4999888877776666555", "4532015112830366"])
-        lines, count, hash_total = visa.generate_ctf_lines(
+        lines, count, debit_total, credit_total = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
-        self.assertEqual(count, 3)                       # 3 TC05
-        self.assertEqual(len(lines), 1 + 3 + 1 + 1)      # header + 3 TC05 + TC91 + TC92
+        self.assertEqual(count, 3)
+        self.assertEqual(len(lines), 1 + 3 + 1 + 1)
+        self.assertEqual(debit_total, 1000 + 1001 + 1002)
+        self.assertEqual(credit_total, 0)
         for i, ln in enumerate(lines):
             self.assertEqual(len(ln), visa.RECORD_LEN, f"record {i} not 168 chars")
 
@@ -86,84 +90,150 @@ class TestVisaCtf(unittest.TestCase):
                              "4999888877776666555", "4111111111111111"])
         for r, amt in zip(rows, (100, 200, 300, 400)):
             r["txn_amount"] = amt
-        lines, count, file_hash = visa.generate_ctf_lines(
+        lines, count, debit_total, credit_total = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT, batch_size=2)
         tc91 = [ln for ln in lines if ln[:2] == visa.BATCH_TC]
         tc92 = [ln for ln in lines if ln[:2] == visa.TRAILER_TC]
-        self.assertEqual(len(tc91), 2)                   # 4 rows / batch_size 2 = 2 batches
+        self.assertEqual(len(tc91), 2)
         self.assertEqual(len(tc92), 1)
-        self.assertEqual(int(tc91[0][15:30]), 300)       # batch1 hash 100+200
-        self.assertEqual(int(tc91[1][15:30]), 700)       # batch2 hash 300+400
-        self.assertEqual(int(tc92[0][15:30]), file_hash)  # file hash
-        self.assertEqual(int(tc92[0][42:48]), 2)         # Batch Number = nb batches
+        self.assertEqual(debit_total, 1000)
+        self.assertEqual(credit_total, 0)
+        self.assertEqual(int(tc91[0][15:30]), 300)
+        self.assertEqual(int(tc91[1][15:30]), 700)
+        self.assertEqual(int(tc92[0][15:30]), debit_total - credit_total)
+        self.assertEqual(int(tc92[0][42:48]), 2)
         for ln in lines:
             self.assertEqual(len(ln), visa.RECORD_LEN)
 
     def test_file_length_is_multiple_of_168(self):
         rows = sample_rows(["4111111111111111", "4532015112830366"])
-        lines, _, _ = visa.generate_ctf_lines(
+        lines, _, _, _ = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
-        payload = "".join(lines)                         # records only, no separators
+        payload = "".join(lines)
         self.assertEqual(len(payload) % visa.RECORD_LEN, 0)
 
     def test_amount_lands_at_exact_offset(self):
         rows = sample_rows(["4111111111111111"])
         rows[0]["txn_amount"] = 1550
-        lines, _, _ = visa.generate_ctf_lines(
+        lines, _, _, _ = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
         tc05 = lines[1]
-        self.assertEqual(tc05[61:73], "000000001550")    # DE-4 -> pos 62, len 12
-        self.assertEqual(tc05[4:20], "4111111111111111")  # PAN -> pos 5, len 16
+        self.assertEqual(tc05[61:73], "000000001550")
+        self.assertEqual(tc05[4:20], "4111111111111111")
 
     def test_tc06_refund(self):
-        """Refund (DE-3 prefix 20) produces TC 06, same 168-byte layout."""
         rows = sample_rows(["5413330089020011"])
         rows[0]["processing_code"] = "200000"
         rows[0]["txn_amount"] = 5000
-        lines, count, _ = visa.generate_ctf_lines(
+        lines, count, debit_total, credit_total = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
         self.assertEqual(count, 1)
-        tc = lines[1][:2]                                # pos 1-2 = Transaction Code
+        tc = lines[1][:2]
         self.assertEqual(tc, "06")
+        self.assertEqual(debit_total, 0)
+        self.assertEqual(credit_total, 5000)
         self.assertEqual(len(lines[1]), visa.RECORD_LEN)
-        self.assertEqual(lines[1][61:73], "000000005000")  # amount unchanged
+        self.assertEqual(lines[1][61:73], "000000005000")
 
     def test_tc07_withdrawal(self):
-        """Withdrawal (DE-3 prefix 01) produces TC 07, same 168-byte layout."""
         rows = sample_rows(["4111111111111111"])
         rows[0]["processing_code"] = "010000"
         rows[0]["txn_amount"] = 3000
-        lines, count, _ = visa.generate_ctf_lines(
+        lines, count, debit_total, credit_total = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
         self.assertEqual(count, 1)
+        self.assertEqual(debit_total, 3000)
+        self.assertEqual(credit_total, 0)
         tc = lines[1][:2]
         self.assertEqual(tc, "07")
         self.assertEqual(len(lines[1]), visa.RECORD_LEN)
         self.assertEqual(lines[1][61:73], "000000003000")
 
     def test_mixed_tc05_tc06_tc07_in_same_file(self):
-        """Achat + remboursement + retrait dans le même fichier."""
         rows = sample_rows(["4111111111111111", "5413330089020011", "4532015112830366"])
-        rows[0]["processing_code"] = "000000"              # purchase  -> TC 05
+        rows[0]["processing_code"] = "000000"
         rows[0]["txn_amount"] = 1000
-        rows[1]["processing_code"] = "200000"              # refund    -> TC 06
+        rows[1]["processing_code"] = "200000"
         rows[1]["txn_amount"] = 500
-        rows[2]["processing_code"] = "010000"              # withdrawal -> TC 07
+        rows[2]["processing_code"] = "010000"
         rows[2]["txn_amount"] = 200
-        lines, count, _ = visa.generate_ctf_lines(
+        lines, count, debit_total, credit_total = visa.generate_ctf_lines(
             rows, KEY, sending_id="400100", receiving_id="000000",
             merchant_country="788", created=DT)
         self.assertEqual(count, 3)
-        self.assertEqual(lines[1][:2], "05")               # TC 05
-        self.assertEqual(lines[2][:2], "06")               # TC 06
-        self.assertEqual(lines[3][:2], "07")               # TC 07
+        self.assertEqual(lines[1][:2], "05")
+        self.assertEqual(lines[2][:2], "06")
+        self.assertEqual(lines[3][:2], "07")
+        self.assertEqual(debit_total, 1200)
+        self.assertEqual(credit_total, 500)
         for ln in lines[1:4]:
             self.assertEqual(len(ln), visa.RECORD_LEN)
+
+    def test_build_reversal_sale(self):
+        row = sample_rows(["4111111111111111"])[0]
+        row["txn_amount"] = 1550
+        rev = visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                  original_txn_type="purchase")
+        self.assertEqual(len(rev), visa.RECORD_LEN)
+        self.assertEqual(rev[:2], "25")
+        self.assertEqual(rev[146:147], "2")
+        self.assertEqual(rev[61:73], "000000001550")
+        self.assertEqual(rev[4:20], "4111111111111111")
+
+    def test_build_reversal_refund(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 500
+        rev = visa.build_reversal(row, "5413330089020011", merchant_country="788",
+                                  original_txn_type="refund")
+        self.assertEqual(rev[:2], "26")
+        self.assertEqual(rev[146:147], "2")
+
+    def test_build_reversal_withdrawal(self):
+        row = sample_rows(["4532015112830366"])[0]
+        row["txn_amount"] = 200
+        rev = visa.build_reversal(row, "4532015112830366", merchant_country="788",
+                                  original_txn_type="withdrawal")
+        self.assertEqual(rev[:2], "27")
+        self.assertEqual(rev[146:147], "2")
+
+    def test_build_reversal_custom_reason_code(self):
+        row = sample_rows(["4111111111111111"])[0]
+        rev = visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                  reason_code="01")
+        self.assertEqual(rev[147:149], "01")
+
+    def test_build_reversal_usage_code_is_2(self):
+        row = sample_rows(["4111111111111111"])[0]
+        rev = visa.build_reversal(row, "4111111111111111", merchant_country="788")
+        self.assertEqual(rev[146:147], "2")
+        norm = visa.build_tc05(row, "4111111111111111", merchant_country="788")
+        self.assertEqual(norm[146:147], "1")
+
+    def test_net_total_in_mixed_trailer(self):
+        rows = sample_rows(["4111111111111111", "5413330089020011"])
+        rows[0]["processing_code"] = "000000"
+        rows[0]["txn_amount"] = 1000
+        rows[1]["processing_code"] = "200000"
+        rows[1]["txn_amount"] = 300
+        lines, _, debit_total, credit_total = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        tc92 = [ln for ln in lines if ln[:2] == visa.TRAILER_TC][0]
+        net = int(tc92[15:30])
+        self.assertEqual(net, debit_total - credit_total)
+        self.assertEqual(net, 700)
+
+    def test_build_count_trailer_net_negative_with_credits(self):
+        trailer = visa.build_count_trailer(
+            visa.TRAILER_TC, 2, debit_total=100, credit_total=300,
+            processing=DT)
+        net = int(trailer[15:30])
+        self.assertEqual(net, 200)  # unsigned: abs(-200) in the field
 
 
 class TestMastercardIpm(unittest.TestCase):
@@ -173,7 +243,7 @@ class TestMastercardIpm(unittest.TestCase):
             rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 2)
-        self.assertEqual(len(data) % 1014, 0, "blocked IPM not a multiple of 1014 bytes")
+        self.assertEqual(len(data) % 1014, 0)
 
     def test_roundtrip_record_count(self):
         rows = sample_rows(["5413330089020011", "2223000048400011", "5555444433332222"])
@@ -181,7 +251,7 @@ class TestMastercardIpm(unittest.TestCase):
             rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
             created=DT, blocked=True)
         n_records, first_mti = mc.verify_ipm(data, blocked=True)
-        self.assertEqual(n_records, count + 2)           # header + presentments + trailer
+        self.assertEqual(n_records, count + 2)
         self.assertEqual(first_mti, "1240")
 
     def test_de48_pds_present_after_roundtrip(self):
@@ -193,8 +263,8 @@ class TestMastercardIpm(unittest.TestCase):
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
-        self.assertIn("PDS0023", presentment)            # terminal type
-        self.assertEqual(int(presentment["DE4"]), 1000)  # amount preserved
+        self.assertIn("PDS0023", presentment)
+        self.assertEqual(int(presentment["DE4"]), 1000)
 
     def test_trailer_reconciliation_pds(self):
         import io
@@ -206,11 +276,10 @@ class TestMastercardIpm(unittest.TestCase):
             rows, KEY, terminal_type="  Z", tcc="T", txn_env="0", created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         trailer = next(r for r in recs if r.get("MTI") == "1644" and r.get("DE24") == "695")
-        # Control totals now live in DE-48 PDS, not DE-4/DE-71.
         self.assertNotIn("DE4", trailer)
-        self.assertEqual(int(trailer["PDS0306"]), count)      # message count
-        self.assertEqual(int(trailer["PDS0301"]), total)      # amount checksum
-        self.assertEqual(len(trailer["PDS0105"]), 25)         # file identification
+        self.assertEqual(int(trailer["PDS0306"]), count)
+        self.assertEqual(int(trailer["PDS0301"]), total)
+        self.assertEqual(len(trailer["PDS0105"]), 25)
 
     def test_de31_ard_format(self):
         import io
@@ -225,11 +294,11 @@ class TestMastercardIpm(unittest.TestCase):
         presentment = next(r for r in recs if r.get("MTI") == "1240")
 
         ard = presentment.get("DE31", "")
-        self.assertEqual(len(ard), 23, "DE31 must be 23 chars")
-        self.assertTrue(ard.isdigit(), f"DE31 must be all numeric, got {ard!r}")
-        self.assertEqual(ard[0], "0", "Mixed Use at pos 1 should be '0'")
-        self.assertEqual(ard[1:7], "001234", "pos 2-7 = last 6 of acquirer_id=40010001234")
-        self.assertEqual(ard[22], _luhn_check_digit(ard[:22]), "Luhn mismatch at pos 23")
+        self.assertEqual(len(ard), 23)
+        self.assertTrue(ard.isdigit())
+        self.assertEqual(ard[0], "0")
+        self.assertEqual(ard[1:7], "001234")
+        self.assertEqual(ard[22], _luhn_check_digit(ard[:22]))
 
     def test_de12_datetime_format(self):
         import io
@@ -242,7 +311,7 @@ class TestMastercardIpm(unittest.TestCase):
         presentment = next(r for r in recs if r.get("MTI") == "1240")
         import datetime as dt_mod
         de12 = presentment.get("DE12")
-        self.assertIsInstance(de12, dt_mod.datetime, "DE12 should be a datetime")
+        self.assertIsInstance(de12, dt_mod.datetime)
         self.assertEqual(de12.strftime("%y%m%d%H%M%S"), "260615103000")
 
     def test_de26_mcc_format(self):
@@ -255,7 +324,7 @@ class TestMastercardIpm(unittest.TestCase):
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
         mcc = presentment.get("DE26")
-        self.assertEqual(mcc, 5999, "DE26 should be 5999 as int")
+        self.assertEqual(mcc, 5999)
 
     def test_de33_forwarding_id(self):
         import io
@@ -267,8 +336,8 @@ class TestMastercardIpm(unittest.TestCase):
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
         de33 = presentment.get("DE33", "")
-        self.assertTrue(de33.isdigit(), f"DE33 must be numeric, got {de33!r}")
-        self.assertLessEqual(len(de33), 11, "DE33 max 11 digits")
+        self.assertTrue(de33.isdigit())
+        self.assertLessEqual(len(de33), 11)
         self.assertEqual(de33, "40010001234")
 
     def test_de43_acceptor_name_location(self):
@@ -283,10 +352,10 @@ class TestMastercardIpm(unittest.TestCase):
 
         self.assertIn("DE43", presentment)
         de43 = presentment["DE43"]
-        self.assertGreater(len(de43), 20, "DE43 should carry subfields")
-        self.assertIn("DE43_NAME", presentment, "cardutil should parse subfield 1")
+        self.assertGreater(len(de43), 20)
+        self.assertIn("DE43_NAME", presentment)
         self.assertEqual(presentment["DE43_NAME"], "TEST MERCHANT")
-        self.assertIn("DE43_COUNTRY", presentment, "cardutil should parse country subfield")
+        self.assertIn("DE43_COUNTRY", presentment)
         self.assertEqual(presentment["DE43_COUNTRY"], "TUN")
 
     def test_de93_de94_institution_ids(self):
@@ -298,11 +367,10 @@ class TestMastercardIpm(unittest.TestCase):
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
-        self.assertEqual(presentment["DE93"], "541333", "DE93 = PAN BIN (issuer)")
-        self.assertEqual(presentment["DE94"], "40010001234", "DE94 = acquirer_id")
+        self.assertEqual(presentment["DE93"], "541333")
+        self.assertEqual(presentment["DE94"], "40010001234")
 
     def test_all_mandatory_de_present_after_roundtrip(self):
-        """All Org-mandatory DEs survive round-trip through IpmReader."""
         import io
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
@@ -316,9 +384,6 @@ class TestMastercardIpm(unittest.TestCase):
             self.assertIn(f"DE{bit}", presentment, f"DE{bit} missing from round-trip")
 
     def test_refund_processing_code(self):
-        """Refund (DE-3 prefix 20) passes through correctly. Per spec §5,
-        the network derives debit-acquirer / credit-issuer from the DE-3 prefix
-        alone — no DE-24 change or PDS needed."""
         import io
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
@@ -330,8 +395,102 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertEqual(count, 1)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
-        self.assertEqual(presentment["DE3"], "200000", "refund DE-3 prefix 20 must be preserved")
+        self.assertEqual(presentment["DE3"], "200000")
         self.assertEqual(int(presentment["DE4"]), 5000)
+
+    def test_build_presentment_reversal_has_pds0025(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_presentment(row, "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT, is_reversal=True)
+        self.assertEqual(msg["DE24"], mc.FUNC_REVERSAL)
+        self.assertEqual(msg.get("PDS0025"), "R")
+        self.assertEqual(msg["MTI"], mc.MTI_PRESENTMENT)
+
+    def test_build_presentment_no_reversal(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_presentment(row, "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE24"], mc.FUNC_PRESENTMENT)
+        self.assertNotIn("PDS0025", msg)
+
+    def test_build_chargeback_skeleton(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_chargeback(row, "5413330089020011", 2,
+                                  terminal_type="  Z", tcc="T", txn_env="0",
+                                  created=DT)
+        self.assertEqual(msg["MTI"], mc.MTI_CHARGEBACK)
+        self.assertEqual(msg["DE24"], mc.FUNC_CHARGEBACK)
+        self.assertEqual(msg["DE72"], "000")
+        self.assertEqual(int(msg["DE4"]), 1000)
+        self.assertNotIn("PDS0025", msg)
+
+    def test_build_chargeback_custom_reason(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_chargeback(row, "5413330089020011", 2,
+                                  terminal_type="  Z", tcc="T", txn_env="0",
+                                  created=DT,
+                                  chargeback_reason="41")
+        self.assertEqual(msg["DE72"], "041")
+
+
+class TestKeyRotation(unittest.TestCase):
+    def test_decrypt_no_prefix_with_key(self):
+        pan = "4111111111111111"
+        blob = java_style_encrypt(pan)
+        self.assertEqual(decrypt_pan(blob, KEY), pan)
+
+    def test_decrypt_with_v1_prefix(self):
+        v1_key = os.urandom(32)
+        os.environ["CLEARING_PAN_KEY_V1"] = __import__("base64").b64encode(v1_key).decode()
+        try:
+            pan = "4111111111111111"
+            raw = java_style_encrypt(pan, v1_key)
+            blob = b"v1|" + raw
+            self.assertEqual(decrypt_pan(blob), pan)
+        finally:
+            os.environ.pop("CLEARING_PAN_KEY_V1", None)
+
+    def test_decrypt_v1_prefix_strips_prefix(self):
+        v1_key = os.urandom(32)
+        wrong_key = os.urandom(32)
+        os.environ["CLEARING_PAN_KEY_V1"] = __import__("base64").b64encode(v1_key).decode()
+        try:
+            pan = "4111111111111111"
+            raw = java_style_encrypt(pan, v1_key)
+            blob = b"v1|" + raw
+            self.assertEqual(decrypt_pan(blob, wrong_key), pan)
+        finally:
+            os.environ.pop("CLEARING_PAN_KEY_V1", None)
+
+    def test_decrypt_v1_prefix_missing_env_raises(self):
+        os.environ.pop("CLEARING_PAN_KEY_V1", None)
+        raw = java_style_encrypt("4111111111111111")
+        blob = b"v1|" + raw
+        with self.assertRaises(RuntimeError):
+            decrypt_pan(blob)
+
+    def test_load_key_with_version(self):
+        v1_key = os.urandom(32)
+        b64 = __import__("base64").b64encode(v1_key).decode()
+        os.environ["CLEARING_PAN_KEY_V1"] = b64
+        try:
+            loaded = load_key(version="v1")
+            self.assertEqual(loaded, v1_key)
+        finally:
+            os.environ.pop("CLEARING_PAN_KEY_V1", None)
+
+    def test_decrypt_v2_prefix(self):
+        v2_key = os.urandom(32)
+        os.environ["CLEARING_PAN_KEY_V2"] = __import__("base64").b64encode(v2_key).decode()
+        try:
+            pan = "4999888877776666555"
+            raw = java_style_encrypt(pan, v2_key)
+            blob = b"v2|" + raw
+            self.assertEqual(decrypt_pan(blob), pan)
+        finally:
+            os.environ.pop("CLEARING_PAN_KEY_V2", None)
 
 
 if __name__ == "__main__":

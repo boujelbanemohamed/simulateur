@@ -77,15 +77,23 @@ def connect():
     )
 
 
-def load_key() -> bytes:
-    """Load and validate the shared AES-256 key from CLEARING_PAN_KEY."""
-    b64 = os.environ.get("CLEARING_PAN_KEY")
+def load_key(*, version: str = "") -> bytes:
+    """Load and validate the shared AES-256 key.
+
+    Defaults to CLEARING_PAN_KEY.  When *version* is non-empty (e.g. "v1")
+    the env var is CLEARING_PAN_KEY_V1 etc.  This allows gradual key rotation
+    without invalidating existing encrypted PANs — each generation of keys
+    lives under its own version namespace.
+    """
+    suffix = f"_{version.upper()}" if version else ""
+    env_key = f"CLEARING_PAN_KEY{suffix}"
+    b64 = os.environ.get(env_key)
     if not b64:
-        raise RuntimeError("CLEARING_PAN_KEY env var is required")
+        raise RuntimeError(f"{env_key} env var is required")
     raw = base64.b64decode(b64.strip())
     if len(raw) != 32:
         raise RuntimeError(
-            f"CLEARING_PAN_KEY must decode to 32 bytes (AES-256); got {len(raw)}"
+            f"{env_key} must decode to 32 bytes (AES-256); got {len(raw)}"
         )
     return raw
 
@@ -93,9 +101,28 @@ def load_key() -> bytes:
 # --------------------------------------------------------------------------- #
 # PAN crypto (mirror of Java ClearingPanCipher)
 # --------------------------------------------------------------------------- #
-def decrypt_pan(pan_enc: bytes | memoryview, key: bytes) -> str:
-    """Reverse ClearingPanCipher: blob = iv(12) || ciphertext+tag."""
+def decrypt_pan(pan_enc: bytes | memoryview, key: bytes | None = None) -> str:
+    """Reverse ClearingPanCipher: blob = iv(12) || ciphertext+tag.
+
+    Key rotation support:
+      - If pan_enc starts with a version prefix (e.g. b"v1|"), the prefix
+        is stripped and the corresponding key is loaded via load_key(version=...).
+      - If no prefix, *key* must be provided (backward-compatible mode).
+    """
     blob = bytes(pan_enc)
+    version = ""
+    for sep in (b"|", b":"):
+        idx = blob.find(sep)
+        if idx is not None and idx > 0 and idx <= 3:
+            candidate = blob[:idx].decode("ascii", errors="replace")
+            if candidate.startswith("v") and candidate[1:].isdigit():
+                version = candidate
+                blob = blob[idx + 1:]
+                break
+    if version:
+        key = load_key(version=version)
+    if key is None:
+        raise RuntimeError("no key provided and no version prefix in pan_enc")
     iv, ct = blob[:IV_LEN], blob[IV_LEN:]
     return AESGCM(key).decrypt(iv, ct, None).decode("utf-8")
 
@@ -164,6 +191,54 @@ def claim_batch(
     sql = _CLAIM_SQL.format(day_filter=day_filter)
 
     with conn:  # transaction: commit on clean exit, rollback on exception
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(sql, {"network": network, "batch_id": batch_id})
+            rows = cur.fetchall()
+
+    return ClaimResult(batch_id=batch_id, network=network, rows=[dict(r) for r in rows])
+
+
+_CLAIM_REVERSAL_SQL = """
+WITH claimed AS (
+    SELECT id
+    FROM clearing_transaction
+    WHERE status = 'CANCELLED'
+      AND network = %(network)s
+      {day_filter}
+    ORDER BY id
+    FOR UPDATE SKIP LOCKED
+)
+UPDATE clearing_transaction t
+SET status = 'EXPORTING',
+    export_batch_id = %(batch_id)s
+FROM claimed
+WHERE t.id = claimed.id
+RETURNING t.*;
+"""
+
+
+def claim_reversals(
+    conn,
+    network: str,
+    *,
+    include_today: bool = False,
+    batch_id: str | None = None,
+) -> ClaimResult:
+    """
+    Atomically claim CANCELLED rows for `network` and flip them to EXPORTING
+    under a fresh batch_id. These are then rendered as reversal messages
+    (TC 25/26/27 for Visa, PDS 0025="R" for Mastercard).
+
+    Returns the claimed rows for the file generator to consume.
+    """
+    if network not in VALID_NETWORKS:
+        raise ValueError(f"network must be one of {VALID_NETWORKS}, got {network!r}")
+
+    batch_id = batch_id or uuid.uuid4().hex
+    day_filter = "" if include_today else "AND transmission_ts < date_trunc('day', now())"
+    sql = _CLAIM_REVERSAL_SQL.format(day_filter=day_filter)
+
+    with conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(sql, {"network": network, "batch_id": batch_id})
             rows = cur.fetchall()

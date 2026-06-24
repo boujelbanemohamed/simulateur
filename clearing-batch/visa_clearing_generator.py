@@ -61,6 +61,9 @@ HEADER_TC = "90"
 DRAFT_TC = "05"          # First Presentment, Sales Draft (purchase default)
 REFUND_TC = "06"         # Credit Voucher / Refund (also TCR-0, same 168-byte layout)
 CASH_TC = "07"           # Cash Disbursement / ATM withdrawal (also TCR-0, same 168-byte layout)
+REVERSAL_SALE_TC = "25"  # Sales Draft Reversal (annulation achat)
+REVERSAL_REFUND_TC = "26"  # Credit Voucher Reversal (annulation remboursement)
+REVERSAL_CASH_TC = "27"  # Cash Disbursement Reversal (annulation retrait)
 BATCH_TC = "91"          # Batch Trailer
 TRAILER_TC = "92"        # File Trailer (NOT 99 -- see module docstring)
 ARN_MODE = "0"           # ARN position 1 (acquirer processing mode)
@@ -250,12 +253,97 @@ def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
     return line
 
 
-def build_count_trailer(tc: str, count: int, hash_total: int, *,
+def build_reversal(row: dict[str, Any], pan: str, *, merchant_country: str,
+                   original_txn_type: str = "purchase",
+                   reason_code: str = "00") -> str:
+    """TC 25 / TC 26 / TC 27 — Reversal (annulation d'une transaction).
+    Même layout TCR-0 que le présentment initial, avec :
+      - TC = 25 (sale reversal) / 26 (refund reversal) / 27 (cash reversal)
+      - Usage Code (pos 147) = "2" (Reversal) au lieu de "1" (Original)
+      - Reason Code (pos 148) = code raison (défaut "00")
+    En mono-devise (périmètre actuel), Source Amount = Destination Amount ;
+    en multi-devise, la convention Base II attend un swap des montants pour
+    indiquer le sens inverse du flux."""
+    dt = row["transmission_ts"]
+    if not isinstance(dt, datetime):
+        dt = datetime.now(timezone.utc)
+
+    amount = numeric(row["txn_amount"], 12)
+    currency = numeric(row.get("txn_currency"), 3)
+    purchase_mmdd = (row.get("local_txn_date") or dt.strftime("%m%d"))[:4]
+
+    if not (pan.isdigit() and 13 <= len(pan) <= 19):
+        raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
+    pan_main = pan[:16].ljust(16, "0")
+    pan_ext = numeric(pan[16:19], 3) if len(pan) > 16 else "000"
+
+    txn_code = (REVERSAL_REFUND_TC if original_txn_type == "refund"
+                else REVERSAL_CASH_TC if original_txn_type == "withdrawal"
+                else REVERSAL_SALE_TC)
+
+    buf = [" "] * RECORD_LEN
+    place = _placer(buf)
+    place(1, 2, txn_code)                              # Transaction Code (25, 26 or 27)
+    place(3, 1, "0")
+    place(4, 1, "0")
+    place(5, 16, pan_main)
+    place(21, 3, pan_ext)
+    place(24, 1, "0")
+    place(25, 1, "0")
+    place(26, 1, " ")
+    place(27, 23, build_arn(row.get("acquirer_id"), row.get("stan"), dt))
+    place(50, 8, numeric((row.get("acquirer_id") or "")[-8:], 8))
+    place(58, 4, alpha(purchase_mmdd, 4))
+    place(62, 12, amount)
+    place(74, 3, currency)
+    place(77, 12, amount)
+    place(89, 3, currency)
+    place(92, 25, alpha(row.get("acceptor_name_loc"), 25))
+    place(117, 13, alpha("", 13))
+    place(130, 3, numeric(row.get("merchant_country") or merchant_country, 3))
+    place(133, 4, numeric(row.get("mcc"), 4))
+    place(137, 5, alpha("", 5))
+    place(142, 3, alpha("", 3))
+    place(145, 1, "0")
+    place(146, 1, "1")                                 # Number of Payment Forms
+    place(147, 1, "2")                                 # Usage Code (2 = Reversal)
+    place(148, 2, numeric(reason_code, 2))             # Reason Code
+    place(150, 1, "0")
+    place(151, 1, " ")
+    place(152, 6, alpha(row.get("auth_id_response"), 6))
+    place(158, 1, "0")
+    place(159, 1, " ")
+    place(160, 1, "0")
+    place(161, 1, "0")
+    place(162, 2, numeric((row.get("pos_entry_mode") or "")[:2], 2))
+    place(164, 4, _julian_yddd(dt))
+    place(168, 1, "0")
+    line = "".join(buf)
+    assert len(line) == RECORD_LEN
+    return line
+
+
+def build_count_trailer(tc: str, count: int, debit_total: int, credit_total: int, *,
                         processing: datetime, cib: str = "000000",
                         batch_number: int = 1) -> str:
-    """Build a TC 91 (batch) or TC 92 (file) trailer. Both share the same TCR-0
-    layout per CTF_Data_Dictionary 'Batch / File Trailers'; only the TC and the
-    counters/hashes (batch-level vs file-level) differ."""
+    """Build a TC 91 (batch) or TC 92 (file) trailer.
+
+    Both share the same TCR-0 layout per CTF_Data_Dictionary 'Batch / File
+    Trailers'; only the TC and the counters/hashes (batch-level vs file-level)
+    differ.
+
+    debit_total = sum of debit amounts (TC 05 + TC 07)
+    credit_total = sum of credit amounts (TC 06)
+    net_total = debit_total - credit_total  (convention simulateur mono-devise)
+    The trailer stores net_total in the hash fields (positions 16 and 102).
+
+    NOTE : la spec Base II n'impose pas de décomposition débit/crédit dans le
+    trailer TCR 91/92 ; les totaux séparés sont conservés en paramètre pour
+    traçabilité et calcul explicite du net. En multi-devise, le net serait
+    remplacé par un cumul signé.
+    """
+    net_total = debit_total - credit_total
+    hash_val = abs(net_total)  # Base II trailer hash fields are unsigned numeric
     buf = [" "] * RECORD_LEN
     place = _placer(buf)
     place(1, 2, tc)                                    # Transaction Code (91 or 92)
@@ -264,13 +352,13 @@ def build_count_trailer(tc: str, count: int, hash_total: int, *,
     place(5, 6, numeric(cib, 6))                       # Center Information Block
     yyddd = f"{processing.year % 100:02d}{processing.timetuple().tm_yday:03d}"
     place(11, 5, yyddd)                                # Processing Date (YYDDD)
-    place(16, 15, numeric(hash_total, 15))             # Destination Amount (hash total)
+    place(16, 15, numeric(hash_val, 15))               # Destination Amount (net total, unsigned)
     place(31, 12, numeric(count, 12))                  # Number of Monetary Transactions
     place(43, 6, numeric(batch_number, 6))             # Batch Number
     place(49, 12, numeric(count, 12))                  # Number of TCRs (1 TCR0 per txn)
     place(67, 8, numeric(batch_number, 8))             # Center Batch ID
     place(75, 9, numeric(count, 9))                    # Number of Transactions
-    place(102, 15, numeric(hash_total, 15))            # Source Amount (hash total)
+    place(102, 15, numeric(hash_val, 15))            # Source Amount (net total, unsigned)
     line = "".join(buf)
     assert len(line) == RECORD_LEN
     return line
@@ -284,19 +372,25 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
                        merchant_country: str,
                        created: datetime | None = None,
                        batch_size: int | None = None) -> tuple[list[str], int, int]:
-    """Pure builder: rows -> (lines, count, hash_total).
+    """Pure builder: rows -> (lines, count, debit_total, credit_total).
 
     Structure: TC90 header, then one or more batches each closed by a TC91
-    batch trailer (carrying that batch's own count + hash), then a single TC92
-    file trailer (carrying the file totals; its Batch Number field holds the
-    number of batches). `batch_size` = max TC05 per batch (None = single batch).
+    batch trailer (carrying that batch's own count + debit/credit totals),
+    then a single TC92 file trailer (carrying the file totals; its Batch
+    Number field holds the number of batches).
+    `batch_size` = max TC05 per batch (None = single batch).
+
+    Les totaux débits (= TC 05 + TC 07) et crédits (= TC 06) sont suivis
+    séparément. Le trailer stocke le net = débits - crédits. Cf. docstring
+    de build_count_trailer pour la justification.
     """
     created = created or datetime.now(timezone.utc)
     lines = [build_header(sending_id, receiving_id, created)]
 
     count = len(rows)
     chunk = batch_size if (batch_size and batch_size > 0) else max(count, 1)
-    file_hash = 0
+    file_debits = 0
+    file_credits = 0
     batch_number = 0
 
     for start in range(0, count, chunk):
@@ -304,33 +398,29 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
         if not batch_rows:
             continue
         batch_number += 1
-        batch_hash = 0
+        batch_debits = 0
+        batch_credits = 0
         for row in batch_rows:
             pan = decrypt_pan(row["pan_enc"], key)
             txn_type = _txn_type_from_pc(row.get("processing_code"))
             lines.append(build_tc05(row, pan, merchant_country=merchant_country, txn_type=txn_type))
-            batch_hash += int(row["txn_amount"])
-        # TC91 batch trailer: this batch's own counters/hash
+            amt = int(row["txn_amount"])
+            if txn_type == "refund":
+                batch_credits += amt
+            else:
+                batch_debits += amt
+        # TC91 batch trailer: this batch's own counters/totals
         lines.append(build_count_trailer(
-            BATCH_TC, len(batch_rows), batch_hash,
+            BATCH_TC, len(batch_rows), batch_debits, batch_credits,
             processing=created, batch_number=batch_number))
-        file_hash += batch_hash
+        file_debits += batch_debits
+        file_credits += batch_credits
 
     # TC92 file trailer: file-level totals; Batch Number = number of batches
-    # NOTE sur le hash total : le cumul (hash_total) est la somme arithmétique
-    # simple des montants (txn_amount). Visa Base II peut attendre un signe
-    # différent pour les crédits (TC 06) dans le hash — ce comportement n'est
-    # PAS implémenté ici faute de source fiable sur le sens exact attendu par
-    # le réseau. Les TC 05 (achat) et TC 07 (retrait) sont des débits, leur
-    # montant s'additionne normalement ; le TC 06 (remboursement) est un
-    # crédit, son signe dans le hash est incertain. Si le récepteur rejette
-    # les totaux pour les fichiers contenant des TC 06, le hash devra être
-    # adapté (ex. soustraire les montants crédit au lieu de les additionner).
-    # À valider avec la spec réseau réelle.
     lines.append(build_count_trailer(
-        TRAILER_TC, count, file_hash,
+        TRAILER_TC, count, file_debits, file_credits,
         processing=created, batch_number=max(batch_number, 1)))
-    return lines, count, file_hash
+    return lines, count, file_debits, file_credits
 
 
 def write_ctf_file(lines: list[str], out_dir: str, batch_id: str) -> tuple[str, str]:
@@ -371,10 +461,11 @@ def run(out_dir: str, *, sending_id: str, receiving_id: str,
             print("[VISA] nothing to export (no pending APPROVED Visa rows)")
             return 0
 
-        lines, count, hash_total = generate_ctf_lines(
+        lines, count, debit_total, credit_total = generate_ctf_lines(
             result.rows, key,
             sending_id=sending_id, receiving_id=receiving_id,
             merchant_country=merchant_country, batch_size=batch_size)
+        net_total = debit_total - credit_total
 
         # Hard invariant: every record is exactly 168 chars.
         bad = [i for i, ln in enumerate(lines) if len(ln) != RECORD_LEN]
@@ -389,7 +480,8 @@ def run(out_dir: str, *, sending_id: str, receiving_id: str,
         print(f"[VISA] wrote {path}")
         print(f"[VISA] records: 1 header + {draft_count} TC05 / {ref_count} TC06 / {cash_count} TC07"
               f" + {n_batches} TC91 + 1 TC92 | "
-              f"hash_total(minor units)={hash_total} | sha256={sha[:16]}…")
+              f"debits={debit_total} credits={credit_total} net={net_total}"
+              f" | sha256={sha[:16]}…")
 
         if confirm:
             n = confirm_exported(conn, result.batch_id)
