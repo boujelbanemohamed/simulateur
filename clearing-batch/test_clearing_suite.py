@@ -154,6 +154,19 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(len(lines[1]), visa.RECORD_LEN)
         self.assertEqual(lines[1][61:73], "000000003000")
 
+    def test_cash_advance_processing_code_tc07(self):
+        """Cash Advance (DE-3 prefix 12) produit TC 07 côté Visa."""
+        rows = sample_rows(["4111111111111111"])
+        rows[0]["processing_code"] = "120000"
+        rows[0]["txn_amount"] = 2500
+        lines, count, debit_total, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        tc = lines[1][:2]
+        self.assertEqual(tc, "07")
+        self.assertEqual(debit_total, 2500)
+
     def test_mixed_tc05_tc06_tc07_in_same_file(self):
         rows = sample_rows(["4111111111111111", "5413330089020011", "4532015112830366"])
         rows[0]["processing_code"] = "000000"
@@ -397,6 +410,64 @@ class TestMastercardIpm(unittest.TestCase):
         presentment = next(r for r in recs if r.get("MTI") == "1240")
         self.assertEqual(presentment["DE3"], "200000")
         self.assertEqual(int(presentment["DE4"]), 5000)
+
+    def test_cash_advance_processing_code_mc(self):
+        """Cash Advance (DE-3 prefix 12) passe tel quel côté Mastercard."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "120000"
+        rows[0]["txn_amount"] = 2500
+        data, count, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        self.assertEqual(count, 1)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment["DE3"], "120000")
+        self.assertEqual(int(presentment["DE4"]), 2500)
+
+    def test_cashback_processing_code_and_no_de54_by_default(self):
+        """Cashback (DE-3 prefix 09) passe tel quel ; DE-54 absent sans row.de54."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "090000"
+        rows[0]["txn_amount"] = 1500
+        data, count, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        self.assertEqual(count, 1)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment["DE3"], "090000")
+        self.assertNotIn("DE54", presentment)
+
+    def test_cashback_with_de54(self):
+        """Cashback avec row.de54 → DE-54 présent dans le présentment."""
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "090000"
+        rows[0]["txn_amount"] = 1500
+        rows[0]["de54"] = 500
+        msg = mc.build_presentment(rows[0], "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE3"], "090000")
+        self.assertEqual(msg["DE54"], "500")
+        self.assertEqual(int(msg["DE4"]), 1500)
+
+    def test_cashback_with_txn_cashback(self):
+        """Cashback avec row.txn_cashback → DE-54 présent."""
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "090000"
+        rows[0]["txn_amount"] = 1500
+        rows[0]["txn_cashback"] = 750
+        msg = mc.build_presentment(rows[0], "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE3"], "090000")
+        self.assertEqual(msg["DE54"], "750")
+        self.assertEqual(int(msg["DE4"]), 1500)
 
     def test_build_presentment_reversal_has_pds0025(self):
         row = sample_rows(["5413330089020011"])[0]

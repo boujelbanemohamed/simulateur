@@ -254,6 +254,17 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     extra_pds = {PDS_REVERSAL: "R"} if is_reversal else None
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
                           extra_pds=extra_pds))
+    # DE-54 (Additional Amounts) — requis par IPM pour DE-3 s1=09 (Purchase with
+    # Cash Back). Si la row contient un champ txn_cashback (ou de54), on l'injecte ;
+    # sinon on ne l'ajoute pas.
+    #
+    # Réserve : on injecte ici le montant cashback brut. La structure complète du
+    # DE-54 (Additional Amounts : account type, amount type, sign, devise, montant)
+    # n'a pas été auditée champ par champ contre la spec IPM — à affiner dans un
+    # lot ultérieur, comme le DE-43.
+    raw_cb = row.get("de54") or row.get("txn_cashback")
+    if raw_cb is not None:
+        msg["DE54"] = str(int(raw_cb))
     # NOTE conformité — champs système-provided non fournis ici (volontairement) : DE-5/DE-6/DE-9
     # (montants convertis en devise de réconciliation/billing) et PDS 0002/0003 (identifiants produit
     # GCMS) sont fournis ou enrichis par le système de clearing, pas par l'acquéreur originateur

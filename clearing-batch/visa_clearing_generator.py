@@ -78,12 +78,16 @@ def _txn_type_from_pc(processing_code: str) -> str:
     """
     Return 'purchase', 'refund', 'withdrawal', or 'purchase' (default).
 
-    DE-3 first 2 digits: 00=purchase, 01=withdrawal, 20=refund.
+    DE-3 first 2 digits: 00=purchase, 01=withdrawal, 12=cash advance (TC07),
+    09=cashback (TC05), 20=refund.
+    Le cashback (09) reste en TC 05 (achat) ; le DE-54 n'est pas séparé dans
+    le TCR 0 actuel (réserve simulateur — le montant total DE-4 inclut le
+    cashback dans le présentment Visa).
     """
     prefix = (processing_code or "000000")[:2]
     if prefix == "20":
         return "refund"
-    if prefix == "01":
+    if prefix in ("01", "12"):
         return "withdrawal"
     return "purchase"
 

@@ -21,10 +21,12 @@ const makeRrn = (d13, stan) => (d13 + stan).padEnd(12, "0").slice(0, 12);
 export const REQUIRED_DES = [2, 3, 4, 7, 11, 12, 13, 14, 18, 19, 22, 32, 37, 39, 41, 42, 43, 49];
 
 const OP_TYPES = {
-  purchase:   { label: "Achat",        mti: "1200", de3: "000000", clr: "Présenté en DÉBIT au clearing",                            clrTag: "debit" },
-  withdrawal: { label: "Retrait DAB",  mti: "1200", de3: "010000", clr: "Présenté en DÉBIT au clearing",                            clrTag: "debit" },
-  refund:     { label: "Remboursement", mti: "1200", de3: "200000", clr: "CRÉDIT (sens inverse) — non distingué par le moteur actuel", clrTag: "credit" },
-  void:       { label: "Annulation",   mti: "1420", de3: null,     clr: "Vise à NEUTRALISER l'originale — hors flux de présentation actuel", clrTag: "neutral" },
+  purchase:   { label: "Achat",          mti: "1200", de3: "000000", clr: "Présenté en DÉBIT au clearing",                             clrTag: "debit" },
+  withdrawal: { label: "Retrait DAB",    mti: "1200", de3: "010000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",         clrTag: "debit" },
+  cashAdvance:{ label: "Avance espèces", mti: "1200", de3: "120000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",          clrTag: "debit" },
+  cashback:   { label: "Achat + cashback", mti: "1200", de3: "090000", clr: "DÉBIT — montant principal + cashback (DE-54)",             clrTag: "debit" },
+  refund:     { label: "Remboursement",   mti: "1200", de3: "200000", clr: "CRÉDIT (sens inverse) — non distingué par le moteur actuel", clrTag: "credit" },
+  void:       { label: "Annulation",     mti: "1420", de3: null,     clr: "Vise à NEUTRALISER l'originale — hors flux de présentation actuel",  clrTag: "neutral" },
 };
 
 const MERCHANT_DEFAULTS = {
@@ -58,12 +60,14 @@ export default function Terminal() {
   const [voidTargetIdx, setVoidTargetIdx] = useState(null);
   const [de5Amount, setDe5Amount] = useState("");
   const [de6Amount, setDe6Amount] = useState("");
+  const [de54Amount, setDe54Amount] = useState("");
 
   const opConfig = OP_TYPES[operationType];
   const mti = opConfig.mti;
   const mtiInfo = MTI_INFO(mti);
   const voidTarget = voidTargetIdx !== null ? history[voidTargetIdx] : null;
   const isDab = operationType === "withdrawal";
+  const isCashback = operationType === "cashback";
   const isVoid = operationType === "void";
 
   const responseLabels = useMemo(() => ({
@@ -99,8 +103,9 @@ export default function Terminal() {
       3: opConfig.de3,
       11: stan,
       ...(isDab ? { 5: pad(de5Amount || amount || "0", 12), 6: pad(de6Amount || amount || "0", 12) } : {}),
+      ...(isCashback ? { 54: pad(de54Amount || "0", 12) } : {}),
     };
-  }, [operationType, card, amount, currency, approved, merchant, stan, voidTarget, isDab, isVoid, de5Amount, de6Amount, opConfig.de3]);
+  }, [operationType, card, amount, currency, approved, merchant, stan, voidTarget, isDab, isVoid, isCashback, de5Amount, de6Amount, de54Amount, opConfig.de3]);
 
   const segments = useMemo(() => {
     if (isVoid && !voidTarget) return { segs: [], error: null };
@@ -138,7 +143,11 @@ export default function Terminal() {
   const canSend = operationType !== "void" || (voidTarget && history.length > 0);
   const sendLabel = isVoid
     ? (voidTarget ? `Annuler STAN ${voidTarget.stan} (${formatAmount(voidTarget.amount)})` : "Sélectionner une transaction")
-    : (isDab ? `Retirer ${formatAmount(amount)} ${currency.symbol}` : operationType === "refund" ? `Rembourser ${formatAmount(amount)} ${currency.symbol}` : `Payer ${formatAmount(amount)} ${currency.symbol}`);
+    : (isDab ? `Retirer ${formatAmount(amount)} ${currency.symbol}`
+       : operationType === "refund" ? `Rembourser ${formatAmount(amount)} ${currency.symbol}`
+       : operationType === "cashAdvance" ? `Avancer ${formatAmount(amount)} ${currency.symbol}`
+       : operationType === "cashback" ? `Payer ${formatAmount(amount)} + cashback ${formatAmount(de54Amount || "0")} ${currency.symbol}`
+       : `Payer ${formatAmount(amount)} ${currency.symbol}`);
 
   return (
     <>
@@ -175,6 +184,11 @@ export default function Terminal() {
               <label className="field"><span>DE-6 Montant facturation (défaut = montant)</span><input value={de6Amount} onChange={(e) => setDe6Amount(e.target.value.slice(0, 12))} placeholder={amount} /></label>
             </div>
           )}
+          {isCashback && (
+            <div className="dab-amounts">
+              <label className="field"><span>DE-54 Montant cashback</span><input value={de54Amount} onChange={(e) => setDe54Amount(e.target.value.slice(0, 12))} placeholder="ex. 500" /></label>
+            </div>
+          )}
           <label className="field"><span>Carte de test</span>
             <select value={card.id} onChange={(e) => setCard(TEST_CARDS.find((c) => c.id === e.target.value))}>
               {TEST_CARDS.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
@@ -208,7 +222,7 @@ export default function Terminal() {
                     <button key={i} className={`void-item ${voidTargetIdx === i ? "void-item-on" : ""}`} onClick={() => setVoidTargetIdx(i)}>
                       <span className="tag tag-ok">STAN {h.stan}</span>
                       <span>{formatAmount(h.amount)} {h.currency}</span>
-                      <span className="void-item-meta">{h.type === "purchase" ? "Achat" : h.type === "withdrawal" ? "Retrait" : "Rembours."} · {new Date(h.date).toLocaleString("fr-FR")}</span>
+                      <span className="void-item-meta">{h.type === "purchase" ? "Achat" : h.type === "withdrawal" ? "Retrait" : h.type === "cashAdvance" ? "Avance" : h.type === "cashback" ? "Cashback" : "Rembours."} · {new Date(h.date).toLocaleString("fr-FR")}</span>
                     </button>
                   ))}
                 </div>
