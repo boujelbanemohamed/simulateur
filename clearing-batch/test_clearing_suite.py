@@ -626,6 +626,40 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertEqual(msg["DE72"], "041")
 
 
+class TestFeeCollection(unittest.TestCase):
+    """MTI 1740 Fee Collection (Retrieval Fee Billing) — builder unit tests."""
+
+    def test_build_fee_collection_mti_and_codes(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_fee_collection(row, "5413330089020011", 2,
+                                      terminal_type="  Z", tcc="T", txn_env="0",
+                                      created=DT)
+        self.assertEqual(msg["MTI"], mc.MTI_FEE_COLLECTION)
+        self.assertEqual(msg["DE3"], mc.PC_FEE_COLLECTION)
+        self.assertEqual(msg["DE24"], mc.FUNC_FEE_COLLECTION)
+        self.assertEqual(msg["DE25"], mc.FEE_REASON_RETRIEVAL)
+
+    def test_fee_collection_fields_present(self):
+        row = sample_rows(["4532015112830366"])[0]
+        row["txn_amount"] = 500
+        row["original_amount"] = 1550
+        msg = mc.build_fee_collection(row, "4532015112830366", 3,
+                                      terminal_type="  Z", tcc="T", txn_env="0",
+                                      created=DT)
+        self.assertEqual(int(msg["DE4"]), 500)
+        self.assertEqual(msg["DE30"], "000000001550")
+        self.assertEqual(msg["DE73"], DT.strftime("%y%m%d"))
+        self.assertIn("MTI", msg)
+        self.assertEqual(msg["DE2"], "4532015112830366")
+
+    def test_fee_collection_no_original_amount(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_fee_collection(row, "5413330089020011", 4,
+                                      terminal_type="  Z", tcc="T", txn_env="0",
+                                      created=DT)
+        self.assertEqual(msg["DE30"], "0" * 12)
+
+
 class TestKeyRotation(unittest.TestCase):
     def test_decrypt_no_prefix_with_key(self):
         pan = "4111111111111111"

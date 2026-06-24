@@ -96,12 +96,20 @@ from visa_clearing_generator import _luhn_check_digit, _julian_yddd, numeric
 # MTI / function codes
 MTI_PRESENTMENT = "1240"      # First Presentment
 MTI_CHARGEBACK = "1442"      # Chargeback (second presentment / reprocessing)
+MTI_FEE_COLLECTION = "1740"  # Fee Collection (Retrieval Fee Billing)
 MTI_FILE_CONTROL = "1644"    # File Header / Trailer (Advice)
 FUNC_PRESENTMENT = "200"     # DE24 — First Presentment, full
 FUNC_REVERSAL = "202"        # DE24 — Reversal
 FUNC_CHARGEBACK = "200"      # DE24 — Chargeback (même fonction qu'un présentment)
+FUNC_FEE_COLLECTION = "700"  # DE24 — Fee Collection (Retrieval Fee)
 FUNC_FILE_HEADER = "697"     # DE24 — File header
 FUNC_FILE_TRAILER = "695"    # DE24 — File trailer
+
+# DE-3 processing code prefixes
+PC_FEE_COLLECTION = "190000"  # Fee Collection (s1=19 → crédit au transaction originator)
+
+# DE-25 message reason codes
+FEE_REASON_RETRIEVAL = "7614"  # Retrieval Fee Billing
 
 # DE-48 PDS tags (numeric, 4 digits). Names per Mastercard_Parsing decoding.
 PDS_TERMINAL_TYPE = "0023"    # Terminal Type
@@ -340,8 +348,63 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
     return msg
 
 
+# --------------------------------------------------------------------------- #
+# Fee Collection (MTI 1740 — Retrieval Fee Billing)
+# --------------------------------------------------------------------------- #
+def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
+                         terminal_type: str, tcc: str, txn_env: str,
+                         created: datetime,
+                         reason_code: str = FEE_REASON_RETRIEVAL) -> dict[str, Any]:
+    """Build one MTI 1740 Fee Collection message dict for cardutil.
+
+    Per IPM Clearing Formats p.159-160 — Retrieval Fee Billing.
+    This message credits the Acquirer (Org) and debits the Issuer (Dst) for
+    the retrieval fulfillment fees. It is an inter-bank billing message, NOT
+    a cardholder-initiated transaction — hence no Terminal.jsx exposure.
+
+    Fields marked Org=M (mandatory for the originating acquirer):
+      MTI, DE-2 (PAN), DE-3 (Processing Code), DE-4 (Amount),
+      DE-24 (Function Code), DE-25 (Message Reason Code),
+      DE-30 (Amounts Original), DE-31 (ARD), DE-33 (Forwarding Inst),
+      DE-48 (PDS terminal/environment), DE-71 (Message Number),
+      DE-73 (Action Date YYMMDD), DE-94 (Transaction Originator Inst ID).
+
+    Convention simulateur :
+      - DE-4 : row["txn_amount"] est le montant du fee (en minor units).
+      - DE-30 : si row["original_amount"] est présent, on l'utilise comme
+        montant original du retrieval ; sinon 0 (réserve : le montant original
+        devrait être fourni par le système qui génère la row fee).
+      - DE-93 (Destination Institution) volontairement non émis : Org=• / Sys=X
+        / Dst=M dans la spec — fourni par le clearing, PAS par l'acquéreur.
+      - DE-94 : derivé de l'acquirer_id (même logique que build_de33).
+    """
+    if not (pan.isdigit() and 13 <= len(pan) <= 19):
+        raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
+
+    originator_id = build_de33(row.get("acquirer_id"))
+    original_amount = row.get("original_amount")
+    de30 = str(int(original_amount)).rjust(12, "0") if original_amount is not None else "0" * 12
+
+    msg: dict[str, Any] = {
+        "MTI": MTI_FEE_COLLECTION,
+        "DE2": pan,                                       # PAN (LLVAR)
+        "DE3": PC_FEE_COLLECTION,                         # 190000 (Fee Collection)
+        "DE4": int(row["txn_amount"]),                    # fee amount (minor units)
+        "DE24": FUNC_FEE_COLLECTION,                      # 700
+        "DE25": reason_code[:4].rjust(4, "0"),            # 7614 Retrieval Fee Billing
+        "DE30": de30,                                     # original retrieval amount
+        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
+        "DE33": build_de33(row.get("acquirer_id")),       # forwarding institution (n-11 LLVAR)
+        "DE71": msg_number,                               # sequential message number
+        "DE73": created.strftime("%y%m%d"),               # Action Date YYMMDD
+        "DE94": originator_id,                            # transaction originator inst ID
+    }
+    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    return msg
+
+
+# --------------------------------------------------------------------------- #
 # Reconciliation PDS tags for the 1644 file trailer (per Mastercard_Parsing /
-# IPM_IncomingTrailer mapping):
 #   PDS0105 = File identification: fileType(3) + refDate(6 YYMMDD) + procId(11) + fileSeq(5)
 #   PDS0301 = File amount checksum (16n, 2 implied decimals)
 #   PDS0306 = File message count
