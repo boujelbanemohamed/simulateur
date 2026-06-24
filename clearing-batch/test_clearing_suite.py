@@ -660,6 +660,66 @@ class TestFeeCollection(unittest.TestCase):
         self.assertEqual(msg["DE30"], "0" * 12)
 
 
+class TestSecondPresentment(unittest.TestCase):
+    """MTI 1240 Second Presentment (DE-24 205 full / 282 partial)."""
+
+    def test_second_presentment_full(self):
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_second_presentment(
+            row, "5413330089020011", 5,
+            terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, reason_code="2002")
+        self.assertEqual(msg["MTI"], mc.MTI_PRESENTMENT)
+        self.assertEqual(msg["DE24"], mc.FUNC_SECOND_PRESENTMENT_FULL)
+        self.assertEqual(msg["DE3"], "000000")
+        self.assertEqual(msg["DE25"], "2002")
+        self.assertEqual(int(msg["DE4"]), 1000)
+        self.assertEqual(msg["DE30"], "000000001000")
+        self.assertIn("DE22_s7", msg)
+
+    def test_second_presentment_partial(self):
+        row = sample_rows(["4532015112830366"])[0]
+        row["txn_amount"] = 2000
+        msg = mc.build_second_presentment(
+            row, "4532015112830366", 6,
+            terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, reason_code="2003",
+            partial=True, second_amount=800)
+        self.assertEqual(msg["DE24"], mc.FUNC_SECOND_PRESENTMENT_PARTIAL)
+        self.assertEqual(int(msg["DE4"]), 800)
+        self.assertEqual(msg["DE30"], "000000002000")
+
+    def test_second_presentment_partial_zero_raises(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 1000
+        with self.assertRaises(ValueError):
+            mc.build_second_presentment(
+                row, "5413330089020011", 7,
+                terminal_type="  Z", tcc="T", txn_env="0",
+                created=DT, reason_code="2002",
+                partial=True, second_amount=0)
+
+    def test_second_presentment_partial_exceeds_raises(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 1000
+        with self.assertRaises(ValueError):
+            mc.build_second_presentment(
+                row, "5413330089020011", 8,
+                terminal_type="  Z", tcc="T", txn_env="0",
+                created=DT, reason_code="2002",
+                partial=True, second_amount=1500)
+
+    def test_second_presentment_no_system_fields(self):
+        row = sample_rows(["4111111111111111"])[0]
+        msg = mc.build_second_presentment(
+            row, "4111111111111111", 9,
+            terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, reason_code="2004")
+        for unwanted in ("DE5", "DE6", "DE9", "DE10", "DE93", "DE94"):
+            self.assertNotIn(unwanted, msg,
+                             f"{unwanted} should not appear (system-provided)")
+
+
 class TestKeyRotation(unittest.TestCase):
     def test_decrypt_no_prefix_with_key(self):
         pan = "4111111111111111"

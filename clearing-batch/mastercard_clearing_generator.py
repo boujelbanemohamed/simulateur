@@ -102,6 +102,8 @@ FUNC_PRESENTMENT = "200"     # DE24 — First Presentment, full
 FUNC_REVERSAL = "202"        # DE24 — Reversal
 FUNC_CHARGEBACK = "200"      # DE24 — Chargeback (même fonction qu'un présentment)
 FUNC_FEE_COLLECTION = "700"  # DE24 — Fee Collection (Retrieval Fee)
+FUNC_SECOND_PRESENTMENT_FULL = "205"    # DE24 — Second Presentment (full)
+FUNC_SECOND_PRESENTMENT_PARTIAL = "282" # DE24 — Second Presentment (partial)
 FUNC_FILE_HEADER = "697"     # DE24 — File header
 FUNC_FILE_TRAILER = "695"    # DE24 — File trailer
 
@@ -299,6 +301,14 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
 # --------------------------------------------------------------------------- #
 # Chargeback (MTI 1442 — second presentment / reprocessing)
+#
+# NOTE rôle : le First Chargeback/1442 (DE-24 450 full / 453 partial, Arbitration
+# 451) est initié par l'ÉMETTEUR (issuer) selon la spec IPM p.134, pas par
+# l'acquéreur. Ce simulateur étant côté acquéreur, il ne l'émet pas dans le flux
+# nominal — il le recevrait. Ce builder est conservé comme référence de structure
+# (pour un futur rôle émetteur), pas comme un message émis par l'acquéreur. La
+# réponse conforme de l'acquéreur à un chargeback est le Second Presentment
+# (build_second_presentment, 1240/205 ou 1240/282).
 # --------------------------------------------------------------------------- #
 def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
                      terminal_type: str, tcc: str, txn_env: str,
@@ -398,6 +408,89 @@ def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE71": msg_number,                               # sequential message number
         "DE73": created.strftime("%y%m%d"),               # Action Date YYMMDD
         "DE94": originator_id,                            # transaction originator inst ID
+    }
+    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    return msg
+
+
+# --------------------------------------------------------------------------- #
+# Second Presentment (MTI 1240 — acquereur response to issuer chargeback)
+# --------------------------------------------------------------------------- #
+def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
+                             terminal_type: str, tcc: str, txn_env: str,
+                             created: datetime, reason_code: str,
+                             partial: bool = False,
+                             second_amount: int | None = None) -> dict[str, Any]:
+    """Build one MTI 1240 Second Presentment message dict for cardutil.
+
+    Per IPM Clearing Formats p.141-142 — Second Presentment (Acquirer's
+    response to a First Chargeback initiated by the Issuer).
+
+    Règle clef : DE-3 (Processing Code) reste IDENTIQUE à celui de la
+    transaction originale sur tout le cycle de vie (chargeback → second
+    presentment → arbitration). C'est la combinaison MTI + DE-24 + DE-25
+    qui distingue le message, pas le DE-3.
+
+    Fields Org=M (mandatory for the originating acquirer):
+      DE-2 (PAN), DE-3 (= original), DE-4 (Amount), DE-12 (DateTime),
+      DE-22+s7 (Card Data Input Mode — convention simulateur "1"),
+      DE-24 (Function Code), DE-25 (Message Reason Code), DE-26 (MCC),
+      DE-30 (Amounts Original), DE-31 (ARD), DE-33 (Forwarding Inst),
+      DE-43 (Card Acceptor Name/Location).
+
+    Champs système-provided (Org=•, NE PAS émettre) :
+      DE-5, DE-6, DE-9, DE-10, DE-93, DE-94.
+
+    Reason codes courants (DE-25) :
+      2002 = second presentment — no documentation
+      2003 = second presentment — pre-compliance
+      2004 = second presentment — compliance
+    """
+    if not (pan.isdigit() and 13 <= len(pan) <= 19):
+        raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")
+
+    ts = row.get("transmission_ts") or created
+    mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+
+    de3 = (row.get("processing_code") or "000000")[:6].rjust(6, "0")
+    func = FUNC_SECOND_PRESENTMENT_PARTIAL if partial else FUNC_SECOND_PRESENTMENT_FULL
+
+    if partial and second_amount is not None:
+        if second_amount <= 0:
+            raise ValueError(
+                f"second_amount ({second_amount}) must be > 0 "
+                f"for STAN={row.get('stan')}")
+        if second_amount > int(row["txn_amount"]):
+            raise ValueError(
+                f"second_amount ({second_amount}) exceeds original "
+                f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
+    de4 = second_amount if (partial and second_amount is not None) else int(row["txn_amount"])
+
+    original_amt = row.get("original_amount")
+    de30 = str(int(original_amt)).rjust(12, "0") if original_amt is not None \
+        else str(int(row["txn_amount"])).rjust(12, "0")
+
+    msg: dict[str, Any] = {
+        "MTI": MTI_PRESENTMENT,
+        "DE2": pan,                                       # PAN (LLVAR)
+        "DE3": de3,                                       # inchangé vs original
+        "DE4": de4,                                       # amount (partiel si partial)
+        "DE12": ts,                                       # datetime
+        "DE22_s7": "1",                                   # Card Data Input Mode (convention)
+                                                          # Réserve : idéalement devrait refléter
+                                                          # le mode de saisie du présentment
+                                                          # original (DE-22 capturé au terminal),
+                                                          # non tracé dans le modèle actuel —
+                                                          # à affiner si le lien vers la
+                                                          # transaction originale est ajouté.
+        "DE24": func,                                     # 205 / 282
+        "DE25": reason_code[:4].rjust(4, "0"),            # message reason code
+        "DE26": mcc,                                      # MCC (n-4)
+        "DE30": de30,                                     # Amounts Original
+        "DE31": build_de31_ard(row.get("acquirer_id"), row.get("stan"), created),
+        "DE33": build_de33(row.get("acquirer_id")),       # forwarding institution (n-11 LLVAR)
+        "DE43": de43,                                     # card acceptor name/location
     }
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
     return msg
