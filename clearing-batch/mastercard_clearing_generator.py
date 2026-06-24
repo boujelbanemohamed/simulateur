@@ -184,12 +184,15 @@ NUMERIC_TO_ALPHA3: dict[str, str] = {
 # Les sous-champs 1 (Name), 3 (City), 6 (Country) sont obligatoires.
 # Country est en ISO alpha-3 (converti depuis merchant_country numérique).
 #
-# NOTE conformité : l'encodage interne des sous-champs suit la convention cardutil
-# (séparateur backslash NAME\\ADDR\\CITY puis POSTCODE(10)STATE(3)COUNTRY(3)). Le round-trip
-# cardutil est validé, mais cet encodage n'a PAS encore été confronté champ par champ à la
-# structure exacte décrite dans la spec IPM (longueurs ans-22/ans-13/ans-3 par sous-champ).
-# À vérifier dans un lot ultérieur. Le mapping pays NUMERIC_TO_ALPHA3 est une convention
-# simulateur limitée aux pays de test.
+# NOTE conformité (audit DE-43 vs spec IPM p.356-360) :
+#  - Sous-champ 1 (Card Acceptor Name, ans-22, gauche, terminé par '\') : CONFORME.
+#  - Sous-champ 6 (Country, ISO alpha-3) : CONFORME dans son principe (mapping
+#    NUMERIC_TO_ALPHA3 limité aux pays de test, à étendre si besoin).
+#  - Sous-champs 2-5 (adresse, ville, code postal, région) : conditionnels, non remplis
+#    dans le cas d'usage actuel ; leur mécanique d'assemblage n'a pas été auditée champ
+#    par champ.
+#  - L'encodage interne suit la convention cardutil (séparateurs backslash) ; le round-trip
+#    cardutil est validé. Conforme sur les sous-champs obligatoires émis par l'acquéreur.
 # --------------------------------------------------------------------------- #
 def build_de43(card_acceptor_name: str, merchant_country: str, *,
                city: str = "", street: str = "",
