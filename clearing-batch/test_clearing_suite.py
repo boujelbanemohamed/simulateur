@@ -241,6 +241,81 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(net, debit_total - credit_total)
         self.assertEqual(net, 700)
 
+    def test_build_reversal_partial_amount(self):
+        """reversal_amount < txn_amount → montant partiel dans le TCR."""
+        row = sample_rows(["4111111111111111"])[0]
+        row["txn_amount"] = 1000
+        rev = visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                  reversal_amount=400)
+        self.assertEqual(rev[61:73], "000000000400")
+
+    def test_build_reversal_partial_exceeds_original_raises(self):
+        """reversal_amount > txn_amount → ValueError."""
+        row = sample_rows(["4111111111111111"])[0]
+        row["txn_amount"] = 1000
+        with self.assertRaises(ValueError):
+            visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                reversal_amount=1500)
+
+    def test_reversal_ctf_full(self):
+        """generate_reversal_ctf_lines produit un TC 25 avec le montant full."""
+        rows = sample_rows(["4111111111111111"])
+        rows[0]["txn_amount"] = 1550
+        lines, count, total, _ = visa.generate_reversal_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        self.assertEqual(total, 1550)
+        tc = lines[1][:2]
+        self.assertEqual(tc, visa.REVERSAL_SALE_TC)
+        self.assertEqual(lines[1][61:73], "000000001550")
+        self.assertEqual(len(lines), 1 + 1 + 1 + 1)
+        for ln in lines:
+            self.assertEqual(len(ln), visa.RECORD_LEN)
+
+    def test_reversal_ctf_partial(self):
+        """reversal_amount < txn_amount → montant partiel."""
+        rows = sample_rows(["4532015112830366"])
+        rows[0]["txn_amount"] = 2000
+        rows[0]["reversal_amount"] = 800
+        lines, count, total, _ = visa.generate_reversal_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        self.assertEqual(total, 800)
+        self.assertEqual(lines[1][:2], visa.REVERSAL_SALE_TC)
+        self.assertEqual(lines[1][61:73], "000000000800")
+
+    def test_reversal_ctf_refund_and_cash(self):
+        """refund → TC 26, withdrawal → TC 27 dans un fichier reversals."""
+        rows = sample_rows(["5413330089020011", "4999888877776666555"])
+        rows[0]["processing_code"] = "200000"
+        rows[0]["txn_amount"] = 500
+        rows[1]["processing_code"] = "010000"
+        rows[1]["txn_amount"] = 300
+        lines, count, total, _ = visa.generate_reversal_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 2)
+        self.assertEqual(total, 800)
+        self.assertEqual(lines[1][:2], visa.REVERSAL_REFUND_TC)
+        self.assertEqual(lines[2][:2], visa.REVERSAL_CASH_TC)
+
+    def test_reversal_ctf_multiple_batches(self):
+        """Multi-batch reversals avec bons totaux."""
+        rows = sample_rows(["4111111111111111"] * 4)
+        for i, r in enumerate(rows):
+            r["txn_amount"] = (i + 1) * 100
+        lines, count, total, _ = visa.generate_reversal_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT, batch_size=2)
+        tc91 = [ln for ln in lines if ln[:2] == visa.BATCH_TC]
+        tc92 = [ln for ln in lines if ln[:2] == visa.TRAILER_TC]
+        self.assertEqual(len(tc91), 2)
+        self.assertEqual(int(tc91[0][15:30]), 300)
+        self.assertEqual(int(tc91[1][15:30]), 700)
+        self.assertEqual(int(tc92[0][15:30]), 1000)
+
     def test_build_count_trailer_net_negative_with_credits(self):
         trailer = visa.build_count_trailer(
             visa.TRAILER_TC, 2, debit_total=100, credit_total=300,

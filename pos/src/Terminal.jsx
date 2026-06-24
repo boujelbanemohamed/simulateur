@@ -15,18 +15,16 @@ const formatAmount = (minor) => (Number(minor || "0") / 100).toLocaleString("fr-
 
 const makeRrn = (d13, stan) => (d13 + stan).padEnd(12, "0").slice(0, 12);
 
-// Convention du simulateur pour un 1200 achat — les valeurs DE-3 et MTI par type
-// d'opération sont réseau-spécifiques (Visa, Mastercard, etc.) et non normatives
-// ISO 8583. Se référer à la spec du réseau acquéreur pour les valeurs exactes.
 export const REQUIRED_DES = [2, 3, 4, 7, 11, 12, 13, 14, 18, 19, 22, 32, 37, 39, 41, 42, 43, 49];
 
 const OP_TYPES = {
-  purchase:   { label: "Achat",          mti: "1200", de3: "000000", clr: "Présenté en DÉBIT au clearing",                             clrTag: "debit" },
-  withdrawal: { label: "Retrait DAB",    mti: "1200", de3: "010000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",         clrTag: "debit" },
-  cashAdvance:{ label: "Avance espèces", mti: "1200", de3: "120000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",          clrTag: "debit" },
-  cashback:   { label: "Achat + cashback", mti: "1200", de3: "090000", clr: "DÉBIT — montant principal + cashback (DE-54)",             clrTag: "debit" },
-  refund:     { label: "Remboursement",   mti: "1200", de3: "200000", clr: "CRÉDIT (sens inverse) — non distingué par le moteur actuel", clrTag: "credit" },
-  void:       { label: "Annulation",     mti: "1420", de3: null,     clr: "Vise à NEUTRALISER l'originale — hors flux de présentation actuel",  clrTag: "neutral" },
+  purchase:   { label: "Achat",            mti: "1200", de3: "000000", clr: "Présenté en DÉBIT au clearing",                                       clrTag: "debit" },
+  withdrawal: { label: "Retrait DAB",      mti: "1200", de3: "010000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",                   clrTag: "debit" },
+  cashAdvance:{ label: "Avance espèces",   mti: "1200", de3: "120000", clr: "Présenté en DÉBIT au clearing (cash disbursement)",                    clrTag: "debit" },
+  cashback:   { label: "Achat + cashback", mti: "1200", de3: "090000", clr: "DÉBIT — montant principal + cashback (DE-54)",                       clrTag: "debit" },
+  refund:     { label: "Remboursement",    mti: "1200", de3: "200000", clr: "CRÉDIT (sens inverse) — non distingué par le moteur actuel",         clrTag: "credit" },
+  fullReversal:{label: "Extourne totale",  mti: "1420", de3: null,     clr: "Full reversal — extourne la totalité de la transaction originale",     clrTag: "neutral" },
+  partialReversal:{label:"Extourne partielle", mti:"1420", de3: null,  clr: "Partial reversal — extourne une partie du montant original",           clrTag: "neutral" },
 };
 
 const MERCHANT_DEFAULTS = {
@@ -61,19 +59,28 @@ export default function Terminal() {
   const [de5Amount, setDe5Amount] = useState("");
   const [de6Amount, setDe6Amount] = useState("");
   const [de54Amount, setDe54Amount] = useState("");
+  const [reversalAmount, setReversalAmount] = useState("");
 
   const opConfig = OP_TYPES[operationType];
   const mti = opConfig.mti;
   const mtiInfo = MTI_INFO(mti);
+  const isReversal = operationType === "fullReversal" || operationType === "partialReversal";
+  const isPartial = operationType === "partialReversal";
   const voidTarget = voidTargetIdx !== null ? history[voidTargetIdx] : null;
   const isDab = operationType === "withdrawal";
   const isCashback = operationType === "cashback";
-  const isVoid = operationType === "void";
 
   const responseLabels = useMemo(() => ({
     ...RESPONSE_LABELS,
     ...(isDab ? DAB_RESPONSE_LABELS : {}),
   }), [isDab]);
+
+  const partialValid = isPartial && voidTarget
+    ? (Number(reversalAmount || "0") <= Number(voidTarget.amount))
+    : true;
+  const partialError = isPartial && voidTarget && !partialValid
+    ? `Le montant partiel (${formatAmount(reversalAmount || "0")}) ne peut pas dépasser le total (${formatAmount(voidTarget.amount)})`
+    : null;
 
   const fields = useMemo(() => {
     const t = nowParts();
@@ -88,11 +95,13 @@ export default function Terminal() {
       43: merchant.acceptorName, 49: currency.code,
     };
 
-    if (isVoid) {
-      if (!voidTarget) return {}; // send will be disabled
+    if (isReversal) {
+      if (!voidTarget) return {};
+      const revAmt = pad(isPartial ? (reversalAmount || "0") : voidTarget.amount, 12);
       return {
         ...base,
         3: voidTarget.de3,
+        4: revAmt,
         11: voidTarget.stan,
         37: voidTarget.rrn,
       };
@@ -105,18 +114,18 @@ export default function Terminal() {
       ...(isDab ? { 5: pad(de5Amount || amount || "0", 12), 6: pad(de6Amount || amount || "0", 12) } : {}),
       ...(isCashback ? { 54: pad(de54Amount || "0", 12) } : {}),
     };
-  }, [operationType, card, amount, currency, approved, merchant, stan, voidTarget, isDab, isVoid, isCashback, de5Amount, de6Amount, de54Amount, opConfig.de3]);
+  }, [operationType, card, amount, currency, approved, merchant, stan, voidTarget, isDab, isReversal, isPartial, isCashback, reversalAmount, de5Amount, de6Amount, de54Amount, opConfig.de3]);
 
   const segments = useMemo(() => {
-    if (isVoid && !voidTarget) return { segs: [], error: null };
+    if (isReversal && !voidTarget) return { segs: [], error: null };
     try { return { segs: encodeSegments({ mti, fields }), error: null }; }
     catch (e) { return { segs: [], error: e.message }; }
-  }, [mti, fields, isVoid, voidTarget]);
+  }, [mti, fields, isReversal, voidTarget]);
 
   const wire = useMemo(() => {
-    if (isVoid && !voidTarget) return "";
+    if (isReversal && !voidTarget) return "";
     try { return encode({ mti, fields }); } catch { return ""; }
-  }, [mti, fields, isVoid, voidTarget]);
+  }, [mti, fields, isReversal, voidTarget]);
 
   const press = (d) => setAmount((a) => (a + d).replace(/^0+(?=\d)/, "").slice(0, 10));
   const back = () => setAmount((a) => a.slice(0, -1));
@@ -129,7 +138,7 @@ export default function Terminal() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setResult({ ok: true, mti: data.mti, captured: data.captured, fields: data.fields || {} });
-        if (!isVoid) {
+        if (!isReversal) {
           const t = nowParts();
           setHistory((prev) => [{ type: operationType, mti, de3: opConfig.de3 || "000000", stan, rrn: makeRrn(t.de13, stan), pan: card.pan, amount: pad(amount || "0", 12), currency: currency.code, date: new Date().toISOString() }, ...prev]);
         }
@@ -140,9 +149,15 @@ export default function Terminal() {
     } finally { setSending(false); }
   }
 
-  const canSend = operationType !== "void" || (voidTarget && history.length > 0);
-  const sendLabel = isVoid
-    ? (voidTarget ? `Annuler STAN ${voidTarget.stan} (${formatAmount(voidTarget.amount)})` : "Sélectionner une transaction")
+  const canSend = !isReversal || (voidTarget && history.length > 0 && partialValid);
+
+  const revLabel = isReversal && voidTarget
+    ? (isPartial ? `Extourner ${formatAmount(reversalAmount || "0")} sur ${formatAmount(voidTarget.amount)} (STAN ${voidTarget.stan})`
+       : `Extourner totalité ${formatAmount(voidTarget.amount)} (STAN ${voidTarget.stan})`)
+    : "Sélectionner une transaction";
+
+  const sendLabel = isReversal
+    ? revLabel
     : (isDab ? `Retirer ${formatAmount(amount)} ${currency.symbol}`
        : operationType === "refund" ? `Rembourser ${formatAmount(amount)} ${currency.symbol}`
        : operationType === "cashAdvance" ? `Avancer ${formatAmount(amount)} ${currency.symbol}`
@@ -163,12 +178,23 @@ export default function Terminal() {
             </select>
           </label>
           <div className="screen">
-            <div className="screen-row"><span className="screen-label">{isDab ? "RETRAIT DAB" : "MONTANT"}</span><span className="screen-scheme">{card.scheme}</span></div>
+            <div className="screen-row">
+              <span className="screen-label">
+                {isReversal ? "EXTORNE" : isDab ? "RETRAIT DAB" : "MONTANT"}
+              </span>
+              <span className="screen-scheme">{card.scheme}</span>
+            </div>
             <div className="amount"><span className="amount-val">{formatAmount(amount)}</span><span className="amount-cur">{currency.symbol}</span></div>
-            <div className="screen-foot"><span>{card.label}</span><span className={approved ? "tag tag-ok" : "tag tag-no"}>{approved ? (isVoid ? "Sera annulée" : "Sera approuvée") : "Sera refusée"}</span></div>
-            {isVoid && voidTarget && (
+            <div className="screen-foot">
+              <span>{card.label}</span>
+              <span className={approved ? "tag tag-ok" : "tag tag-no"}>
+                {approved ? (isReversal ? "Sera extournée" : "Sera approuvée") : "Sera refusée"}
+              </span>
+            </div>
+            {isReversal && voidTarget && (
               <div className="mti-breakdown" style={{ marginTop: 6 }}>
-                Annule la transaction STAN <strong>{voidTarget.stan}</strong> du {new Date(voidTarget.date).toLocaleString("fr-FR")}
+                Extourne la transaction STAN <strong>{voidTarget.stan}</strong> du {new Date(voidTarget.date).toLocaleString("fr-FR")}
+                {isPartial && <span> — montant partiel <strong>{formatAmount(reversalAmount || "0")}</strong> / {formatAmount(voidTarget.amount)}</span>}
               </div>
             )}
           </div>
@@ -187,6 +213,14 @@ export default function Terminal() {
           {isCashback && (
             <div className="dab-amounts">
               <label className="field"><span>DE-54 Montant cashback</span><input value={de54Amount} onChange={(e) => setDe54Amount(e.target.value.slice(0, 12))} placeholder="ex. 500" /></label>
+            </div>
+          )}
+          {isPartial && voidTarget && (
+            <div className="dab-amounts">
+              <label className="field"><span>Montant à extourner (max {formatAmount(voidTarget.amount)})</span>
+                <input value={reversalAmount} onChange={(e) => setReversalAmount(e.target.value.slice(0, 12))} placeholder={voidTarget.amount} />
+              </label>
+              {partialError && <p className="encode-error" style={{ margin: "4px 0 0" }}>{partialError}</p>}
             </div>
           )}
           <label className="field"><span>Carte de test</span>
@@ -208,14 +242,14 @@ export default function Terminal() {
               ))}
             </div>
           )}
-          {isVoid && (
+          {isReversal && (
             <div className="void-history">
               <p className="void-history-note">
                 Historique local (session uniquement, vidé au rechargement). L&apos;effet réel
                 d&apos;une extourne dépend du clearing (étape 2, non encore géré).
               </p>
               {history.length === 0 ? (
-                <p className="encode-error">Aucune transaction à annuler dans cette session.</p>
+                <p className="encode-error">Aucune transaction à extourner dans cette session.</p>
               ) : (
                 <div className="void-list">
                   {history.map((h, i) => (
@@ -229,7 +263,7 @@ export default function Terminal() {
               )}
             </div>
           )}
-          <button className="send" onClick={send} disabled={sending || !!segments.error || !amount || !canSend || (isVoid && !voidTarget)}>
+          <button className="send" onClick={send} disabled={sending || !!segments.error || !amount || !canSend || (isReversal && !voidTarget) || !!partialError}>
             {sending ? "Envoi…" : sendLabel}
           </button>
         </section>
@@ -243,12 +277,12 @@ export default function Terminal() {
           </p>
           {segments.error ? (
             <p className="encode-error">Encodage impossible : {segments.error}</p>
-          ) : (isVoid && !voidTarget) ? (
-            <p className="encode-error">Sélectionnez une transaction à annuler dans l&apos;historique.</p>
+          ) : (isReversal && !voidTarget) ? (
+            <p className="encode-error">Sélectionnez une transaction à extourner dans l&apos;historique.</p>
           ) : (
             <div className="wire-string">{segments.segs.map((s, i) => <span key={i} className={`seg seg-${s.kind}`} title={s.label}>{s.text}</span>)}</div>
           )}
-          {!isVoid || voidTarget ? (
+          {!isReversal || voidTarget ? (
             <>
               <div className="wire-meta"><span>{wire.length} caractères</span><span>MTI {mti} · {segments.segs.filter((s) => s.kind === "field").length} champs</span></div>
               <div className="mti-breakdown">{mtiInfo.version} · {mtiInfo.classe} · {mtiInfo.fonction} · {mtiInfo.origine}</div>

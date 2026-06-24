@@ -234,11 +234,21 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     originator_id = build_de33(row.get("acquirer_id"))
     pan_bin = pan[:6] if pan.isdigit() else "000000"
 
+    # DE-4 amount : si is_reversal ET row a reversal_amount, on utilise le
+    # montant partiel ; sinon le montant original (full reversal ou présentment).
+    _raw_amt = row.get("reversal_amount") if is_reversal else None
+    if _raw_amt is not None:
+        if int(_raw_amt) > int(row["txn_amount"]):
+            raise ValueError(
+                f"reversal_amount ({_raw_amt}) exceeds original "
+                f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
+    de4 = int(_raw_amt) if _raw_amt is not None else int(row["txn_amount"])
+
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
-        "DE4": int(row["txn_amount"]),                # minor units, no decimal point
+        "DE4": de4,                                   # minor units, no decimal point
         "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
         "DE24": FUNC_REVERSAL if is_reversal else FUNC_PRESENTMENT,
         "DE26": mcc,                                  # MCC (n-4)
@@ -408,6 +418,47 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq, count, amount_total, created=created,
         file_type=file_type, processor_id=processor_id, file_seq=file_seq))
     writer.close()                                    # zero-length terminator + final block
+
+    return buf.getvalue(), count, amount_total
+
+
+def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
+                                terminal_type: str, tcc: str, txn_env: str,
+                                created: datetime | None = None,
+                                blocked: bool = True,
+                                file_type: str = "000",
+                                processor_id: str = "00000000000",
+                                file_seq: str = "00001",
+                                ) -> tuple[bytes, int, int]:
+    """rows -> (ipm_bytes, reversal_count, reversal_total).
+
+    Parallèle à generate_ipm_bytes : génère un fichier IPM complet dont chaque
+    présentment porte is_reversal=True (DE-24=202, PDS0025="R"). Le montant de
+    chaque reversal peut être partiel via row.get("reversal_amount").
+    """
+    created = created or datetime.now(timezone.utc)
+    buf = io.BytesIO()
+    amount_total = 0
+    seq = 1
+
+    writer = IpmWriter(buf, blocked=blocked)
+    writer.write(build_file_header(seq, created))
+    for row in rows:
+        seq += 1
+        pan = decrypt_pan(row["pan_enc"], key)
+        writer.write(build_presentment(row, pan, seq,
+                                       terminal_type=terminal_type, tcc=tcc,
+                                       txn_env=txn_env,
+                                       created=created,
+                                       is_reversal=True))
+        amt = row.get("reversal_amount")
+        amount_total += int(amt) if amt is not None else int(row["txn_amount"])
+    count = len(rows)
+    seq += 1
+    writer.write(build_file_trailer(
+        seq, count, amount_total, created=created,
+        file_type=file_type, processor_id=processor_id, file_seq=file_seq))
+    writer.close()
 
     return buf.getvalue(), count, amount_total
 

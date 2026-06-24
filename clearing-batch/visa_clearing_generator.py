@@ -259,12 +259,15 @@ def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
 
 def build_reversal(row: dict[str, Any], pan: str, *, merchant_country: str,
                    original_txn_type: str = "purchase",
-                   reason_code: str = "00") -> str:
+                   reason_code: str = "00",
+                   reversal_amount: int | None = None) -> str:
     """TC 25 / TC 26 / TC 27 — Reversal (annulation d'une transaction).
     Même layout TCR-0 que le présentment initial, avec :
       - TC = 25 (sale reversal) / 26 (refund reversal) / 27 (cash reversal)
       - Usage Code (pos 147) = "2" (Reversal) au lieu de "1" (Original)
       - Reason Code (pos 148) = code raison (défaut "00")
+      - reversal_amount : montant partiel optionnel (≤ txn_amount).
+        None = full reversal (montant original inchangé).
     En mono-devise (périmètre actuel), Source Amount = Destination Amount ;
     en multi-devise, la convention Base II attend un swap des montants pour
     indiquer le sens inverse du flux."""
@@ -272,7 +275,12 @@ def build_reversal(row: dict[str, Any], pan: str, *, merchant_country: str,
     if not isinstance(dt, datetime):
         dt = datetime.now(timezone.utc)
 
-    amount = numeric(row["txn_amount"], 12)
+    raw_amt = reversal_amount if reversal_amount is not None else int(row["txn_amount"])
+    if reversal_amount is not None and reversal_amount > int(row["txn_amount"]):
+        raise ValueError(
+            f"reversal_amount ({reversal_amount}) exceeds original "
+            f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
+    amount = numeric(raw_amt, 12)
     currency = numeric(row.get("txn_currency"), 3)
     purchase_mmdd = (row.get("local_txn_date") or dt.strftime("%m%d"))[:4]
 
@@ -425,6 +433,54 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
         TRAILER_TC, count, file_debits, file_credits,
         processing=created, batch_number=max(batch_number, 1)))
     return lines, count, file_debits, file_credits
+
+
+def generate_reversal_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
+                                sending_id: str, receiving_id: str,
+                                merchant_country: str,
+                                created: datetime | None = None,
+                                batch_size: int | None = None
+                                ) -> tuple[list[str], int, int, int]:
+    """Pure builder: rows -> (lines, count, reversal_total, 0).
+
+    Produit un fichier de reversals (TC 25/26/27) structurellement identique
+    au fichier de présentment : TC90 header, batches (TC91), file trailer (TC92).
+    Chaque row est rendue via build_reversal() avec le montant partiel si
+    row.get("reversal_amount") est présent, sinon full reversal.
+    """
+    created = created or datetime.now(timezone.utc)
+    lines = [build_header(sending_id, receiving_id, created)]
+
+    count = len(rows)
+    chunk = batch_size if (batch_size and batch_size > 0) else max(count, 1)
+    file_total = 0
+    batch_number = 0
+
+    for start in range(0, count, chunk):
+        batch_rows = rows[start:start + chunk]
+        if not batch_rows:
+            continue
+        batch_number += 1
+        batch_total = 0
+        for row in batch_rows:
+            pan = decrypt_pan(row["pan_enc"], key)
+            txn_type = _txn_type_from_pc(row.get("processing_code"))
+            rev_amt = row.get("reversal_amount")
+            lines.append(build_reversal(
+                row, pan, merchant_country=merchant_country,
+                original_txn_type=txn_type,
+                reversal_amount=int(rev_amt) if rev_amt is not None else None))
+            amt = int(rev_amt) if rev_amt is not None else int(row["txn_amount"])
+            batch_total += amt
+        lines.append(build_count_trailer(
+            BATCH_TC, len(batch_rows), batch_total, 0,
+            processing=created, batch_number=batch_number))
+        file_total += batch_total
+
+    lines.append(build_count_trailer(
+        TRAILER_TC, count, file_total, 0,
+        processing=created, batch_number=max(batch_number, 1)))
+    return lines, count, file_total, 0
 
 
 def write_ctf_file(lines: list[str], out_dir: str, batch_id: str) -> tuple[str, str]:
