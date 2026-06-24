@@ -7,10 +7,14 @@ defensively:
 
     A. Housekeeping FIRST  -> requeue_stale(): any row stuck in EXPORTING from a
        crash the night before is reverted to APPROVED so it is not lost.
-    B. Visa               -> visa_clearing_generator.run(dated_dir): claim VISA
+    B. Visa                -> visa_clearing_generator.run(dated_dir): claim VISA
        rows, write the .dat (+ .sha256), then Temps 2 (EXPORTED) on success.
-    C. Mastercard         -> mastercard_clearing_generator.run(dated_dir): claim
+    C. Mastercard          -> mastercard_clearing_generator.run(dated_dir): claim
        MASTERCARD rows, write the binary .ipm (+ .sha256), then Temps 2.
+    D. Visa reversals     -> visa_clearing_generator.run_reversals(dated_dir):
+       claim CANCELLED VISA rows, write TC 25/26/27 CTF, then Temps 2.
+    E. Mastercard reversals -> mastercard_clearing_generator.run_reversals(dated_dir):
+       claim CANCELLED MASTERCARD rows, write DE-24=202 IPM, then Temps 2.
 
 Each generator's run() already encapsulates claim -> generate -> verify ->
 confirm, so the orchestrator just sequences them, isolates failures (one scheme
@@ -23,6 +27,10 @@ Output layout
     /outbound/clearing/<YYYY-MM-DD>/VISA_CTF_<YYYYMMDD>_<HHMMSS>_<batch>.dat.sha256
     /outbound/clearing/<YYYY-MM-DD>/MC_IPM_<YYYYMMDD>_<HHMMSS>_<batch>.ipm
     /outbound/clearing/<YYYY-MM-DD>/MC_IPM_<YYYYMMDD>_<HHMMSS>_<batch>.ipm.sha256
+    /outbound/clearing/<YYYY-MM-DD>/VISA_REVERSAL_<YYYYMMDD>_<HHMMSS>_<batch>.dat
+    /outbound/clearing/<YYYY-MM-DD>/VISA_REVERSAL_<YYYYMMDD>_<HHMMSS>_<batch>.dat.sha256
+    /outbound/clearing/<YYYY-MM-DD>/MC_REVERSAL_<YYYYMMDD>_<HHMMSS>_<batch>.ipm
+    /outbound/clearing/<YYYY-MM-DD>/MC_REVERSAL_<YYYYMMDD>_<HHMMSS>_<batch>.ipm.sha256
 
 Exit code is 0 only if every phase that ran succeeded; non-zero otherwise, so
 cron / a scheduler can alert.
@@ -126,9 +134,32 @@ def main(argv: list[str]) -> int:
         confirm=True,
     ))
 
-    all_ok = visa_ok and mc_ok
+    # Step D — Visa reversals
+    visa_rev_ok = _run_phase("VISA-REVERSAL", lambda: visa.run_reversals(
+        out_dir,
+        sending_id=args.visa_sending_id,
+        receiving_id=args.visa_receiving_id,
+        merchant_country=args.merchant_country,
+        include_today=args.include_today,
+        confirm=True,
+    ))
+
+    # Step E — Mastercard reversals
+    mc_rev_ok = _run_phase("MASTERCARD-REVERSAL", lambda: mc.run_reversals(
+        out_dir,
+        terminal_type=args.mc_terminal_type,
+        tcc=args.mc_tcc,
+        txn_env=args.mc_txn_env,
+        include_today=args.include_today,
+        blocked=True,
+        confirm=True,
+    ))
+
+    all_ok = visa_ok and mc_ok and visa_rev_ok and mc_rev_ok
     _log(f"clearing run complete | visa={'OK' if visa_ok else 'FAIL'} "
-         f"mastercard={'OK' if mc_ok else 'FAIL'}")
+         f"mastercard={'OK' if mc_ok else 'FAIL'} "
+         f"visa-rev={'OK' if visa_rev_ok else 'FAIL'} "
+         f"mc-rev={'OK' if mc_rev_ok else 'FAIL'}")
     return 0 if all_ok else 1
 
 

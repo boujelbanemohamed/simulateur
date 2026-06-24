@@ -84,6 +84,7 @@ from claim_clearing import (
     decrypt_pan,
     mask_pan,
     claim_batch,
+    claim_reversals,
     confirm_exported,
     ensure_writable_dir,
 )
@@ -468,11 +469,14 @@ def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
     return buf.getvalue(), count, amount_total
 
 
-def write_ipm_file(data: bytes, out_dir: str, batch_id: str) -> tuple[str, str]:
-    """Write the .ipm + a .sha256 sidecar. Returns (file_path, sha_hex)."""
+def write_ipm_file(data: bytes, out_dir: str, batch_id: str, *,
+                   prefix: str = "MC_IPM") -> tuple[str, str]:
+    """Write the .ipm + a .sha256 sidecar. Returns (file_path, sha_hex).
+
+    prefix: fichier nommé ``{prefix}_{timestamp}_{batch}.ipm`` (défaut MC_IPM)."""
     os.makedirs(out_dir, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = os.path.join(out_dir, f"MC_IPM_{stamp}_{batch_id[:8]}.ipm")
+    path = os.path.join(out_dir, f"{prefix}_{stamp}_{batch_id[:8]}.ipm")
     with open(path, "wb") as f:
         f.write(data)
         f.flush()
@@ -541,6 +545,58 @@ def run(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
 
         sample = decrypt_pan(result.rows[0]["pan_enc"], key)
         print(f"[MC] sample: PAN {mask_pan(sample)} STAN={result.rows[0]['stan']}")
+        return 0
+    finally:
+        conn.close()
+
+
+def run_reversals(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
+                  include_today: bool, blocked: bool, confirm: bool,
+                  file_type: str = "000", processor_id: str = "00000000000",
+                  file_seq: str = "00001") -> int:
+    """Orchestration pour les reversals Mastercard (DE-24=202 + PDS0025=R).
+
+    Calquée sur run() mais utilise claim_reversals / generate_reversal_ipm_bytes.
+    """
+    if not ensure_writable_dir(out_dir):
+        print(f"[MC-REV] ALERT: output directory not writable, skipping claim: {out_dir}")
+        return 2
+
+    conn = connect()
+    try:
+        key = load_key()
+        result = claim_reversals(conn, "MASTERCARD", include_today=include_today)
+        if result.count == 0:
+            print("[MC-REV] nothing to reverse")
+            return 0
+
+        data, count, amount_total = generate_reversal_ipm_bytes(
+            result.rows, key, terminal_type=terminal_type, tcc=tcc,
+            txn_env=txn_env, blocked=blocked,
+            file_type=file_type, processor_id=processor_id, file_seq=file_seq)
+
+        if blocked and len(data) % 1014 != 0:
+            raise RuntimeError(f"blocked IPM size {len(data)} is not a multiple of 1014")
+
+        n_records, first_mti = verify_ipm(data, blocked=blocked)
+        expected = count + 2
+        if n_records != expected:
+            raise RuntimeError(f"re-read {n_records} records, expected {expected}")
+
+        path, sha = write_ipm_file(data, out_dir, result.batch_id, prefix="MC_REVERSAL")
+        print(f"[MC-REV] wrote {path}")
+        print(f"[MC-REV] records: 1 header(1644) + {count} reversal(1240,DE24=202) "
+              f"+ 1 trailer(1644) = {n_records} | blocked={blocked} bytes={len(data)}")
+        print(f"[MC-REV] amount_total(minor units)={amount_total} | sha256={sha[:16]}…")
+
+        if confirm:
+            n = confirm_exported(conn, result.batch_id)
+            print(f"[MC-REV] Temps 2: marked {n} row(s) EXPORTED (batch {result.batch_id})")
+        else:
+            print(f"[MC-REV] --no-confirm: rows left in EXPORTING (batch {result.batch_id})")
+
+        sample = decrypt_pan(result.rows[0]["pan_enc"], key)
+        print(f"[MC-REV] sample: PAN {mask_pan(sample)} STAN={result.rows[0]['stan']}")
         return 0
     finally:
         conn.close()

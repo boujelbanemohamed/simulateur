@@ -52,6 +52,7 @@ from claim_clearing import (
     decrypt_pan,
     mask_pan,
     claim_batch,
+    claim_reversals,
     confirm_exported,
     ensure_writable_dir,
 )
@@ -488,11 +489,14 @@ def generate_reversal_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
     return lines, count, file_total, 0
 
 
-def write_ctf_file(lines: list[str], out_dir: str, batch_id: str) -> tuple[str, str]:
-    """Write the CTF + a .sha256 sidecar. Returns (file_path, sha_hex)."""
+def write_ctf_file(lines: list[str], out_dir: str, batch_id: str, *,
+                   prefix: str = "VISA_CTF") -> tuple[str, str]:
+    """Write the CTF + a .sha256 sidecar. Returns (file_path, sha_hex).
+    
+    prefix: fichier nommé ``{prefix}_{timestamp}_{batch}.dat`` (défaut VISA_CTF)."""
     os.makedirs(out_dir, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    path = os.path.join(out_dir, f"VISA_CTF_{stamp}_{batch_id[:8]}.dat")
+    path = os.path.join(out_dir, f"{prefix}_{stamp}_{batch_id[:8]}.dat")
     # Records are joined by CRLF (Base II ASCII CTF convention). The 168 is the
     # record payload; the line terminator is separate.
     payload = "\r\n".join(lines) + "\r\n"
@@ -556,6 +560,58 @@ def run(out_dir: str, *, sending_id: str, receiving_id: str,
         # Masked sample for the operator.
         sample = decrypt_pan(result.rows[0]["pan_enc"], key)
         print(f"[VISA] sample: PAN {mask_pan(sample)} STAN={result.rows[0]['stan']}")
+        return 0
+    finally:
+        conn.close()
+
+
+def run_reversals(out_dir: str, *, sending_id: str, receiving_id: str,
+                  merchant_country: str, include_today: bool, confirm: bool,
+                  batch_size: int | None = None) -> int:
+    """Orchestration pour les reversals Visa (TC 25/26/27).
+
+    Calquée sur run() mais utilise claim_reversals / generate_reversal_ctf_lines.
+    """
+    if not ensure_writable_dir(out_dir):
+        print(f"[VISA-REV] ALERT: output directory not writable, skipping claim: {out_dir}")
+        return 2
+
+    conn = connect()
+    try:
+        key = load_key()
+        result = claim_reversals(conn, "VISA", include_today=include_today)
+        if result.count == 0:
+            print("[VISA-REV] nothing to reverse")
+            return 0
+
+        lines, count, total, _ = generate_reversal_ctf_lines(
+            result.rows, key,
+            sending_id=sending_id, receiving_id=receiving_id,
+            merchant_country=merchant_country, batch_size=batch_size)
+
+        bad = [i for i, ln in enumerate(lines) if len(ln) != RECORD_LEN]
+        if bad:
+            raise RuntimeError(f"record length != {RECORD_LEN} at line(s) {bad}")
+
+        n_batches = sum(1 for ln in lines if ln[:2] == BATCH_TC)
+        path, sha = write_ctf_file(lines, out_dir, result.batch_id, prefix="VISA_REVERSAL")
+        ref_count = sum(1 for r in result.rows if _txn_type_from_pc(r.get("processing_code")) == "refund")
+        cash_count = sum(1 for r in result.rows if _txn_type_from_pc(r.get("processing_code")) == "withdrawal")
+        draft_count = count - ref_count - cash_count
+        print(f"[VISA-REV] wrote {path}")
+        print(f"[VISA-REV] records: 1 header + {draft_count} TC{REVERSAL_SALE_TC}"
+              f" / {ref_count} TC{REVERSAL_REFUND_TC} / {cash_count} TC{REVERSAL_CASH_TC}"
+              f" + {n_batches} TC{BATCH_TC} + 1 TC{TRAILER_TC} | "
+              f"total={total} | sha256={sha[:16]}…")
+
+        if confirm:
+            n = confirm_exported(conn, result.batch_id)
+            print(f"[VISA-REV] Temps 2: marked {n} row(s) EXPORTED (batch {result.batch_id})")
+        else:
+            print(f"[VISA-REV] --no-confirm: rows left in EXPORTING (batch {result.batch_id})")
+
+        sample = decrypt_pan(result.rows[0]["pan_enc"], key)
+        print(f"[VISA-REV] sample: PAN {mask_pan(sample)} STAN={result.rows[0]['stan']}")
         return 0
     finally:
         conn.close()

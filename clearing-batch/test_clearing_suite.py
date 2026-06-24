@@ -23,6 +23,7 @@ Covered:
 """
 
 import os
+import tempfile
 import unittest
 from datetime import datetime, timezone
 
@@ -681,6 +682,28 @@ class TestKeyRotation(unittest.TestCase):
             self.assertEqual(decrypt_pan(blob), pan)
         finally:
             os.environ.pop("CLEARING_PAN_KEY_V2", None)
+
+
+class TestFilePrefixes(unittest.TestCase):
+    """DB-free: vérifie que write_ctf_file / write_ipm_file acceptent le préfixe."""
+
+    def test_write_ctf_file_custom_prefix(self):
+        lines = ["dummy"]
+        with tempfile.TemporaryDirectory() as td:
+            path, _ = visa.write_ctf_file(lines, td, "abc123", prefix="VISA_REVERSAL")
+            basename = os.path.basename(path)
+            self.assertTrue(basename.startswith("VISA_REVERSAL_"),
+                            f"expected VISA_REVERSAL_ prefix, got {basename}")
+            self.assertTrue(basename.endswith(".dat"))
+
+    def test_write_ipm_file_custom_prefix(self):
+        data = b"\0" * 1014
+        with tempfile.TemporaryDirectory() as td:
+            path, _ = mc.write_ipm_file(data, td, "def456", prefix="MC_REVERSAL")
+            basename = os.path.basename(path)
+            self.assertTrue(basename.startswith("MC_REVERSAL_"),
+                            f"expected MC_REVERSAL_ prefix, got {basename}")
+            self.assertTrue(basename.endswith(".ipm"))
 
 
 if __name__ == "__main__":
