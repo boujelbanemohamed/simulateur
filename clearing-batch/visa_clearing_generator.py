@@ -200,7 +200,13 @@ def build_tc05(row: dict[str, Any], pan: str, *, merchant_country: str,
       En mono-devise (périmètre actuel), source = destination est une simplification
       acceptable : les deux montants sont identiques. Si le simulateur devait un jour
       produire des transactions multi-devises, le Destination Amount devrait être laissé
-      vide ou calculé par Visa — son remplissage par l'acquéreur serait incorrect."""
+      vide ou calculé par Visa — son remplissage par l'acquéreur serait incorrect.
+
+    NOTE conformité — multi-devises / cross-border :
+      Le TADC (Destination Amount, TCR0 pos 62-73) est calculé par Visa ('Visa Performed
+      Calculation'), pas par l'acquéreur. En mono-devise, source=destination (simplification
+      documentée). L'acquéreur fournit le Source Amount (77-88) et sa devise (89-91) ; la
+       conversion et le sens cross-border relèvent du réseau."""
     dt = row["transmission_ts"]
     if not isinstance(dt, datetime):
         dt = datetime.now(timezone.utc)

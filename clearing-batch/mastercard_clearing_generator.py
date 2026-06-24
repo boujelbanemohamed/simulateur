@@ -296,6 +296,17 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     # GCMS) sont fournis ou enrichis par le système de clearing, pas par l'acquéreur originateur
     # (usage Org = O ou •, Dst = M/C). Les inclure en dur serait incorrect. Le présentment fournit
     # donc tous les champs M côté Org. Réf. IPM Clearing Formats, tables d'usage par DE.
+    #
+    # NOTE conformité — concepts transverses NON émis par l'acquéreur (network-provided) :
+    #   - Late Presentment (PDS 0206) : GCMS détermine si le présentment est tardif et pose
+    #     l'indicateur (Org=•). L'acquéreur n'a qu'à soumettre dans les délais ; il n'émet pas
+    #     ce PDS.
+    #   - Cross-Border (PDS 0177) : le réseau dérive le caractère transfrontalier de la
+    #     comparaison des pays acquéreur/émetteur et l'indique au receveur. Non émis par
+    #     l'acquéreur.
+    #   - Multi-Currency / Settlement : DE-5 (Amount Reconciliation) et DE-9 (Conversion Rate)
+    #     sont 'always provided by the clearing system' ; l'acquéreur fournit seulement le
+    #     montant source (DE-4) dans sa devise (DE-49). Cf. champs système-provided ci-dessus.
     return msg
 
 
