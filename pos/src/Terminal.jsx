@@ -75,11 +75,14 @@ export default function Terminal() {
     ...(isDab ? DAB_RESPONSE_LABELS : {}),
   }), [isDab]);
 
+  const partialNum = Number(reversalAmount || "0");
   const partialValid = isPartial && voidTarget
-    ? (Number(reversalAmount || "0") <= Number(voidTarget.amount))
+    ? (partialNum > 0 && partialNum <= Number(voidTarget.amount))
     : true;
   const partialError = isPartial && voidTarget && !partialValid
-    ? `Le montant partiel (${formatAmount(reversalAmount || "0")}) ne peut pas dépasser le total (${formatAmount(voidTarget.amount)})`
+    ? (partialNum <= 0
+       ? "Le montant partiel doit être supérieur à 0"
+       : `Le montant partiel (${formatAmount(reversalAmount || "0")}) ne peut pas dépasser le total (${formatAmount(voidTarget.amount)})`)
     : null;
 
   const fields = useMemo(() => {

@@ -238,9 +238,14 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     # montant partiel ; sinon le montant original (full reversal ou présentment).
     _raw_amt = row.get("reversal_amount") if is_reversal else None
     if _raw_amt is not None:
-        if int(_raw_amt) > int(row["txn_amount"]):
+        raw = int(_raw_amt)
+        if raw <= 0:
             raise ValueError(
-                f"reversal_amount ({_raw_amt}) exceeds original "
+                f"reversal_amount ({raw}) must be > 0 "
+                f"for STAN={row.get('stan')}")
+        if raw > int(row["txn_amount"]):
+            raise ValueError(
+                f"reversal_amount ({raw}) exceeds original "
                 f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
     de4 = int(_raw_amt) if _raw_amt is not None else int(row["txn_amount"])
 

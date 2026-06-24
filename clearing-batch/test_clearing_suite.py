@@ -241,6 +241,22 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(net, debit_total - credit_total)
         self.assertEqual(net, 700)
 
+    def test_build_reversal_partial_zero_raises(self):
+        """reversal_amount=0 → ValueError."""
+        row = sample_rows(["4111111111111111"])[0]
+        row["txn_amount"] = 1000
+        with self.assertRaises(ValueError):
+            visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                reversal_amount=0)
+
+    def test_build_reversal_partial_negative_raises(self):
+        """reversal_amount=-100 → ValueError."""
+        row = sample_rows(["4111111111111111"])[0]
+        row["txn_amount"] = 1000
+        with self.assertRaises(ValueError):
+            visa.build_reversal(row, "4111111111111111", merchant_country="788",
+                                reversal_amount=-100)
+
     def test_build_reversal_partial_amount(self):
         """reversal_amount < txn_amount → montant partiel dans le TCR."""
         row = sample_rows(["4111111111111111"])[0]
@@ -560,6 +576,34 @@ class TestMastercardIpm(unittest.TestCase):
                                    created=DT)
         self.assertEqual(msg["DE24"], mc.FUNC_PRESENTMENT)
         self.assertNotIn("PDS0025", msg)
+
+    def test_build_presentment_reversal_amount_partial(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 2000
+        row["reversal_amount"] = 800
+        msg = mc.build_presentment(row, "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT, is_reversal=True)
+        self.assertEqual(msg["DE24"], mc.FUNC_REVERSAL)
+        self.assertEqual(int(msg["DE4"]), 800)
+
+    def test_build_presentment_reversal_partial_zero_raises(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 1000
+        row["reversal_amount"] = 0
+        with self.assertRaises(ValueError):
+            mc.build_presentment(row, "5413330089020011", 2,
+                                 terminal_type="  Z", tcc="T", txn_env="0",
+                                 created=DT, is_reversal=True)
+
+    def test_build_presentment_reversal_partial_negative_raises(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["txn_amount"] = 1000
+        row["reversal_amount"] = -100
+        with self.assertRaises(ValueError):
+            mc.build_presentment(row, "5413330089020011", 2,
+                                 terminal_type="  Z", tcc="T", txn_env="0",
+                                 created=DT, is_reversal=True)
 
     def test_build_chargeback_skeleton(self):
         row = sample_rows(["5413330089020011"])[0]

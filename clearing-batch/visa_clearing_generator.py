@@ -276,10 +276,15 @@ def build_reversal(row: dict[str, Any], pan: str, *, merchant_country: str,
         dt = datetime.now(timezone.utc)
 
     raw_amt = reversal_amount if reversal_amount is not None else int(row["txn_amount"])
-    if reversal_amount is not None and reversal_amount > int(row["txn_amount"]):
-        raise ValueError(
-            f"reversal_amount ({reversal_amount}) exceeds original "
-            f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
+    if reversal_amount is not None:
+        if reversal_amount <= 0:
+            raise ValueError(
+                f"reversal_amount ({reversal_amount}) must be > 0 "
+                f"for STAN={row.get('stan')}")
+        if reversal_amount > int(row["txn_amount"]):
+            raise ValueError(
+                f"reversal_amount ({reversal_amount}) exceeds original "
+                f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
     amount = numeric(raw_amt, 12)
     currency = numeric(row.get("txn_currency"), 3)
     purchase_mmdd = (row.get("local_txn_date") or dt.strftime("%m%d"))[:4]
