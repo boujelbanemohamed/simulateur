@@ -35,6 +35,7 @@ import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
 import issuer_chargeback as icb
 from issuer_reception import aggregate_results
+from issuer_posting import build_movement_ref
 
 KEY = os.urandom(32)
 DT = datetime(2026, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
@@ -1177,6 +1178,61 @@ class TestIssuerChargeback(unittest.TestCase):
         self.assertNotIn("DE94", msg)
 
 
+class TestMovementRef(unittest.TestCase):
+    """build_movement_ref — pure function, no DB needed."""
+
+    def _make_movement(self, raw_ref=None, **kw):
+        from issuer_inbound import ClearingMovement
+        return ClearingMovement(
+            network=kw.pop("network", "MASTERCARD"),
+            mti_or_tc=kw.pop("mti_or_tc", "1240"),
+            pan=kw.pop("pan", "5413330089020011"),
+            amount=kw.pop("amount", 1000),
+            kind=kw.pop("kind", "presentment"),
+            processing_code=kw.pop("processing_code", "000000"),
+            currency=kw.pop("currency", "788"),
+            raw_ref=raw_ref,
+        )
+
+    def test_with_raw_ref(self):
+        m = self._make_movement(raw_ref="123456789012345")
+        ref = build_movement_ref(m, account_id=42)
+        self.assertEqual(ref, "123456789012345")
+
+    def test_without_raw_ref_deterministic(self):
+        m = self._make_movement(raw_ref=None)
+        ref1 = build_movement_ref(m, account_id=42)
+        ref2 = build_movement_ref(m, account_id=42)
+        self.assertEqual(ref1, ref2)
+        self.assertIsInstance(ref1, str)
+        self.assertEqual(len(ref1), 16)
+
+    def test_without_raw_ref_no_clear_pan(self):
+        m = self._make_movement(raw_ref=None)
+        ref = build_movement_ref(m, account_id=42)
+        # Must not contain the clear PAN (the full 16-digit PAN should not appear)
+        self.assertNotIn("5413330089020011", ref)
+        # Must not contain more than 4 consecutive digit-only characters (masked pan is "****0011")
+        # The fallback uses mask_pan which only shows last 4 digits as plain text.
+        segments = ref.replace(":", " ").replace("-", " ").split()
+        for seg in segments:
+            if seg.isdigit() and len(seg) > 4:
+                self.fail(f"ref segment contains {len(seg)} consecutive digits — possible PAN leak: {seg!r}")
+
+    def test_different_account_different_ref(self):
+        m = self._make_movement(raw_ref=None)
+        ref_a = build_movement_ref(m, account_id=1)
+        ref_b = build_movement_ref(m, account_id=2)
+        self.assertNotEqual(ref_a, ref_b)
+
+    def test_different_amount_different_ref(self):
+        m1 = self._make_movement(raw_ref=None, amount=500)
+        m2 = self._make_movement(raw_ref=None, amount=1000)
+        ref1 = build_movement_ref(m1, account_id=42)
+        ref2 = build_movement_ref(m2, account_id=42)
+        self.assertNotEqual(ref1, ref2)
+
+
 class TestIssuerReception(unittest.TestCase):
     """aggregate_results — pure function, no DB needed."""
 
@@ -1240,6 +1296,31 @@ class TestIssuerReception(unittest.TestCase):
         ])
         self.assertEqual(s["applied"], 1)
         self.assertEqual(s["total_movements"], 2)
+
+    def test_already_posted_counted(self):
+        s = aggregate_results([
+            [self._result("APPLIED"), self._result("ALREADY_POSTED")],
+            [self._result("ALREADY_POSTED")],
+        ])
+        self.assertEqual(s["applied"], 1)
+        self.assertEqual(s["already_posted"], 2)
+        self.assertEqual(s["total_movements"], 3)
+
+    def test_mixed_with_already_posted(self):
+        s = aggregate_results([
+            [
+                self._result("APPLIED"),
+                self._result("NO_ACCOUNT"),
+                self._result("ALREADY_POSTED"),
+                self._result("REJECTED_STATUS"),
+                self._result("ALREADY_POSTED"),
+            ],
+        ])
+        self.assertEqual(s["applied"], 1)
+        self.assertEqual(s["no_account"], 1)
+        self.assertEqual(s["rejected"], 1)
+        self.assertEqual(s["already_posted"], 2)
+        self.assertEqual(s["total_movements"], 5)
 
 
 if __name__ == "__main__":

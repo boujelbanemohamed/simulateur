@@ -22,11 +22,27 @@ Le token TKN+4-chiffres n'est PAS utilisé pour le lookup car il n'est pas uniqu
 (collision possible sur les 4 derniers chiffres → risque de débiter le mauvais compte).
 C'est pourquoi le parser (issuer_inbound.py) reconstitue le PAN complet (main+extension)
 depuis le CTF Visa — pour permettre ce rapprochement fiable.
+
+IDEMPOTENCE (Réception-2) :
+  Chaque mouvement imputé est tracé dans la table posted_movement avec une
+  contrainte UNIQUE (network, movement_ref, amount, account_id). Avant
+  d'appliquer le débit/crédit, apply_movement tente d'INSÉRER une ligne :
+    * INSERT réussi → application du solde (atomique dans la même transaction).
+    * Violation UNIQUE → mouvement déjà imputé → retourne ALREADY_POSTED
+      sans toucher au solde (via SAVEPOINT pour ne pas invalider le batch).
+  La référence d'idempotence (movement_ref) est le raw_ref (STAN/ARN) du
+  clearing si présent, sinon un hash SHA-256 déterministe dérivé des champs
+  du mouvement + account_id (jamais le PAN clair).
+  NOTE : si raw_ref est absent (Visa CTF sans STAN), le hash de repli est
+  déterministe mais sa stabilité dépend de la qualité des champs disponibles.
 """
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
+
+from psycopg2 import IntegrityError
 
 from claim_clearing import connect, load_key, decrypt_pan, mask_pan
 
@@ -67,6 +83,33 @@ def sense_for_movement(movement) -> str:
     if movement.kind == "reversal":
         return "credit" if base == "debit" else "debit"
     return base
+
+
+# --------------------------------------------------------------------------- #
+# Référence d'idempotence
+# --------------------------------------------------------------------------- #
+
+def build_movement_ref(movement, account_id: int) -> str:
+    """Référence déterministe pour la déduplication d'imputation.
+
+    - Si ``movement.raw_ref`` est présent (STAN/ARN du clearing), l'utilise tel quel.
+    - Sinon, dérive un hash SHA-256 hex (16 premiers caractères) depuis les champs
+      du mouvement + account_id. Ne contient JAMAIS de PAN en clair (utilise
+      ``mask_pan``). Déterministe : deux appels avec les mêmes arguments produisent
+      la même référence.
+
+    La stabilité du fallback dépend de la qualité des champs disponibles côté
+    Visa CTF (où raw_ref peut être None). La contrainte UNIQUE inclut account_id
+    pour limiter le risque de faux positifs.
+    """
+    if movement.raw_ref:
+        return movement.raw_ref
+    pan_masked = mask_pan(movement.pan)
+    raw = (
+        f"{movement.network}:{movement.mti_or_tc}:{movement.amount}:"
+        f"{pan_masked}:{account_id}:{movement.kind}"
+    )
+    return hashlib.sha256(raw.encode()).hexdigest()[:16]
 
 
 # --------------------------------------------------------------------------- #
@@ -141,6 +184,31 @@ def apply_movement(conn, movement, key: bytes | None = None) -> dict[str, Any]:
 
     sense = sense_for_movement(movement)
     amount = movement.amount
+    movement_ref = build_movement_ref(movement, account_id)
+
+    # SAVEPOINT : un doublon d'idempotence ne doit pas invalider tout le batch
+    cur.execute("SAVEPOINT sp_idempotency")
+    try:
+        cur.execute(
+            "INSERT INTO posted_movement "
+            "(account_id, network, mti_or_tc, amount, movement_ref, sense) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (account_id, movement.network, movement.mti_or_tc,
+             amount, movement_ref, sense),
+        )
+    except IntegrityError:
+        cur.execute("ROLLBACK TO SAVEPOINT sp_idempotency")
+        return {
+            "status": "ALREADY_POSTED",
+            "account_id": account_id,
+            "pan_masked": mask_pan(movement.pan),
+            "movement_ref": movement_ref,
+            "network": movement.network,
+            "mti_or_tc": movement.mti_or_tc,
+            "amount": amount,
+            "sense": sense,
+            "account_status": active_status,
+        }
 
     if sense == "debit":
         new_balance = balance - amount
@@ -157,6 +225,7 @@ def apply_movement(conn, movement, key: bytes | None = None) -> dict[str, Any]:
         "pan_masked": mask_pan(movement.pan),
         "sense": sense,
         "amount": amount,
+        "movement_ref": movement_ref,
         "old_balance": balance,
         "new_balance": new_balance,
         "account_status": active_status,

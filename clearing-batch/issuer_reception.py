@@ -7,12 +7,12 @@ This module is the CONSUMER side of the clearing pipeline — it reads the .dat
 via issuer_inbound.read_clearing_file(), and applies the movements via
 issuer_posting.post_clearing_file().
 
-IDEMPOTENCE (known limitation — no dedup):
-  Re-running this phase on the same files will re-apply all movements, causing
-  double-imputation. A production system would mark processed files (e.g.
-  rename, sidecar marker, or a processed_files table). This lot does NOT
-  implement such a mechanism — it is a documented operational requirement for
-  the next iteration.
+IDEMPOTENCE (Réception-2 — posted_movement table):
+  Chaque mouvement imputé est tracé dans posted_movement avec une contrainte
+  UNIQUE (network, movement_ref, amount, account_id). La phase est donc
+  idempotente : rejouer les mêmes fichiers saute les mouvements déjà vus
+  (statut ALREADY_POSTED en agrégation). Voir issuer_posting.apply_movement
+  pour le mécanisme SAVEPOINT.
 """
 
 from __future__ import annotations
@@ -38,12 +38,14 @@ def aggregate_results(all_results: list[list[dict[str, Any]]]) -> dict[str, Any]
         all_results: List of results (each being a list of movement result dicts).
 
     Returns:
-        Dict with keys: files, applied, no_account, rejected, total_movements.
+        Dict with keys: files, applied, no_account, rejected, already_posted,
+        total_movements.
     """
     files = len(all_results)
     applied = 0
     no_account = 0
     rejected = 0
+    already_posted = 0
     total_movements = 0
 
     for file_results in all_results:
@@ -56,12 +58,15 @@ def aggregate_results(all_results: list[list[dict[str, Any]]]) -> dict[str, Any]
                 no_account += 1
             elif status == "REJECTED_STATUS":
                 rejected += 1
+            elif status == "ALREADY_POSTED":
+                already_posted += 1
 
     return {
         "files": files,
         "applied": applied,
         "no_account": no_account,
         "rejected": rejected,
+        "already_posted": already_posted,
         "total_movements": total_movements,
     }
 
@@ -111,8 +116,10 @@ def issuer_reception(output_dir: str, key: bytes | None = None) -> dict[str, Any
             appl = sum(1 for r in results if r.get("status") == "APPLIED")
             noac = sum(1 for r in results if r.get("status") == "NO_ACCOUNT")
             rej = sum(1 for r in results if r.get("status") == "REJECTED_STATUS")
+            dup = sum(1 for r in results if r.get("status") == "ALREADY_POSTED")
             _log(f"  {os.path.basename(fpath)}: {appl} applied, "
-                 f"{noac} no_account, {rej} rejected "
+                 f"{noac} no_account, {rej} rejected, "
+                 f"{dup} already_posted "
                  f"({len(results)} movements)")
         except Exception as exc:
             _log(f"  ERROR processing {os.path.basename(fpath)}: {exc}")
@@ -122,6 +129,7 @@ def issuer_reception(output_dir: str, key: bytes | None = None) -> dict[str, Any
     summary = aggregate_results(all_results)
     _log(f"issuer reception done: {summary['files']} files, "
          f"{summary['applied']} applied, {summary['no_account']} no_account, "
-         f"{summary['rejected']} rejected "
+         f"{summary['rejected']} rejected, "
+         f"{summary['already_posted']} already_posted "
          f"({summary['total_movements']} total movements)")
     return summary

@@ -73,3 +73,33 @@ CREATE INDEX IF NOT EXISTS idx_account_issuer
 
 CREATE INDEX IF NOT EXISTS idx_account_pan_token
     ON cardholder_account (pan_token);
+
+-- =====================================================================
+-- STAGE 2 — Issuer posting idempotency (Réception-2)
+-- Empêche la double-imputation quand l'orchestrateur rejoue les mêmes
+-- fichiers de clearing. Chaque mouvement imputé est tracé dans cette
+-- table avec une contrainte d'unicité (network, movement_ref, amount,
+-- account_id) : si le même fichier est traité deux fois, l'INSERT
+-- viole la contrainte et l'imputation est sautée (ALREADY_POSTED).
+-- Idempotent : CREATE TABLE IF NOT EXISTS.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS posted_movement (
+    id            BIGSERIAL    PRIMARY KEY,
+    account_id    BIGINT       NOT NULL REFERENCES cardholder_account(id),
+    network       VARCHAR(10)  NOT NULL,
+    mti_or_tc     VARCHAR(8)   NOT NULL,
+    amount        BIGINT       NOT NULL,
+    movement_ref  VARCHAR(64)  NOT NULL,  -- raw_ref (STAN/ARN) si dispo, sinon hash SHA-256 déterministe
+    sense         VARCHAR(8)   NOT NULL,  -- debit | credit
+    posted_at     TIMESTAMP    NOT NULL DEFAULT now(),
+    CONSTRAINT uq_posted_movement UNIQUE (network, movement_ref, amount, account_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_posted_movement_account
+    ON posted_movement (account_id, posted_at DESC);
+
+COMMENT ON TABLE posted_movement IS
+    'Idempotency tracking for issuer clearing posting. Prevents double-imputation on replay.';
+COMMENT ON COLUMN posted_movement.movement_ref IS
+    'STAN/ARN from clearing file, or deterministic SHA-256 hex digest fallback (see issuer_posting.build_movement_ref). Never contains clear PAN. NOT NULL: our code always provides a value via build_movement_ref().';
