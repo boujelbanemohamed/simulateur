@@ -340,15 +340,17 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
 
 # --------------------------------------------------------------------------- #
-# Chargeback (MTI 1442 — second presentment / reprocessing)
+# DÉPRÉCIÉ : issuer_chargeback.py (build_first_chargeback) remplace ce
+# squelette.
 #
-# NOTE rôle : le First Chargeback/1442 (DE-24 450 full / 453 partial, Arbitration
-# 451) est initié par l'ÉMETTEUR (issuer) selon la spec IPM p.134, pas par
-# l'acquéreur. Ce simulateur étant côté acquéreur, il ne l'émet pas dans le flux
-# nominal — il le recevrait. Ce builder est conservé comme référence de structure
-# (pour un futur rôle émetteur), pas comme un message émis par l'acquéreur. La
-# réponse conforme de l'acquéreur à un chargeback est le Second Presentment
-# (build_second_presentment, 1240/205 ou 1240/282).
+# Ce squelette (DE-24=200, pas de DE-30, pas de DE-56, pas de reason code
+# standardisé) ne correspond PAS à un vrai First Chargeback IPM. Le vrai
+# Chargeback 1442 (DE-24 450/453) est initié par l'émetteur, pas par
+# l'acquéreur — voir clearing-batch/issuer_chargeback.py.
+#
+# Conservé uniquement pour ne pas casser les tests existants
+# (test_build_chargeback_skeleton, test_build_chargeback_custom_reason).
+# NE PAS utiliser pour produire des chargebacks réels.
 # --------------------------------------------------------------------------- #
 def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
                      terminal_type: str, tcc: str, txn_env: str,
@@ -356,17 +358,17 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
                      chargeback_reason: str = "00") -> dict[str, Any]:
     """Build one MTI 1442 Chargeback message dict for cardutil.
 
+    .. deprecated::
+       Use `issuer_chargeback.build_first_chargeback()` instead.
+       This function uses DE-24=200 (not 450/453), has no Original Data
+       Elements linkage, and no standardised reason code. Kept only for
+       backward-compatible test assertions.
+
     Squelette : reprend la structure du présentment (mêmes champs DE) avec :
       - MTI = 1442
       - DE-24 = FUNC_CHARGEBACK (200)
       - DE-72 = chargeback_reason (Data Record — n-3 LLVAR)
     Le PDS 0025 n'est PAS positionné (un chargeback n'est pas un reversal).
-
-    NOTE : un chargeback nécessite une transaction originale liée (DE-56
-    Original Data Elements) et un reason code valide. Les données de test
-    actuelles ne contiennent ni l'un ni l'autre ; cette fonction est un
-    squelette prêt à être complété quand le schéma et les données seront
-    disponibles. Voir IPM Clearing Formats §8.2.
     """
     if not (pan.isdigit() and 13 <= len(pan) <= 19):
         raise ValueError(f"invalid PAN length for STAN={row.get('stan')}")

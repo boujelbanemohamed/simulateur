@@ -33,6 +33,7 @@ from cryptography.exceptions import InvalidTag
 from claim_clearing import decrypt_pan, IV_LEN, load_key
 import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
+import issuer_chargeback as icb
 
 KEY = os.urandom(32)
 DT = datetime(2026, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
@@ -1062,6 +1063,117 @@ class TestFilePrefixes(unittest.TestCase):
             self.assertTrue(basename.startswith("MC_REVERSAL_"),
                             f"expected MC_REVERSAL_ prefix, got {basename}")
             self.assertTrue(basename.endswith(".ipm"))
+
+
+class TestIssuerChargeback(unittest.TestCase):
+    """MTI 1442 First Chargeback (issuer-side) — builder unit tests."""
+
+    def _req(self, dispute_amount=None, **kw):
+        return icb.ChargebackRequest(
+            pan=kw.pop("pan", "5413330089020011"),
+            original_amount=kw.pop("original_amount", 1000),
+            dispute_amount=dispute_amount,
+            currency=kw.pop("currency", "788"),
+            original_stan=kw.pop("original_stan", "654321"),
+            original_date=kw.pop("original_date", DT),
+            reason_code=kw.pop("reason_code", "4900"),
+            original_processing_code=kw.pop("original_processing_code", "000000"),
+            **kw,
+        )
+
+    def test_first_chargeback_full(self):
+        """dispute_amount=None → DE-24=450, DE-4=original_amount."""
+        req = self._req(dispute_amount=None)
+        msg = icb.build_first_chargeback(req, msg_number=1, created=DT)
+        self.assertEqual(msg["MTI"], icb.MTI_CHARGEBACK)
+        self.assertEqual(msg["DE24"], icb.FUNC_FIRST_CB_FULL)
+        self.assertEqual(int(msg["DE4"]), 1000)
+
+    def test_first_chargeback_partial(self):
+        """dispute_amount < original → DE-24=453, DE-4=dispute_amount."""
+        req = self._req(dispute_amount=400)
+        msg = icb.build_first_chargeback(req, msg_number=2, created=DT)
+        self.assertEqual(msg["DE24"], icb.FUNC_FIRST_CB_PARTIAL)
+        self.assertEqual(int(msg["DE4"]), 400)
+
+    def test_first_chargeback_partial_equals_full(self):
+        """dispute_amount == original → DE-24=450 (full)."""
+        req = self._req(dispute_amount=1000)
+        msg = icb.build_first_chargeback(req, msg_number=3, created=DT)
+        self.assertEqual(msg["DE24"], icb.FUNC_FIRST_CB_FULL)
+        self.assertEqual(int(msg["DE4"]), 1000)
+
+    def test_first_chargeback_amount_exceeds_raises(self):
+        """dispute_amount > original → ValueError."""
+        req = self._req(dispute_amount=1500)
+        with self.assertRaises(ValueError):
+            icb.build_first_chargeback(req, msg_number=4, created=DT)
+
+    def test_first_chargeback_amount_zero_raises(self):
+        """dispute_amount=0 → ValueError."""
+        req = self._req(dispute_amount=0)
+        with self.assertRaises(ValueError):
+            icb.build_first_chargeback(req, msg_number=5, created=DT)
+
+    def test_first_chargeback_reason_and_link(self):
+        """reason_code et original_stan présents dans le message."""
+        req = self._req(dispute_amount=None, reason_code="4834",
+                        original_stan="999888")
+        msg = icb.build_first_chargeback(req, msg_number=6, created=DT)
+        self.assertEqual(msg["DE25"], "4834")
+        # DE-30 (Original Amount)
+        self.assertEqual(msg["DE30"], "000000001000")
+        # PDS0099 carries stan + date
+        pds_val = msg.get(f"PDS{icb.PDS_ORIG_TXN_REF}", "")
+        self.assertIn("999888", pds_val)
+        self.assertIn(DT.strftime("%y%m%d"), pds_val)
+
+    def test_first_chargeback_no_pds0025(self):
+        """PDS0025 absent du message (pas un reversal)."""
+        req = self._req(dispute_amount=None)
+        msg = icb.build_first_chargeback(req, msg_number=7, created=DT)
+        self.assertNotIn("PDS0025", msg)
+
+    def test_first_chargeback_invalid_pan_raises(self):
+        """PAN non numérique → ValueError."""
+        req = self._req(pan="ABCDEF123456", dispute_amount=None)
+        with self.assertRaises(ValueError):
+            icb.build_first_chargeback(req, msg_number=8, created=DT)
+
+    def test_first_chargeback_pan_too_short_raises(self):
+        """PAN < 13 chiffres → ValueError."""
+        req = self._req(pan="123456789012", dispute_amount=None)
+        with self.assertRaises(ValueError):
+            icb.build_first_chargeback(req, msg_number=9, created=DT)
+
+    def test_first_chargeback_mandatory_fields_present(self):
+        """Tous les champs obligatoires sont dans le message."""
+        req = self._req(dispute_amount=None)
+        msg = icb.build_first_chargeback(req, msg_number=10, created=DT)
+        for de in ("DE2", "DE3", "DE4", "DE12", "DE24", "DE25",
+                   "DE30", "DE31", "DE33", "DE43", "DE49", "DE71"):
+            self.assertIn(de, msg, f"{de} missing from chargeback")
+
+    def test_first_chargeback_de30_matches_original(self):
+        """DE-30 porte le montant original, pas le montant contesté."""
+        req = self._req(dispute_amount=300)
+        msg = icb.build_first_chargeback(req, msg_number=11, created=DT)
+        self.assertEqual(msg["DE30"], "000000001000")  # original=1000
+        self.assertEqual(int(msg["DE4"]), 300)          # dispute=300
+
+    def test_first_chargeback_original_processing_code(self):
+        """DE-3 porte le processing code original."""
+        req = self._req(dispute_amount=None,
+                        original_processing_code="090000")
+        msg = icb.build_first_chargeback(req, msg_number=12, created=DT)
+        self.assertEqual(msg["DE3"], "090000")
+
+    def test_first_chargeback_no_system_fields(self):
+        """DE-93/DE-94 absents (système-provided)."""
+        req = self._req(dispute_amount=None)
+        msg = icb.build_first_chargeback(req, msg_number=13, created=DT)
+        self.assertNotIn("DE93", msg)
+        self.assertNotIn("DE94", msg)
 
 
 if __name__ == "__main__":
