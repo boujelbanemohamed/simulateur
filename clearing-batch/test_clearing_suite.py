@@ -928,6 +928,46 @@ class TestIssuerInbound(unittest.TestCase):
         m = presentments[0]
         self.assertEqual(m.pan, pan_19)
 
+    def test_parse_visa_extracts_arn(self):
+        """L'ARN extrait des positions 27-49 est non vide et cohérent."""
+        from issuer_inbound import parse_visa_ctf
+        rows = sample_rows(["4111111111111111"])
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        payload = "\r\n".join(lines) + "\r\n"
+        movements = parse_visa_ctf(payload)
+        presentments = [m for m in movements if m.kind == "presentment"]
+        self.assertEqual(len(presentments), 1)
+        m = presentments[0]
+        self.assertIsNotNone(m.raw_ref)
+        self.assertEqual(len(m.raw_ref), 23)
+        # Vérifie que raw_ref correspond exactement aux positions 27-49 de la ligne TC05
+        tc05_line = lines[1]
+        arn_from_positions = tc05_line[26:49].strip()
+        self.assertEqual(m.raw_ref, arn_from_positions)
+
+    def test_parse_visa_distinct_arn_same_amount(self):
+        """Deux transactions de même montant ont des ARN différents (STAN distincts)."""
+        from issuer_inbound import parse_visa_ctf
+        # sample_rows génère des STAN 100000+i, donc deux rows ont des STAN différents
+        rows = sample_rows(["4111111111111111", "5413330089020011"])
+        # Forcer le même montant pour les deux
+        rows[0]["txn_amount"] = 5000
+        rows[1]["txn_amount"] = 5000
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        payload = "\r\n".join(lines) + "\r\n"
+        movements = parse_visa_ctf(payload)
+        presentments = [m for m in movements if m.kind == "presentment"]
+        self.assertEqual(len(presentments), 2)
+        self.assertEqual(presentments[0].amount, presentments[1].amount)
+        self.assertIsNotNone(presentments[0].raw_ref)
+        self.assertIsNotNone(presentments[1].raw_ref)
+        self.assertNotEqual(presentments[0].raw_ref, presentments[1].raw_ref,
+                            "Deux transactions de même montant doivent avoir des raw_ref distincts")
+
 
 class TestIssuerPosting(unittest.TestCase):
     """DB-free: vérifie la règle de sens (sense_for_movement). Pas de DB."""

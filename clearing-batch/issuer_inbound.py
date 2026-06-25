@@ -105,7 +105,7 @@ def parse_mastercard_ipm(data: bytes, *, blocked: bool = True) -> list[ClearingM
 
 # Positions fixes Visa CTF (1-indexées → 0-indexées) :
 #   TC (1-2), PAN main (5-20, 16 car.), PAN extension (21-23, 3 car.),
-#   Source Amount (77-88), Source Currency (89-91).
+#   ARN (27-49, 23 car.), Source Amount (77-88), Source Currency (89-91).
 # Le PAN complet = main + extension ; extension = "000" → PAN ≤ 16 car.
 _CTF_TC_START = 0
 _CTF_TC_END = 2
@@ -113,6 +113,8 @@ _CTF_PAN_START = 4
 _CTF_PAN_END = 20
 _CTF_PAN_EXT_START = 20
 _CTF_PAN_EXT_END = 23
+_CTF_ARN_START = 26
+_CTF_ARN_END = 49
 _CTF_AMOUNT_START = 76
 _CTF_AMOUNT_END = 88
 _CTF_CURRENCY_START = 88
@@ -154,6 +156,9 @@ def parse_visa_ctf(text: str) -> list[ClearingMovement]:
 
         amount: int = int(raw_amount) if raw_amount.isdigit() else 0
 
+        arn: str = line[_CTF_ARN_START:_CTF_ARN_END].strip()
+        raw_ref: str | None = arn if arn else None
+
         if tc in TC_PRESENTMENT:
             kind = "presentment"
         elif tc in TC_REVERSAL:
@@ -169,7 +174,7 @@ def parse_visa_ctf(text: str) -> list[ClearingMovement]:
             kind=kind,
             processing_code=None,
             currency=currency if currency else None,
-            raw_ref=None,
+            raw_ref=raw_ref,
         ))
 
     return movements
