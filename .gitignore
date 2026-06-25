@@ -17,3 +17,4 @@ node_modules/
 out/
 dist/
 clearing-batch/out/
+clearing-batch/outbound/
