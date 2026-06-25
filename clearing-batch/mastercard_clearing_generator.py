@@ -225,6 +225,35 @@ def build_de43(card_acceptor_name: str, merchant_country: str, *,
 
 
 # --------------------------------------------------------------------------- #
+# DE-54 — Additional Amounts (IPM Clearing Formats p.375-378)
+# --------------------------------------------------------------------------- #
+def build_de54_cashback(cashback_amount: int | str, currency_code: str, *,
+                        account_type: str = "00") -> str:
+    """Build one 20-character DE-54 occurrence for 'Amount, Cash Back' (s2=40).
+
+    Per IPM Clearing Formats p.377-378 — Purchase with Cash Back (DE-3 s1=09).
+
+    Sous-champs (chaque occurrence = 20 positions exactement) :
+      1-2   Account Type     n-2   "00" par défaut (non spécifié pour cashback)
+      3-4   Amount Type      n-2   "40" = Amount, Cash Back (fixe)
+      5-7   Currency Code    n-3   même devise que DE-49
+      8     Amount Sign      a-1   "D" = Debit (le cashback est un débit)
+      9-20  Amount           n-12  montant cashback minor units, zéro-filled
+
+    Ref. : IPM Clearing Formats, subfield layout p.375-376, cashback values p.377.
+    """
+    amount = int(cashback_amount)
+    if amount <= 0:
+        raise ValueError(f"cashback_amount must be > 0, got {amount}")
+    s1 = account_type.rjust(2, "0")[:2]
+    s2 = "40"
+    s3 = currency_code.rjust(3, "0")[:3]
+    s4 = "D"
+    s5 = str(amount).rjust(12, "0")[-12:]
+    return s1 + s2 + s3 + s4 + s5
+
+
+# --------------------------------------------------------------------------- #
 # Message builders
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
@@ -281,16 +310,16 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
                           extra_pds=extra_pds))
     # DE-54 (Additional Amounts) — requis par IPM pour DE-3 s1=09 (Purchase with
-    # Cash Back). Si la row contient un champ txn_cashback (ou de54), on l'injecte ;
-    # sinon on ne l'ajoute pas.
+    # Cash Back). Si la row contient un champ txn_cashback (ou de54), on injecte
+    # une occurrence complète à 20 caractères via build_de54_cashback().
     #
-    # Réserve : on injecte ici le montant cashback brut. La structure complète du
-    # DE-54 (Additional Amounts : account type, amount type, sign, devise, montant)
-    # n'a pas été auditée champ par champ contre la spec IPM — à affiner dans un
-    # lot ultérieur, comme le DE-43.
+    # Structure auditée et conforme p.375-378 ; seule l'occurrence cashback
+    # (s2=40) est gérée. Les occurrences surcharge (42), POI (58), healthcare
+    # (10), prescription (11) ne sont pas implémentées (hors périmètre).
     raw_cb = row.get("de54") or row.get("txn_cashback")
     if raw_cb is not None:
-        msg["DE54"] = str(int(raw_cb))
+        currency = (row.get("txn_currency") or "000")[:3].rjust(3, "0")
+        msg["DE54"] = build_de54_cashback(raw_cb, currency)
     # NOTE conformité — champs système-provided non fournis ici (volontairement) : DE-5/DE-6/DE-9
     # (montants convertis en devise de réconciliation/billing) et PDS 0002/0003 (identifiants produit
     # GCMS) sont fournis ou enrichis par le système de clearing, pas par l'acquéreur originateur

@@ -536,7 +536,7 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertNotIn("DE54", presentment)
 
     def test_cashback_with_de54(self):
-        """Cashback avec row.de54 → DE-54 présent dans le présentment."""
+        """Cashback avec row.de54 → DE-54 complet 20-car."""
         rows = sample_rows(["5413330089020011"])
         rows[0]["processing_code"] = "090000"
         rows[0]["txn_amount"] = 1500
@@ -545,11 +545,13 @@ class TestMastercardIpm(unittest.TestCase):
                                    terminal_type="  Z", tcc="T", txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE3"], "090000")
-        self.assertEqual(msg["DE54"], "500")
+        self.assertEqual(len(msg["DE54"]), 20)
+        self.assertEqual(msg["DE54"][2:4], "40")
+        self.assertEqual(msg["DE54"][8:20], "000000000500")
         self.assertEqual(int(msg["DE4"]), 1500)
 
     def test_cashback_with_txn_cashback(self):
-        """Cashback avec row.txn_cashback → DE-54 présent."""
+        """Cashback avec row.txn_cashback → DE-54 complet 20-car."""
         rows = sample_rows(["5413330089020011"])
         rows[0]["processing_code"] = "090000"
         rows[0]["txn_amount"] = 1500
@@ -558,8 +560,22 @@ class TestMastercardIpm(unittest.TestCase):
                                    terminal_type="  Z", tcc="T", txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE3"], "090000")
-        self.assertEqual(msg["DE54"], "750")
+        self.assertEqual(len(msg["DE54"]), 20)
+        self.assertEqual(msg["DE54"][2:4], "40")
+        self.assertEqual(msg["DE54"][8:20], "000000000750")
         self.assertEqual(int(msg["DE4"]), 1500)
+
+    def test_cashback_with_txn_cashback_and_currency(self):
+        """DE-54 utilise la devise de DE-49."""
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["processing_code"] = "090000"
+        rows[0]["txn_amount"] = 1500
+        rows[0]["txn_cashback"] = 300
+        rows[0]["txn_currency"] = "840"
+        msg = mc.build_presentment(rows[0], "5413330089020011", 2,
+                                   terminal_type="  Z", tcc="T", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE54"][4:7], "840")
 
     def test_build_presentment_reversal_has_pds0025(self):
         row = sample_rows(["5413330089020011"])[0]
@@ -718,6 +734,31 @@ class TestSecondPresentment(unittest.TestCase):
         for unwanted in ("DE5", "DE6", "DE9", "DE10", "DE93", "DE94"):
             self.assertNotIn(unwanted, msg,
                              f"{unwanted} should not appear (system-provided)")
+
+
+class TestDe54Cashback(unittest.TestCase):
+    """DE-54 Additional Amounts — cashback structure unit tests."""
+
+    def test_de54_cashback_structure(self):
+        result = mc.build_de54_cashback(500, "788")
+        self.assertEqual(len(result), 20)
+        self.assertEqual(result[0:2], "00")    # s1 Account Type
+        self.assertEqual(result[2:4], "40")    # s2 Amount, Cash Back
+        self.assertEqual(result[4:7], "788")   # s3 Currency
+        self.assertEqual(result[7:8], "D")     # s4 Debit sign
+        self.assertEqual(result[8:20], "000000000500")  # s5 Amount
+
+    def test_de54_cashback_zero_raises(self):
+        with self.assertRaises(ValueError):
+            mc.build_de54_cashback(0, "788")
+
+    def test_de54_cashback_negative_raises(self):
+        with self.assertRaises(ValueError):
+            mc.build_de54_cashback(-100, "788")
+
+    def test_de54_cashback_custom_account_type(self):
+        result = mc.build_de54_cashback(999, "788", account_type="10")
+        self.assertEqual(result[0:2], "10")
 
 
 class TestKeyRotation(unittest.TestCase):
