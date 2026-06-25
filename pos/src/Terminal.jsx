@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { encode, encodeSegments, MTI_INFO } from "./iso8583.js";
 import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS } from "./cards.js";
 import Decoder from "./Decoder.jsx";
@@ -54,7 +54,18 @@ export default function Terminal() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [stan, setStan] = useState(() => randomDigits(6));
-  const [history, setHistory] = useState([]);
+  const HISTORY_KEY = "fx_terminal_history";
+  const [history, setHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
+    } catch { /* quota ou indisponibilité : non bloquant */ }
+  }, [history]);
   const [voidTargetIdx, setVoidTargetIdx] = useState(null);
   const [de5Amount, setDe5Amount] = useState("");
   const [de6Amount, setDe6Amount] = useState("");
@@ -248,21 +259,25 @@ export default function Terminal() {
           {isReversal && (
             <div className="void-history">
               <p className="void-history-note">
-                Historique local (session uniquement, vidé au rechargement). L&apos;effet réel
-                d&apos;une extourne dépend du clearing (étape 2, non encore géré).
+                Historique persistant (localStorage). Survit au rechargement et au
+                changement d&apos;onglet. L&apos;effet réel d&apos;une extourne dépend
+                du clearing (étape 2, non encore géré).
               </p>
               {history.length === 0 ? (
                 <p className="encode-error">Aucune transaction à extourner dans cette session.</p>
               ) : (
-                <div className="void-list">
-                  {history.map((h, i) => (
-                    <button key={i} className={`void-item ${voidTargetIdx === i ? "void-item-on" : ""}`} onClick={() => setVoidTargetIdx(i)}>
-                      <span className="tag tag-ok">STAN {h.stan}</span>
-                      <span>{formatAmount(h.amount)} {h.currency}</span>
-                      <span className="void-item-meta">{h.type === "purchase" ? "Achat" : h.type === "withdrawal" ? "Retrait" : h.type === "cashAdvance" ? "Avance" : h.type === "cashback" ? "Cashback" : "Rembours."} · {new Date(h.date).toLocaleString("fr-FR")}</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="void-list">
+                    {history.map((h, i) => (
+                      <button key={i} className={`void-item ${voidTargetIdx === i ? "void-item-on" : ""}`} onClick={() => setVoidTargetIdx(i)}>
+                        <span className="tag tag-ok">STAN {h.stan}</span>
+                        <span>{formatAmount(h.amount)} {h.currency}</span>
+                        <span className="void-item-meta">{h.type === "purchase" ? "Achat" : h.type === "withdrawal" ? "Retrait" : h.type === "cashAdvance" ? "Avance" : h.type === "cashback" ? "Cashback" : "Rembours."} · {new Date(h.date).toLocaleString("fr-FR")}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button className="void-clear" onClick={() => setHistory([])}>Vider l&apos;historique</button>
+                </>
               )}
             </div>
           )}
