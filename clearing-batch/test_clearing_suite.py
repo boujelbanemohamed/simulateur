@@ -819,6 +819,113 @@ class TestKeyRotation(unittest.TestCase):
             os.environ.pop("CLEARING_PAN_KEY_V2", None)
 
 
+class TestIssuerInbound(unittest.TestCase):
+    """DB-free: issuer-side parsing — round-trip génération → lecture."""
+
+    def test_parse_mastercard_roundtrip(self):
+        """Génère un IPM présentment → le parse → vérifie kind/pan/amount."""
+        import io
+        from cardutil.mciipm import IpmReader
+        from issuer_inbound import parse_mastercard_ipm
+        rows = sample_rows(["5413330089020011"])
+        data, count, total = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        self.assertEqual(count, 1)
+        movements = parse_mastercard_ipm(data, blocked=True)
+        self.assertEqual(len(movements), 1)
+        m = movements[0]
+        self.assertEqual(m.network, "MASTERCARD")
+        self.assertEqual(m.kind, "presentment")
+        self.assertEqual(m.pan, "5413330089020011")
+        self.assertEqual(m.amount, 1000)
+        self.assertEqual(m.mti_or_tc, "1240")
+        self.assertEqual(m.processing_code, "000000")
+        self.assertEqual(m.currency, "788")
+
+    def test_parse_visa_roundtrip(self):
+        """Génère un CTF présentment → le parse → vérifie TC/pan/amount."""
+        from issuer_inbound import parse_visa_ctf
+        rows = sample_rows(["4111111111111111"])
+        lines, count, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        payload = "\r\n".join(lines) + "\r\n"
+        movements = parse_visa_ctf(payload)
+        presentments = [m for m in movements if m.kind == "presentment"]
+        self.assertEqual(len(presentments), 1)
+        m = presentments[0]
+        self.assertEqual(m.network, "VISA")
+        self.assertEqual(m.mti_or_tc, "05")
+        self.assertEqual(m.pan, "4111111111111111")
+        self.assertEqual(m.amount, 1000)
+        self.assertEqual(m.currency, "788")
+        self.assertIsNone(m.processing_code)
+
+    def test_parse_ignores_headers_trailers(self):
+        """Les enregistrements 1644 / TC 90/91/92 ne produisent pas de movement."""
+        from issuer_inbound import parse_mastercard_ipm, parse_visa_ctf
+        rows = sample_rows(["5413330089020011"])
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, terminal_type="  Z", tcc="T", txn_env="0",
+            created=DT, blocked=True)
+        movements = parse_mastercard_ipm(data, blocked=True)
+        for m in movements:
+            self.assertNotEqual(m.mti_or_tc, "1644")
+        self.assertEqual(len(movements), 1)
+
+        rows2 = sample_rows(["4111111111111111"])
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows2, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        payload = "\r\n".join(lines) + "\r\n"
+        vmovements = parse_visa_ctf(payload)
+        for m in vmovements:
+            self.assertNotIn(m.mti_or_tc, ("90", "91", "92"))
+        self.assertEqual(len(vmovements), 1)
+
+    def test_parse_visa_reversal_kind(self):
+        """Un fichier CTF reversal (TC 25) → kind='reversal'."""
+        from issuer_inbound import parse_visa_ctf
+        rows = sample_rows(["4111111111111111"])
+        lines, _, _, _ = visa.generate_reversal_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        payload = "\r\n".join(lines) + "\r\n"
+        movements = parse_visa_ctf(payload)
+        reversals = [m for m in movements if m.kind == "reversal"]
+        self.assertEqual(len(reversals), 1)
+        m = reversals[0]
+        self.assertEqual(m.mti_or_tc, "25")
+        self.assertEqual(m.network, "VISA")
+        self.assertEqual(m.pan, "4111111111111111")
+        self.assertEqual(m.amount, 1000)
+
+    def test_parse_visa_pan_with_extension(self):
+        """PAN 19 chiffres → le parsing reconstitue le PAN complet (main+extension)."""
+        from issuer_inbound import parse_visa_ctf
+        pan_19 = "4999888877776666555"
+        rows = sample_rows([pan_19])
+        lines, count, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        self.assertEqual(count, 1)
+        # Vérifie que le CTF porte bien l'extension non-nulle en position 21-23
+        tc05_line = lines[1]
+        pan_slice = tc05_line[4:20].strip()
+        pan_ext_slice = tc05_line[20:23].strip()
+        self.assertEqual(pan_slice, "4999888877776666")
+        self.assertEqual(pan_ext_slice, "555")
+        # Round-trip complet
+        payload = "\r\n".join(lines) + "\r\n"
+        movements = parse_visa_ctf(payload)
+        presentments = [m for m in movements if m.kind == "presentment"]
+        self.assertEqual(len(presentments), 1)
+        m = presentments[0]
+        self.assertEqual(m.pan, pan_19)
+
+
 class TestFilePrefixes(unittest.TestCase):
     """DB-free: vérifie que write_ctf_file / write_ipm_file acceptent le préfixe."""
 
