@@ -16,6 +16,7 @@ import com.floss83.javaswitch.clearing.ClearingTransactionRepository;
 import com.floss83.javaswitch.iso8583.Iso8583Message;
 import com.floss83.javaswitch.iso8583.Iso8583ParseException;
 import com.floss83.javaswitch.iso8583.Iso8583Parser;
+import com.floss83.javaswitch.issuer.IssuerAuthorizationService;
 
 /**
  * Real ISO 8583 entry point for the standalone harness.
@@ -39,11 +40,14 @@ public class IsoMessageController {
     private final Iso8583Parser parser = new Iso8583Parser();
     private final ClearingCaptureService clearingCaptureService;
     private final ClearingTransactionRepository repository;
+    private final IssuerAuthorizationService issuerAuthorizationService;
 
     public IsoMessageController(ClearingCaptureService clearingCaptureService,
-                                ClearingTransactionRepository repository) {
+                                ClearingTransactionRepository repository,
+                                IssuerAuthorizationService issuerAuthorizationService) {
         this.clearingCaptureService = clearingCaptureService;
         this.repository = repository;
+        this.issuerAuthorizationService = issuerAuthorizationService;
     }
 
     @PostMapping(produces = "application/json")
@@ -57,7 +61,33 @@ public class IsoMessageController {
                     ? null
                     : "TKN" + rawPan.substring(rawPan.length() - 4);
 
+            // ---- Issuer authorization (mode hybride) ----
+            // Si un cardholder_account correspond au PAN, on remplace DE-39 par
+            // la décision émetteur. Sinon on laisse le DE-39 entrant inchangé.
+            boolean issuerAuthorized = false;
+            String issuerDecision = null;
+            if (rawPan != null) {
+                String de3 = fields.get(3);
+                String de4 = fields.get(4);
+                String de49 = fields.get(49);
+                long amount = 0;
+                if (de4 != null) {
+                    try { amount = Long.parseLong(de4); } catch (NumberFormatException ignored) {}
+                }
+                issuerDecision = issuerAuthorizationService.authorize(
+                        rawPan, amount,
+                        de49 != null ? de49 : "788",
+                        de3 != null ? de3 : "000000");
+                if (issuerDecision != null) {
+                    parsed.setDataElement(39, issuerDecision);
+                    fields.put(39, issuerDecision);   // keep JSON output in sync
+                    issuerAuthorized = "00".equals(issuerDecision);
+                }
+            }
+
             // Clearing capture (only approved Visa/Mastercard are stored).
+            // The capture reads DE-39 from `parsed`, which now reflects the
+            // issuer decision if one was made.
             long before = repository.count();
             try {
                 clearingCaptureService.capture(parsed, rawPan, panToken);
@@ -77,6 +107,10 @@ public class IsoMessageController {
             Map<String, Object> result = new LinkedHashMap<>();
             result.put("mti", parsed.getMti());
             result.put("captured", captured);
+            result.put("issuer_authorized", issuerAuthorized);
+            if (issuerDecision != null) {
+                result.put("issuer_decision", issuerDecision);
+            }
             result.put("fields", outputFields);
             return ResponseEntity.ok(result);
 

@@ -118,12 +118,14 @@ public class Iso8583Message {
 
     /**
      * Associates a field number with its parsed value.
-     * Package-private to restrict external modification.
+     *
+     * <p>Originally package-private; widened to public so the issuer
+     * authorization service can replace DE-39 before capture.
      *
      * @param fieldNumber the ISO 8583 data element number (1-128)
      * @param value       the string value of the data element
      */
-    void setDataElement(int fieldNumber, String value) {
+    public void setDataElement(int fieldNumber, String value) {
         dataElements.put(fieldNumber, value);
     }
 
