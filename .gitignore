@@ -16,3 +16,4 @@ node_modules/
 *.swo
 out/
 dist/
+clearing-batch/out/
