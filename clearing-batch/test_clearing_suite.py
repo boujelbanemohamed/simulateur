@@ -926,6 +926,60 @@ class TestIssuerInbound(unittest.TestCase):
         self.assertEqual(m.pan, pan_19)
 
 
+class TestIssuerPosting(unittest.TestCase):
+    """DB-free: vérifie la règle de sens (sense_for_movement). Pas de DB."""
+
+    def _mc_movement(self, kind: str, pc: str, amount: int = 1000) -> "ClearingMovement":
+        from issuer_inbound import ClearingMovement
+        return ClearingMovement(
+            network="MASTERCARD", mti_or_tc="1240", pan="4111111111111111",
+            amount=amount, kind=kind, processing_code=pc, currency="788")
+
+    def _visa_movement(self, kind: str, tc: str, amount: int = 1000) -> "ClearingMovement":
+        from issuer_inbound import ClearingMovement
+        return ClearingMovement(
+            network="VISA", mti_or_tc=tc, pan="4111111111111111",
+            amount=amount, kind=kind, processing_code=None, currency="788")
+
+    def test_sense_mc_purchase_debit(self):
+        from issuer_posting import sense_for_movement
+        m = self._mc_movement("presentment", "000000")
+        self.assertEqual(sense_for_movement(m), "debit")
+
+    def test_sense_mc_refund_credit(self):
+        from issuer_posting import sense_for_movement
+        m = self._mc_movement("presentment", "200000")
+        self.assertEqual(sense_for_movement(m), "credit")
+
+    def test_sense_visa_tc05_debit(self):
+        from issuer_posting import sense_for_movement
+        m = self._visa_movement("presentment", "05")
+        self.assertEqual(sense_for_movement(m), "debit")
+
+    def test_sense_visa_tc06_credit(self):
+        from issuer_posting import sense_for_movement
+        m = self._visa_movement("presentment", "06")
+        self.assertEqual(sense_for_movement(m), "credit")
+
+    def test_sense_reversal_inverts(self):
+        from issuer_posting import sense_for_movement
+        mc_rev_purchase = self._mc_movement("reversal", "000000")
+        self.assertEqual(sense_for_movement(mc_rev_purchase), "credit",
+                         "MC reversal of purchase → credit")
+
+        mc_rev_refund = self._mc_movement("reversal", "200000")
+        self.assertEqual(sense_for_movement(mc_rev_refund), "debit",
+                         "MC reversal of refund → debit")
+
+        visa_rev_sale = self._visa_movement("reversal", "25")
+        self.assertEqual(sense_for_movement(visa_rev_sale), "credit",
+                         "Visa TC 25 reversal of sale → credit")
+
+        visa_rev_refund = self._visa_movement("reversal", "26")
+        self.assertEqual(sense_for_movement(visa_rev_refund), "debit",
+                         "Visa TC 26 reversal of refund → debit")
+
+
 class TestFilePrefixes(unittest.TestCase):
     """DB-free: vérifie que write_ctf_file / write_ipm_file acceptent le préfixe."""
 
