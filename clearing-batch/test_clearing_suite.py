@@ -980,6 +980,68 @@ class TestIssuerPosting(unittest.TestCase):
                          "Visa TC 26 reversal of refund → debit")
 
 
+class TestIssuerAuthorization(unittest.TestCase):
+    """DB-free: moteur de décision pur (decide_authorization). Pas de DB."""
+
+    def test_auth_approved_within_limit(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=800, sense="debit",
+                                 balance=500, credit_limit=500)
+        self.assertTrue(d.approved)
+        self.assertEqual(d.response_code, "00")
+        self.assertEqual(d.available_before, 1000)
+
+    def test_auth_declined_insufficient(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=1501, sense="debit",
+                                 balance=500, credit_limit=1000)
+        self.assertFalse(d.approved)
+        self.assertEqual(d.response_code, "51")
+        self.assertEqual(d.available_before, 1500)
+
+    def test_auth_declined_blocked(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=100, sense="debit",
+                                 balance=5000, credit_limit=2000,
+                                 status="BLOCKED")
+        self.assertFalse(d.approved)
+        self.assertEqual(d.response_code, "57")
+        self.assertEqual(d.account_status, "BLOCKED")
+
+    def test_auth_refund_always_approved(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=5000, sense="credit",
+                                 balance=0, credit_limit=0)
+        self.assertTrue(d.approved)
+        self.assertEqual(d.response_code, "00")
+
+    def test_auth_amount_zero_declined(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=0, sense="debit",
+                                 balance=1000, credit_limit=500)
+        self.assertFalse(d.approved)
+
+    def test_auth_exact_available_approved(self):
+        from issuer_authorization import decide_authorization
+        d = decide_authorization(amount=1500, sense="debit",
+                                 balance=500, credit_limit=1000)
+        self.assertTrue(d.approved)
+        self.assertEqual(d.response_code, "00")
+        self.assertEqual(d.available_before, 1500)
+
+    def test_from_processing_code_sense(self):
+        from issuer_authorization import AuthorizationRequest
+        r = AuthorizationRequest.from_processing_code(
+            "4111111111111111", 1000, "788", "200000")
+        self.assertEqual(r.sense, "credit")
+        r2 = AuthorizationRequest.from_processing_code(
+            "4111111111111111", 1000, "788", "000000")
+        self.assertEqual(r2.sense, "debit")
+        r3 = AuthorizationRequest.from_processing_code(
+            "4111111111111111", 1000, "788", "120000")
+        self.assertEqual(r3.sense, "debit")
+
+
 class TestFilePrefixes(unittest.TestCase):
     """DB-free: vérifie que write_ctf_file / write_ipm_file acceptent le préfixe."""
 
