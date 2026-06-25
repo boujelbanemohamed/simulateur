@@ -40,3 +40,36 @@ ALTER TABLE clearing_transaction ADD COLUMN IF NOT EXISTS merchant_country CHAR(
 CREATE INDEX IF NOT EXISTS idx_clearing_pending
     ON clearing_transaction (network)
     WHERE status = 'APPROVED';
+
+-- =====================================================================
+-- STAGE 2 — Issuer role (data model only)
+-- Idempotent: safe to run on every Spring Boot startup.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS issuer (
+    id          BIGSERIAL    PRIMARY KEY,
+    bin         VARCHAR(8)   NOT NULL UNIQUE,           -- BIN/IIN émetteur (6-8 chiffres)
+    name        VARCHAR(60)  NOT NULL,
+    country     CHAR(3)      NOT NULL,                  -- ISO numérique pays émetteur
+    network     VARCHAR(10)  NOT NULL,                  -- 'VISA' | 'MASTERCARD'
+    created_at  TIMESTAMP    NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS cardholder_account (
+    id            BIGSERIAL    PRIMARY KEY,
+    issuer_id     BIGINT       NOT NULL REFERENCES issuer(id),
+    pan_token     VARCHAR(64)  NOT NULL UNIQUE,          -- vue PCI-safe (cohérent avec clearing_transaction.pan_token)
+    pan_enc       BYTEA        NOT NULL,                 -- PAN réel chiffré AES-256-GCM (même convention que clearing_transaction)
+    currency      CHAR(3)      NOT NULL,                 -- devise du compte
+    balance       BIGINT       NOT NULL DEFAULT 0,       -- solde en minor units
+    credit_limit  BIGINT       NOT NULL DEFAULT 0,       -- plafond autorisé en minor units
+    status        VARCHAR(12)  NOT NULL DEFAULT 'ACTIVE', -- ACTIVE|BLOCKED|CLOSED
+    created_at    TIMESTAMP    NOT NULL DEFAULT now()
+    -- Pas de contrainte balance >= 0 ici : overdraft géré par la logique applicative
+);
+
+CREATE INDEX IF NOT EXISTS idx_account_issuer
+    ON cardholder_account (issuer_id);
+
+CREATE INDEX IF NOT EXISTS idx_account_pan_token
+    ON cardholder_account (pan_token);
