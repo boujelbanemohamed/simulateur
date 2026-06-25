@@ -34,6 +34,7 @@ from claim_clearing import decrypt_pan, IV_LEN, load_key
 import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
 import issuer_chargeback as icb
+from issuer_reception import aggregate_results
 
 KEY = os.urandom(32)
 DT = datetime(2026, 6, 15, 10, 30, 0, tzinfo=timezone.utc)
@@ -1174,6 +1175,71 @@ class TestIssuerChargeback(unittest.TestCase):
         msg = icb.build_first_chargeback(req, msg_number=13, created=DT)
         self.assertNotIn("DE93", msg)
         self.assertNotIn("DE94", msg)
+
+
+class TestIssuerReception(unittest.TestCase):
+    """aggregate_results — pure function, no DB needed."""
+
+    def _result(self, status: str) -> dict:
+        return {"status": status, "pan_masked": "****1111"}
+
+    def test_empty_no_files(self):
+        s = aggregate_results([])
+        self.assertEqual(s["files"], 0)
+        self.assertEqual(s["applied"], 0)
+        self.assertEqual(s["no_account"], 0)
+        self.assertEqual(s["rejected"], 0)
+        self.assertEqual(s["total_movements"], 0)
+
+    def test_empty_file(self):
+        s = aggregate_results([[]])
+        self.assertEqual(s["files"], 1)
+        self.assertEqual(s["total_movements"], 0)
+
+    def test_all_applied(self):
+        s = aggregate_results([
+            [self._result("APPLIED"), self._result("APPLIED")],
+            [self._result("APPLIED")],
+        ])
+        self.assertEqual(s["files"], 2)
+        self.assertEqual(s["applied"], 3)
+        self.assertEqual(s["no_account"], 0)
+        self.assertEqual(s["rejected"], 0)
+        self.assertEqual(s["total_movements"], 3)
+
+    def test_mixed_statuses(self):
+        s = aggregate_results([
+            [
+                self._result("APPLIED"),
+                self._result("NO_ACCOUNT"),
+                self._result("APPLIED"),
+                self._result("REJECTED_STATUS"),
+            ],
+        ])
+        self.assertEqual(s["files"], 1)
+        self.assertEqual(s["applied"], 2)
+        self.assertEqual(s["no_account"], 1)
+        self.assertEqual(s["rejected"], 1)
+        self.assertEqual(s["total_movements"], 4)
+
+    def test_multiple_files_mixed(self):
+        s = aggregate_results([
+            [self._result("APPLIED")],
+            [self._result("NO_ACCOUNT"), self._result("REJECTED_STATUS")],
+            [self._result("APPLIED"), self._result("APPLIED")],
+        ])
+        self.assertEqual(s["files"], 3)
+        self.assertEqual(s["applied"], 3)
+        self.assertEqual(s["no_account"], 1)
+        self.assertEqual(s["rejected"], 1)
+        self.assertEqual(s["total_movements"], 5)
+
+    def test_unknown_status_ignored(self):
+        s = aggregate_results([
+            [self._result("APPLIED"), self._result("UNKNOWN_STATUS")],
+        ])
+        self.assertEqual(s["applied"], 1)
+        self.assertEqual(s["total_movements"], 2)
 
 
 if __name__ == "__main__":

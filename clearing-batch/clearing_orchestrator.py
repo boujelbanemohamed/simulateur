@@ -50,9 +50,10 @@ import sys
 import traceback
 from datetime import datetime, timezone
 
-from claim_clearing import connect, requeue_stale, ensure_writable_dir
+from claim_clearing import connect, load_key, requeue_stale, ensure_writable_dir
 import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
+from issuer_reception import issuer_reception
 
 DEFAULT_OUTBOUND_ROOT = os.environ.get("CLEARING_OUTBOUND_ROOT", "/outbound/clearing")
 DEFAULT_STALE_MINUTES = int(os.environ.get("CLEARING_STALE_MINUTES", "720"))  # 12h
@@ -155,11 +156,16 @@ def main(argv: list[str]) -> int:
         confirm=True,
     ))
 
-    all_ok = visa_ok and mc_ok and visa_rev_ok and mc_rev_ok
+    # Step F — Issuer reception: consume generated files and post to accounts
+    recv_ok = _run_phase("ISSUER-RECEPTION",
+                         lambda: issuer_reception(out_dir, load_key()))
+
+    all_ok = visa_ok and mc_ok and visa_rev_ok and mc_rev_ok and recv_ok
     _log(f"clearing run complete | visa={'OK' if visa_ok else 'FAIL'} "
          f"mastercard={'OK' if mc_ok else 'FAIL'} "
          f"visa-rev={'OK' if visa_rev_ok else 'FAIL'} "
-         f"mc-rev={'OK' if mc_rev_ok else 'FAIL'}")
+         f"mc-rev={'OK' if mc_rev_ok else 'FAIL'} "
+         f"issuer-reception={'OK' if recv_ok else 'FAIL'}")
     return 0 if all_ok else 1
 
 

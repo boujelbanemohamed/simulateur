@@ -1,0 +1,127 @@
+"""
+Issuer-side reception phase: consume generated clearing files, parse movements,
+and post them to cardholder_accounts.
+
+This module is the CONSUMER side of the clearing pipeline — it reads the .dat
+(Visa) and .ipm (Mastercard) files produced by the generator phases, parses them
+via issuer_inbound.read_clearing_file(), and applies the movements via
+issuer_posting.post_clearing_file().
+
+IDEMPOTENCE (known limitation — no dedup):
+  Re-running this phase on the same files will re-apply all movements, causing
+  double-imputation. A production system would mark processed files (e.g.
+  rename, sidecar marker, or a processed_files table). This lot does NOT
+  implement such a mechanism — it is a documented operational requirement for
+  the next iteration.
+"""
+
+from __future__ import annotations
+
+import glob
+import os
+from datetime import datetime, timezone
+from typing import Any
+
+
+def _log(msg: str) -> None:
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%SZ")
+    print(f"[{ts}] [ISSUER-RECEPTION] {msg}", flush=True)
+
+
+def aggregate_results(all_results: list[list[dict[str, Any]]]) -> dict[str, Any]:
+    """Pure function: aggregate per-file posting results into summary counters.
+
+    Testable without DB — takes the list of per-file result lists returned by
+    post_clearing_file() and produces totals.
+
+    Args:
+        all_results: List of results (each being a list of movement result dicts).
+
+    Returns:
+        Dict with keys: files, applied, no_account, rejected, total_movements.
+    """
+    files = len(all_results)
+    applied = 0
+    no_account = 0
+    rejected = 0
+    total_movements = 0
+
+    for file_results in all_results:
+        total_movements += len(file_results)
+        for r in file_results:
+            status = r.get("status", "")
+            if status == "APPLIED":
+                applied += 1
+            elif status == "NO_ACCOUNT":
+                no_account += 1
+            elif status == "REJECTED_STATUS":
+                rejected += 1
+
+    return {
+        "files": files,
+        "applied": applied,
+        "no_account": no_account,
+        "rejected": rejected,
+        "total_movements": total_movements,
+    }
+
+
+def issuer_reception(output_dir: str, key: bytes | None = None) -> dict[str, Any]:
+    """Consume all clearing files in output_dir and post movements to accounts.
+
+    Scans for ``*.dat`` (Visa CTF) and ``*.ipm`` (Mastercard IPM) files, parses
+    each via :func:`issuer_posting.post_clearing_file`, aggregates results.
+
+    Each file is processed in its own try/except — a corrupted file does NOT
+    crash the phase (it is logged and skipped).
+
+    Args:
+        output_dir: Directory containing the generated clearing files.
+        key: AES-256-GCM key for PAN decryption.
+
+    Returns:
+        Summary dict from :func:`aggregate_results`.
+
+    Raises:
+        FileNotFoundError: If *output_dir* does not exist.
+    """
+    from issuer_posting import post_clearing_file
+
+    if not os.path.isdir(output_dir):
+        raise FileNotFoundError(f"output_dir not found: {output_dir}")
+
+    patterns = ["*.ipm", "*.dat"]
+    files: list[str] = []
+    for pat in patterns:
+        files.extend(sorted(glob.glob(os.path.join(output_dir, pat))))
+
+    # Exclude .sha256 sidecar files
+    files = [f for f in files if not f.endswith(".sha256")]
+
+    if not files:
+        _log(f"No clearing files found in {output_dir}")
+        return aggregate_results([])
+
+    all_results: list[list[dict[str, Any]]] = []
+
+    for fpath in files:
+        try:
+            results = post_clearing_file(fpath, key=key)
+            all_results.append(results)
+            appl = sum(1 for r in results if r.get("status") == "APPLIED")
+            noac = sum(1 for r in results if r.get("status") == "NO_ACCOUNT")
+            rej = sum(1 for r in results if r.get("status") == "REJECTED_STATUS")
+            _log(f"  {os.path.basename(fpath)}: {appl} applied, "
+                 f"{noac} no_account, {rej} rejected "
+                 f"({len(results)} movements)")
+        except Exception as exc:
+            _log(f"  ERROR processing {os.path.basename(fpath)}: {exc}")
+            # Don't crash: skip the corrupted file
+            all_results.append([])
+
+    summary = aggregate_results(all_results)
+    _log(f"issuer reception done: {summary['files']} files, "
+         f"{summary['applied']} applied, {summary['no_account']} no_account, "
+         f"{summary['rejected']} rejected "
+         f"({summary['total_movements']} total movements)")
+    return summary
