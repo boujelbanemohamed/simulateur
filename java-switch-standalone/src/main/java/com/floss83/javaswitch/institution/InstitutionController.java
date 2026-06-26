@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InstitutionController {
 
     private static final Set<String> VALID_ROLES = Set.of("ACQUIRER", "ISSUER", "BOTH");
+    private static final Pattern ACQUIRER_ID_PATTERN = Pattern.compile("^[0-9]{1,11}$");
 
     private final FinancialInstitutionRepository repository;
 
@@ -67,6 +69,10 @@ public class InstitutionController {
         if (!"ISSUER".equals(role) && (acquirerId == null || acquirerId.isBlank())) {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "acquirer_id is required when role is " + role));
+        }
+        String fmtErr = validateAcquirerId(acquirerId);
+        if (fmtErr != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", fmtErr));
         }
 
         // --- duplicate bin check ---
@@ -123,6 +129,10 @@ public class InstitutionController {
             return ResponseEntity.badRequest().body(Map.of(
                     "error", "acquirer_id is required when role is " + role));
         }
+        String fmtErr = validateAcquirerId(acquirerId);
+        if (fmtErr != null) {
+            return ResponseEntity.badRequest().body(Map.of("error", fmtErr));
+        }
 
         entity.setName(name);
         entity.setCountry(country);
@@ -136,6 +146,13 @@ public class InstitutionController {
     }
 
     // -- helpers ----------------------------------------------------------
+
+    private static String validateAcquirerId(String acquirerId) {
+        if (acquirerId != null && !acquirerId.isBlank() && !ACQUIRER_ID_PATTERN.matcher(acquirerId).matches()) {
+            return "acquirer_id must be 1 to 11 digits (DE-32 format)";
+        }
+        return null;
+    }
 
     private Map<String, Object> toRow(FinancialInstitution fi) {
         Map<String, Object> m = new LinkedHashMap<>();
