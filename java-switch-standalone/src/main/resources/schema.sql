@@ -103,3 +103,34 @@ COMMENT ON TABLE posted_movement IS
     'Idempotency tracking for issuer clearing posting. Prevents double-imputation on replay.';
 COMMENT ON COLUMN posted_movement.movement_ref IS
     'STAN/ARN from clearing file, or deterministic SHA-256 hex digest fallback (see issuer_posting.build_movement_ref). Never contains clear PAN. NOT NULL: our code always provides a value via build_movement_ref().';
+
+-- =====================================================================
+-- STAGE 3 — Financial institutions (unified acquirer + issuer model)
+-- Idempotent: safe to run on every Spring Boot startup.
+--
+-- NOTE: the "issuer" table (Stage 2) is KEPT for now because the Java
+-- authorization layer (CardholderAccount, IssuerAuthorizationService)
+-- references issuer(id) via cardholder_account.issuer_id FK. The switch
+-- from issuer -> financial_institution will happen in a dedicated
+-- migration lot once the unified model is validated and the UI is in
+-- place. Until then, issuer and financial_institution coexist.
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS financial_institution (
+    id            BIGSERIAL    PRIMARY KEY,
+    bin           VARCHAR(8)   NOT NULL UNIQUE,          -- BIN/IIN (6-8 chiffres)
+    name          VARCHAR(60)  NOT NULL,
+    country       CHAR(3)      NOT NULL,                 -- ISO numérique pays
+    network       VARCHAR(10)  NOT NULL,                 -- 'VISA' | 'MASTERCARD'
+    role          VARCHAR(10)  NOT NULL DEFAULT 'ISSUER',
+    acquirer_id   VARCHAR(11),                           -- DE-32, renseigné si role inclut ACQUIRER
+    created_at    TIMESTAMP    NOT NULL DEFAULT now(),
+    CONSTRAINT chk_fi_role CHECK (role IN ('ACQUIRER', 'ISSUER', 'BOTH'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_fi_role
+    ON financial_institution (role);
+
+CREATE INDEX IF NOT EXISTS idx_fi_acquirer
+    ON financial_institution (acquirer_id)
+    WHERE acquirer_id IS NOT NULL;
