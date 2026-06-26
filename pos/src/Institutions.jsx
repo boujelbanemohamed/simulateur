@@ -7,6 +7,7 @@ export default function Institutions({ onLogout }) {
   const [err, setErr] = useState(null);
   const [ok, setOk] = useState(null);
   const [form, setForm] = useState({ bin: "", name: "", country: "788", network: "VISA", role: "ISSUER", acquirerId: "" });
+  const [editingId, setEditingId] = useState(null);
 
   const bounce = useCallback((e) => { if (e.message === "UNAUTH") onLogout(); else setErr(e.message); }, [onLogout]);
 
@@ -19,25 +20,32 @@ export default function Institutions({ onLogout }) {
 
   useEffect(() => { load(); }, [load]);
 
+  function resetForm() {
+    setForm({ bin: "", name: "", country: "788", network: "VISA", role: "ISSUER", acquirerId: "" });
+    setEditingId(null);
+  }
+
+  function fillForm(fi) {
+    setForm({ bin: fi.bin || "", name: fi.name || "", country: fi.country || "788", network: fi.network || "VISA", role: fi.role || "ISSUER", acquirerId: fi.acquirer_id || "" });
+    setEditingId(fi.id);
+  }
+
   async function submit() {
     setErr(null); setOk(null); setLoading(true);
     try {
-      const body = {
-        bin: form.bin,
-        name: form.name,
-        country: form.country,
-        network: form.network,
-        role: form.role,
-        acquirer_id: form.acquirerId || null,
-      };
-      const r = await authedFetch("/api/admin/institutions", {
-        method: "POST",
+      const isEdit = editingId != null;
+      const body = isEdit
+        ? { name: form.name, country: form.country, network: form.network, role: form.role, acquirer_id: form.acquirerId || null }
+        : { bin: form.bin, name: form.name, country: form.country, network: form.network, role: form.role, acquirer_id: form.acquirerId || null };
+      const url = isEdit ? `/api/admin/institutions/${editingId}` : "/api/admin/institutions";
+      const r = await authedFetch(url, {
+        method: isEdit ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       if (r.ok) {
-        setOk("Institution créée.");
-        setForm({ bin: "", name: "", country: "788", network: "VISA", role: "ISSUER", acquirerId: "" });
+        setOk(isEdit ? "Institution modifiée." : "Institution créée.");
+        resetForm();
         load();
       } else {
         const d = await r.json().catch(() => ({}));
@@ -59,11 +67,11 @@ export default function Institutions({ onLogout }) {
 
       <div className="dash-grid">
         <section className="panel">
-          <div className="panel-head"><h2 className="wire-title">Nouvelle institution</h2></div>
+          <div className="panel-head"><h2 className="wire-title">{editingId ? "Modifier l'institution" : "Nouvelle institution"}</h2></div>
 
           <div className="field">
             <span>BIN / IIN</span>
-            <input value={form.bin} onChange={(e) => setForm({ ...form, bin: e.target.value })} placeholder="ex: 400100" />
+            <input value={form.bin} onChange={(e) => setForm({ ...form, bin: e.target.value })} placeholder="ex: 400100" disabled={editingId != null} />
           </div>
           <div className="field">
             <span>Nom</span>
@@ -89,17 +97,20 @@ export default function Institutions({ onLogout }) {
             <span>Acquirer ID (DE-32)</span>
             <input value={form.acquirerId} onChange={(e) => setForm({ ...form, acquirerId: e.target.value })} placeholder="requis si ACQUIRER/BOTH" />
           </div>
-          <button className="send" onClick={submit} disabled={loading}>
-            {loading ? "Création…" : "Créer l'institution"}
-          </button>
+          <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+            <button className="send" onClick={submit} disabled={loading}>
+              {loading ? "Enregistrement…" : editingId ? "Enregistrer les modifications" : "Créer l'institution"}
+            </button>
+            {editingId && <button className="link-btn" onClick={resetForm}>Annuler</button>}
+          </div>
         </section>
 
         <section className="panel">
           <div className="panel-head"><h2 className="wire-title">Liste des institutions</h2></div>
           <table className="fieldtable">
-            <thead><tr><td className="ft-num">ID</td><td>BIN</td><td>Nom</td><td>Réseau</td><td>Rôle</td><td>DE-32</td></tr></thead>
+            <thead><tr><td className="ft-num">ID</td><td>BIN</td><td>Nom</td><td>Réseau</td><td>Rôle</td><td>DE-32</td><td></td></tr></thead>
             <tbody>
-              {list.length === 0 && <tr><td colSpan={6} className="muted">Aucune institution.</td></tr>}
+              {list.length === 0 && <tr><td colSpan={7} className="muted">Aucune institution.</td></tr>}
               {list.map((fi) => (
                 <tr key={fi.id}>
                   <td className="ft-num">{fi.id}</td>
@@ -108,6 +119,7 @@ export default function Institutions({ onLogout }) {
                   <td><span className="tag tag-ok" style={fi.network === "MASTERCARD" ? { color: "var(--amber)", background: "rgba(242,182,90,.14)" } : {}}>{fi.network}</span></td>
                   <td><span className="tag" style={fi.role === "ISSUER" ? { color: "var(--cyan)", background: "rgba(91,192,235,.12)" } : fi.role === "BOTH" ? { color: "var(--green)", background: "rgba(61,214,140,.12)" } : {}}>{fi.role}</span></td>
                   <td className="ft-val">{fi.acquirer_id || "—"}</td>
+                  <td><button className="link-btn" onClick={() => fillForm(fi)}>Modifier</button></td>
                 </tr>
               ))}
             </tbody>
