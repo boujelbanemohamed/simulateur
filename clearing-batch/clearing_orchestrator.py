@@ -128,7 +128,6 @@ def main(argv: list[str]) -> int:
     mc_ok = _run_phase("MASTERCARD", lambda: mc.run(
         out_dir,
         terminal_type=args.mc_terminal_type,
-        tcc=args.mc_tcc,
         txn_env=args.mc_txn_env,
         include_today=args.include_today,
         blocked=True,
@@ -149,7 +148,6 @@ def main(argv: list[str]) -> int:
     mc_rev_ok = _run_phase("MASTERCARD-REVERSAL", lambda: mc.run_reversals(
         out_dir,
         terminal_type=args.mc_terminal_type,
-        tcc=args.mc_tcc,
         txn_env=args.mc_txn_env,
         include_today=args.include_today,
         blocked=True,
@@ -182,7 +180,6 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
                    help="Fallback ISO numeric country when DE-19 was not captured")
     # Mastercard knobs
     p.add_argument("--mc-terminal-type", default=os.environ.get("MC_TERMINAL_TYPE", "  Z"))
-    p.add_argument("--mc-tcc", default=os.environ.get("MC_TCC", "T"))
     p.add_argument("--mc-txn-env", default=os.environ.get("MC_TXN_ENV", "0"))
     return p.parse_args(argv)
 

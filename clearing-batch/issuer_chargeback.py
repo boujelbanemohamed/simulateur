@@ -154,5 +154,5 @@ def build_first_chargeback(
         f"PDS{PDS_ORIG_TXN_REF}": orig_ref_pds,
     }
     msg.update(build_de48(
-        terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+        terminal_type=terminal_type, txn_env=txn_env))
     return msg

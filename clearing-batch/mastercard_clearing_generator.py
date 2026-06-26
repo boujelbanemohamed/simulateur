@@ -39,11 +39,7 @@ Field mapping (per spec request)
     DE33 <- acquirer_id (n-11 LLVAR)      DE43 <- acceptor_name_loc + pays alpha-3 (LLVAR)
     DE49 <- txn_currency                  DE71 <- sequential message number
     DE93 <- PAN BIN (destination issuer)  DE94 <- acquirer_id (originator)
-    DE48 <- PDS subelements (terminal type, transaction environment, TCC*)
-
-* See the note on TCC in build_de48(): the Transaction Category Code placement
-  varies across Mastercard spec versions; the tag used here is a documented,
-  configurable constant to verify against your IPM Clearing Formats manual.
+    DE48 <- PDS subelements (terminal type, transaction environment)
 
   --- Sens crédit/débit — conforme IPM Clearing Formats, Juin 2019 §5 ---
   Le sens n'est PAS porté par un champ explicite. Il se déduit de la
@@ -116,31 +112,32 @@ FEE_REASON_RETRIEVAL = "7614"  # Retrieval Fee Billing
 # DE-48 PDS tags (numeric, 4 digits). Names per Mastercard_Parsing decoding.
 PDS_TERMINAL_TYPE = "0023"    # Terminal Type
 PDS_TXN_ENV = "0165"          # transaction environment / settlement indicator
-PDS_TCC = "0052"              # *Transaction Category indicator — VERIFY vs spec
+# PDS 0052 is the E-Commerce Security Level Indicator (n-3) per IPM spec,
+# NOT the Transaction Category Code. The transaction category is carried by
+# DE-3 and DE-22. A legacy single-char TCC has no generic PDS home in modern
+# IPM (chip: EMV 9F53 in DE-55). Removed the incorrect PDS 0052=tcc emission.
 PDS_REVERSAL = "0025"         # Return/Reversal Indicator — "R" pour un reversal
 
 
 # --------------------------------------------------------------------------- #
 # DE-48 builder
 # --------------------------------------------------------------------------- #
-def build_de48(*, terminal_type: str, tcc: str, txn_env: str,
+def build_de48(*, terminal_type: str, txn_env: str,
                extra_pds: dict[str, str] | None = None) -> dict[str, str]:
     """
     Return a dict of PDSxxxx keys. cardutil serialises each into DE-48 as
     tag(4) + length(3) + value, concatenated (PDS / TLV).
 
-    Note on TCC: the legacy single-character Transaction Category Code does not
-    have one fixed home across IPM spec versions (legacy standalone vs DE-48 PDS
-    vs EMV tag 9F53 inside DE-55). PDS_TCC is therefore a documented, swappable
-    constant — confirm the correct subelement against your IPM Clearing manual
-    before production use.
+    PDS 0052 is the E-Commerce Security Level Indicator (n-3) per IPM spec,
+    NOT the Transaction Category Code. The transaction category is carried by
+    DE-3 and DE-22. A legacy single-char TCC has no generic PDS home in modern
+    IPM (chip: EMV 9F53 in DE-55). Removed the incorrect PDS 0052=tcc emission.
 
     When `is_reversal=True`, PDS 0025 (Return/Reversal Indicator) is set to "R".
     """
     pds: dict[str, str] = {
         f"PDS{PDS_TERMINAL_TYPE}": terminal_type,
         f"PDS{PDS_TXN_ENV}": txn_env,
-        f"PDS{PDS_TCC}": tcc,
     }
     if extra_pds:
         for tag, value in extra_pds.items():
@@ -257,9 +254,9 @@ def build_de54_cashback(cashback_amount: int | str, currency_code: str, *,
 # Message builders
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
-                      terminal_type: str, tcc: str, txn_env: str,
-                      created: datetime,
-                      is_reversal: bool = False) -> dict[str, Any]:
+                       terminal_type: str, txn_env: str,
+                       created: datetime,
+                       is_reversal: bool = False) -> dict[str, Any]:
     """Build one MTI 1240 First Presentment message dict for cardutil.
 
     When `is_reversal=True`, PDS 0025 = "R" is injected into DE-48 and the
@@ -307,7 +304,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     extra_pds = {PDS_REVERSAL: "R"} if is_reversal else None
-    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
+    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env,
                           extra_pds=extra_pds))
     # DE-54 (Additional Amounts) — requis par IPM pour DE-3 s1=09 (Purchase with
     # Cash Back). Si la row contient un champ txn_cashback (ou de54), on injecte
@@ -353,7 +350,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 # NE PAS utiliser pour produire des chargebacks réels.
 # --------------------------------------------------------------------------- #
 def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
-                     terminal_type: str, tcc: str, txn_env: str,
+                     terminal_type: str, txn_env: str,
                      created: datetime,
                      chargeback_reason: str = "00") -> dict[str, Any]:
     """Build one MTI 1442 Chargeback message dict for cardutil.
@@ -396,7 +393,7 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE93": pan_bin,
         "DE94": originator_id,
     }
-    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env))
     return msg
 
 
@@ -404,7 +401,7 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
 # Fee Collection (MTI 1740 — Retrieval Fee Billing)
 # --------------------------------------------------------------------------- #
 def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
-                         terminal_type: str, tcc: str, txn_env: str,
+                         terminal_type: str, txn_env: str,
                          created: datetime,
                          reason_code: str = FEE_REASON_RETRIEVAL) -> dict[str, Any]:
     """Build one MTI 1740 Fee Collection message dict for cardutil.
@@ -451,7 +448,7 @@ def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE73": created.strftime("%y%m%d"),               # Action Date YYMMDD
         "DE94": originator_id,                            # transaction originator inst ID
     }
-    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env))
     return msg
 
 
@@ -459,7 +456,7 @@ def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
 # Second Presentment (MTI 1240 — acquereur response to issuer chargeback)
 # --------------------------------------------------------------------------- #
 def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
-                             terminal_type: str, tcc: str, txn_env: str,
+                             terminal_type: str, txn_env: str,
                              created: datetime, reason_code: str,
                              partial: bool = False,
                              second_amount: int | None = None) -> dict[str, Any]:
@@ -534,7 +531,7 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE33": build_de33(row.get("acquirer_id")),       # forwarding institution (n-11 LLVAR)
         "DE43": de43,                                     # card acceptor name/location
     }
-    msg.update(build_de48(terminal_type=terminal_type, tcc=tcc, txn_env=txn_env))
+    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env))
     return msg
 
 
@@ -596,7 +593,7 @@ def build_file_trailer(msg_number: int, presentment_count: int, amount_total: in
 # Assembly  (pure, testable: returns the raw blocked IPM bytes + totals)
 # --------------------------------------------------------------------------- #
 def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
-                       terminal_type: str, tcc: str, txn_env: str,
+                       terminal_type: str, txn_env: str,
                        created: datetime | None = None,
                        blocked: bool = True,
                        file_type: str = "000", processor_id: str = "00000000000",
@@ -613,7 +610,7 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq += 1
         pan = decrypt_pan(row["pan_enc"], key)
         writer.write(build_presentment(row, pan, seq,
-                                       terminal_type=terminal_type, tcc=tcc, txn_env=txn_env,
+                                       terminal_type=terminal_type, txn_env=txn_env,
                                        created=created))
         amount_total += int(row["txn_amount"])
     count = len(rows)
@@ -627,7 +624,7 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
 
 
 def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
-                                terminal_type: str, tcc: str, txn_env: str,
+                                terminal_type: str, txn_env: str,
                                 created: datetime | None = None,
                                 blocked: bool = True,
                                 file_type: str = "000",
@@ -651,7 +648,7 @@ def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq += 1
         pan = decrypt_pan(row["pan_enc"], key)
         writer.write(build_presentment(row, pan, seq,
-                                       terminal_type=terminal_type, tcc=tcc,
+                                       terminal_type=terminal_type, 
                                        txn_env=txn_env,
                                        created=created,
                                        is_reversal=True))
@@ -697,7 +694,7 @@ def verify_ipm(data: bytes, *, blocked: bool = True) -> tuple[int, str | None]:
 # --------------------------------------------------------------------------- #
 # Orchestration: claim -> write -> verify -> confirm (Temps 2)
 # --------------------------------------------------------------------------- #
-def run(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
+def run(out_dir: str, *, terminal_type: str, txn_env: str,
         include_today: bool, blocked: bool, confirm: bool,
         file_type: str = "000", processor_id: str = "00000000000",
         file_seq: str = "00001") -> int:
@@ -715,7 +712,7 @@ def run(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
             return 0
 
         data, count, amount_total = generate_ipm_bytes(
-            result.rows, key, terminal_type=terminal_type, tcc=tcc,
+            result.rows, key, terminal_type=terminal_type, 
             txn_env=txn_env, blocked=blocked,
             file_type=file_type, processor_id=processor_id, file_seq=file_seq)
 
@@ -748,7 +745,7 @@ def run(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
         conn.close()
 
 
-def run_reversals(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
+def run_reversals(out_dir: str, *, terminal_type: str, txn_env: str,
                   include_today: bool, blocked: bool, confirm: bool,
                   file_type: str = "000", processor_id: str = "00000000000",
                   file_seq: str = "00001") -> int:
@@ -769,7 +766,7 @@ def run_reversals(out_dir: str, *, terminal_type: str, tcc: str, txn_env: str,
             return 0
 
         data, count, amount_total = generate_reversal_ipm_bytes(
-            result.rows, key, terminal_type=terminal_type, tcc=tcc,
+            result.rows, key, terminal_type=terminal_type, 
             txn_env=txn_env, blocked=blocked,
             file_type=file_type, processor_id=processor_id, file_seq=file_seq)
 
@@ -804,7 +801,6 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Flossx83 — Mastercard IPM generator (Stage 3)")
     p.add_argument("--out-dir", default="./out")
     p.add_argument("--terminal-type", default="  Z", help="DE48 PDS0023 Terminal Type")
-    p.add_argument("--tcc", default="T", help="Transaction Category indicator (see build_de48 note)")
     p.add_argument("--txn-env", default="0", help="DE48 transaction environment / settlement indicator")
     p.add_argument("--include-today", action="store_true")
     p.add_argument("--unblocked", action="store_true", help="Write without 1014 blocking (testing only)")
@@ -815,7 +811,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = _parse_args(argv)
     return run(args.out_dir,
-               terminal_type=args.terminal_type, tcc=args.tcc, txn_env=args.txn_env,
+               terminal_type=args.terminal_type, txn_env=args.txn_env,
                include_today=args.include_today,
                blocked=not args.unblocked,
                confirm=not args.no_confirm)
