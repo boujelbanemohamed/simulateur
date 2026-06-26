@@ -14,6 +14,14 @@ export const CURRENCIES = [
   { code: "826", label: "GBP — Livre sterling", symbol: "£" },
 ];
 
+export const POS_ENTRY_MODES = [
+  { code: "051", label: "Puce avec contact (PIN)" },
+  { code: "071", label: "Sans contact" },
+  { code: "901", label: "Bande magnétique" },
+  { code: "011", label: "Saisie manuelle" },
+  { code: "810", label: "E-commerce (en ligne)" },
+];
+
 // Human labels for the decoded-field table (subset we care about).
 export const FIELD_LABELS = {
   2: "PAN", 3: "Code traitement", 4: "Montant", 5: "Montant règlement",

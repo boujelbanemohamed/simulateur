@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { encode, encodeSegments, MTI_INFO } from "./iso8583.js";
-import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS } from "./cards.js";
+import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS, POS_ENTRY_MODES } from "./cards.js";
 import { authedFetch, getToken } from "./api.js";
 import Decoder from "./Decoder.jsx";
 
@@ -285,7 +285,18 @@ export default function Terminal() {
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8 }}>Connectez-vous en admin pour sélectionner une institution</p>
               )}
               {MERCHANT_FIELDS.map(([k, labelDefault, labelDab]) => (
-                <label key={k} className="field"><span>{isDab ? labelDab : labelDefault}</span><input value={merchant[k]} onChange={(e) => setMerchant((m) => ({ ...m, [k]: e.target.value }))} /></label>
+                <label key={k} className="field"><span>{isDab ? labelDab : labelDefault}</span>
+                  {k === "posEntry" ? (
+                    <select value={merchant.posEntry} onChange={(e) => setMerchant((m) => ({ ...m, posEntry: e.target.value }))}>
+                      {!POS_ENTRY_MODES.some((m) => m.code === merchant.posEntry) && (
+                        <option value={merchant.posEntry}>{merchant.posEntry} (valeur libre)</option>
+                      )}
+                      {POS_ENTRY_MODES.map((m) => <option key={m.code} value={m.code}>{m.label}</option>)}
+                    </select>
+                  ) : (
+                    <input value={merchant[k]} onChange={(e) => setMerchant((m) => ({ ...m, [k]: e.target.value }))} />
+                  )}
+                </label>
               ))}
             </div>
           )}
