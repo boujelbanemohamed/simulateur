@@ -9,7 +9,9 @@ import java.util.Set;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -87,6 +89,50 @@ public class InstitutionController {
         FinancialInstitution saved = repository.save(entity);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(toRow(saved));
+    }
+
+    @PutMapping(value = "/{id}", produces = "application/json")
+    public ResponseEntity<?> update(@PathVariable Long id, @RequestBody Map<String, Object> body) {
+        FinancialInstitution entity = repository.findById(id).orElse(null);
+        if (entity == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "error", "Institution " + id + " not found"));
+        }
+
+        // bin is NOT modifiable — silently ignore if present
+        // (no 400 error to avoid breaking clients that echo the field)
+
+        String name = str(body, "name");
+        String country = str(body, "country");
+        String network = str(body, "network");
+        String role = str(body, "role");
+
+        if (name == null || country == null || network == null || role == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Missing required fields: name, country, network, role"));
+        }
+
+        if (!VALID_ROLES.contains(role.toUpperCase())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Invalid role '" + role + "'; must be one of: " + VALID_ROLES));
+        }
+        role = role.toUpperCase();
+
+        String acquirerId = str(body, "acquirer_id");
+        if (!"ISSUER".equals(role) && (acquirerId == null || acquirerId.isBlank())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "acquirer_id is required when role is " + role));
+        }
+
+        entity.setName(name);
+        entity.setCountry(country);
+        entity.setNetwork(network);
+        entity.setRole(role);
+        entity.setAcquirerId(acquirerId);
+
+        FinancialInstitution saved = repository.save(entity);
+
+        return ResponseEntity.ok(toRow(saved));
     }
 
     // -- helpers ----------------------------------------------------------
