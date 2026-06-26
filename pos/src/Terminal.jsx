@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { encode, encodeSegments, MTI_INFO } from "./iso8583.js";
 import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS } from "./cards.js";
+import { authedFetch, getToken } from "./api.js";
 import Decoder from "./Decoder.jsx";
 
 const pad = (n, w) => String(n).padStart(w, "0");
@@ -51,6 +52,7 @@ export default function Terminal() {
   const [approved, setApproved] = useState(true);
   const [merchant, setMerchant] = useState(MERCHANT_DEFAULTS);
   const [showMerchant, setShowMerchant] = useState(false);
+  const [acquirers, setAcquirers] = useState([]);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [stan, setStan] = useState(() => randomDigits(6));
@@ -66,6 +68,21 @@ export default function Terminal() {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 50)));
     } catch { /* quota ou indisponibilité : non bloquant */ }
   }, [history]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!getToken()) return;
+      try {
+        const res = await authedFetch("/api/admin/institutions?role=ACQUIRER");
+        if (!res.ok) { if (!cancelled) setAcquirers([]); return; }
+        const data = await res.json().catch(() => null);
+        if (!cancelled) setAcquirers(Array.isArray(data) ? data.filter(i => i && (i.role === "ACQUIRER" || i.role === "BOTH")) : []);
+      } catch { if (!cancelled) setAcquirers([]); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const [voidTargetIdx, setVoidTargetIdx] = useState(null);
   const [de5Amount, setDe5Amount] = useState("");
   const [de6Amount, setDe6Amount] = useState("");
@@ -251,6 +268,22 @@ export default function Terminal() {
           <button className="merchant-toggle" onClick={() => setShowMerchant((s) => !s)}>{showMerchant ? "▾" : "▸"} {isDab ? "Paramètres DAB" : "Paramètres marchand"}</button>
           {showMerchant && (
             <div className="merchant">
+              {Array.isArray(acquirers) && acquirers.length > 0 && (
+                <label className="field"><span>Institution acquéreur</span>
+                  <select value={merchant.acquirerId} onChange={(e) => {
+                    const selected = acquirers.find((a) => a && a.acquirer_id === e.target.value);
+                    if (selected?.country) setMerchant((m) => ({ ...m, acquirerId: e.target.value, acquirerCountry: selected.country }));
+                    else setMerchant((m) => ({ ...m, acquirerId: e.target.value }));
+                  }}>
+                    <option value="">-- Choisir --</option>
+                    {acquirers.filter(a => a && a.acquirer_id).map((a) => <option key={a.id || a.acquirer_id} value={a.acquirer_id}>{(a.name || "?")} ({a.acquirer_id})</option>)}
+                  </select>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>Pré-remplit le champ libre ci-dessous</span>
+                </label>
+              )}
+              {!getToken() && (
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8 }}>Connectez-vous en admin pour sélectionner une institution</p>
+              )}
               {MERCHANT_FIELDS.map(([k, labelDefault, labelDab]) => (
                 <label key={k} className="field"><span>{isDab ? labelDab : labelDefault}</span><input value={merchant[k]} onChange={(e) => setMerchant((m) => ({ ...m, [k]: e.target.value }))} /></label>
               ))}
