@@ -655,6 +655,52 @@ class TestMastercardIpm(unittest.TestCase):
                                   chargeback_reason="41")
         self.assertEqual(msg["DE72"], "041")
 
+    def test_map_pos_entry_de22_sf7(self):
+        cases = [
+            ("051", "C", "chip contact"),
+            ("071", "M", "contactless"),
+            ("901", "B", "magstripe full"),
+            ("011", "1", "manual"),
+            ("810", "S", "e-commerce"),
+            ("", "0", "empty string"),
+            (None, "0", "None"),
+            ("999", "0", "unknown code"),
+            ("05", "C", "2-digit chip prefix w/o 3rd digit"),
+        ]
+        for inp, expected, label in cases:
+            with self.subTest(case=label):
+                self.assertEqual(mc.map_pos_entry_to_de22_sf7(inp), expected)
+
+    def test_presentment_de22_sf7_from_row(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["pos_entry_mode"] = "810"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   terminal_type="  Z", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE22_s7"], "S", "810 → e-commerce → S")
+
+        row["pos_entry_mode"] = "051"
+        msg = mc.build_presentment(row, "5413330089020011", 2,
+                                   terminal_type="  Z", txn_env="0",
+                                   created=DT)
+        self.assertEqual(msg["DE22_s7"], "C", "051 → chip contact → C")
+
+    def test_second_presentment_de22_sf7_derived(self):
+        row = sample_rows(["5413330089020011"])[0]
+        # sample_rows has pos_entry_mode="051" → "C"
+        msg = mc.build_second_presentment(
+            row, "5413330089020011", 5,
+            terminal_type="  Z", txn_env="0",
+            created=DT, reason_code="2002")
+        self.assertEqual(msg["DE22_s7"], "C", "second presentment derives from row pos_entry_mode")
+
+        row["pos_entry_mode"] = "810"
+        msg = mc.build_second_presentment(
+            row, "5413330089020011", 6,
+            terminal_type="  Z", txn_env="0",
+            created=DT, reason_code="2003")
+        self.assertEqual(msg["DE22_s7"], "S", "810 → S in second presentment")
+
 
 class TestFeeCollection(unittest.TestCase):
     """MTI 1740 Fee Collection (Retrieval Fee Billing) — builder unit tests."""

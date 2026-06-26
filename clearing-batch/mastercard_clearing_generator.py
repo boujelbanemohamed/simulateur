@@ -120,6 +120,30 @@ PDS_REVERSAL = "0025"         # Return/Reversal Indicator — "R" pour un revers
 
 
 # --------------------------------------------------------------------------- #
+# DE-22 subfield 7 — Card Data Input Mode (IPM Clearing Formats p.263)
+# --------------------------------------------------------------------------- #
+_DE22_SF7_MAP: dict[str, str] = {
+    "05": "C",   # chip contact (051) → Chip (online)
+    "07": "M",   # contactless (071) → Contactless M/Chip
+    "90": "B",   # full magstripe (901) → Magstripe (track)
+    "01": "1",   # manual (011) → Manual (no terminal)
+    "81": "S",   # e-commerce (810) → E-commerce
+}
+
+
+def map_pos_entry_to_de22_sf7(pos_entry_mode: str | None) -> str:
+    """Map a 3-digit DE-22 POS entry mode to DE-22 subfield 7 Card Data Input
+    Mode (an-1), per IPM Clearing Formats p.263 table.
+
+    The mapping uses the first 2 digits of pos_entry_mode (PAN entry mode).
+    Returns "0" (Unknown) for any unmapped or missing value.
+    """
+    if not pos_entry_mode or len(pos_entry_mode) < 2:
+        return "0"
+    return _DE22_SF7_MAP.get(pos_entry_mode[:2], "0")
+
+
+# --------------------------------------------------------------------------- #
 # DE-48 builder
 # --------------------------------------------------------------------------- #
 def build_de48(*, terminal_type: str, txn_env: str,
@@ -290,6 +314,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
+        "DE22_s7": map_pos_entry_to_de22_sf7(row.get("pos_entry_mode")),
         "DE4": de4,                                   # minor units, no decimal point
         "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
         "DE24": FUNC_REVERSAL if is_reversal else FUNC_PRESENTMENT,
@@ -472,7 +497,7 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
     Fields Org=M (mandatory for the originating acquirer):
       DE-2 (PAN), DE-3 (= original), DE-4 (Amount), DE-12 (DateTime),
-      DE-22+s7 (Card Data Input Mode — convention simulateur "1"),
+      DE-22+s7 (Card Data Input Mode — dérivé du pos_entry_mode original),
       DE-24 (Function Code), DE-25 (Message Reason Code), DE-26 (MCC),
       DE-30 (Amounts Original), DE-31 (ARD), DE-33 (Forwarding Inst),
       DE-43 (Card Acceptor Name/Location).
@@ -516,13 +541,7 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE3": de3,                                       # inchangé vs original
         "DE4": de4,                                       # amount (partiel si partial)
         "DE12": ts,                                       # datetime
-        "DE22_s7": "1",                                   # Card Data Input Mode (convention)
-                                                          # Réserve : idéalement devrait refléter
-                                                          # le mode de saisie du présentment
-                                                          # original (DE-22 capturé au terminal),
-                                                          # non tracé dans le modèle actuel —
-                                                          # à affiner si le lien vers la
-                                                          # transaction originale est ajouté.
+        "DE22_s7": map_pos_entry_to_de22_sf7(row.get("pos_entry_mode")),
         "DE24": func,                                     # 205 / 282
         "DE25": reason_code[:4].rjust(4, "0"),            # message reason code
         "DE26": mcc,                                      # MCC (n-4)
