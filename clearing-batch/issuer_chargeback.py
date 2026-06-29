@@ -10,14 +10,14 @@ The chargeback contests a specific original presentment (MTI 1240) and carries:
   - DE-25: Message Reason Code
   - DE-30: Original Amount (from the contested presentment)
 
-DE-56 (Original Data Elements) limitation:
-  cardutil's default IPM iso_config (config['bit_config']) does NOT include
-  DE-56 among its configured fields (verified: 46 fields, DE [1..127], no 56).
-  Standard DE-56 encoding cannot be produced without extending the config.
-  As a fallback, the original STAN and date are carried in PDS0099
-  (Original Transaction Reference) — a custom PDS for traceability within this
-  simulator. In production, use the correct Mastercard-assigned PDS tag or
-  extend the iso_config to support DE-56.
+Original transaction reference:
+  DE-56 (Original Data Elements) is an ISO 8583 AUTHORIZATION field; it does NOT
+  exist in either clearing spec (Mastercard IPM nor Visa Base II — verified).
+  In IPM clearing, the reference to the original transaction is carried by DE-31
+  (Acquirer Reference Data, mandatory), which this builder emits via
+  build_de31_ard(). PDS0099 additionally carries the original STAN and date for
+  extra traceability (optional complement, not a substitute for a missing field).
+  This is conformant: no DE-56 is expected in an IPM chargeback.
 
 Reference: IPM Clearing Formats §8.2 (First Chargeback).
 """
@@ -132,7 +132,7 @@ def build_first_chargeback(
     de43 = build_de43(acceptor_name_loc, merchant_country, city=acceptor_city)
     originator_id = build_de33(acquirer_id)
 
-    # Original transaction reference for traceability (DE-56 unavailable)
+    # Original transaction reference (PDS0099 complement to DE-31)
     orig_ref_pds = build_orig_ref_pds(
         stan=req.original_stan,
         dt=req.original_date or created,
