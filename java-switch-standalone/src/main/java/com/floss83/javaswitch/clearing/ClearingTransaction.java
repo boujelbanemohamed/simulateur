@@ -106,6 +106,9 @@ public class ClearingTransaction {
     @Column(name = "ucaf_level", length = 1)
     private String ucafLevel;
 
+    @Column(name = "acceptor_city", length = 13)
+    private String acceptorCity;
+
     @Column(name = "network", nullable = false, length = 10)
     private String network;
 

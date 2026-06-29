@@ -82,6 +82,7 @@ def build_first_chargeback(
     msg_number: int = 1,
     acquirer_id: str = "40010001234",
     acceptor_name_loc: str = "MERCHANT",
+    acceptor_city: str = "",
     merchant_country: str = "788",
     terminal_type: str = "  Z",
     tcc: str = "T",
@@ -128,7 +129,7 @@ def build_first_chargeback(
     ts = req.original_date or created
     mcc = "0000"
 
-    de43 = build_de43(acceptor_name_loc, merchant_country)
+    de43 = build_de43(acceptor_name_loc, merchant_country, city=acceptor_city)
     originator_id = build_de33(acquirer_id)
 
     # Original transaction reference for traceability (DE-56 unavailable)

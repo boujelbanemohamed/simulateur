@@ -137,3 +137,6 @@ CREATE INDEX IF NOT EXISTS idx_fi_acquirer
 
 -- E-commerce UCAF level (E-com-3): captured from DE-48 during clearing capture.
 ALTER TABLE clearing_transaction ADD COLUMN IF NOT EXISTS ucaf_level CHAR(1);
+
+-- DE-43 subfield 3 — Card Acceptor City (DE-61-City): captured from DE-61 during clearing capture.
+ALTER TABLE clearing_transaction ADD COLUMN IF NOT EXISTS acceptor_city VARCHAR(13);

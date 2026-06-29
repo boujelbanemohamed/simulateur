@@ -31,7 +31,7 @@ const OP_TYPES = {
 const MERCHANT_DEFAULTS = {
   mcc: "5812", acquirerId: "40010001234", acquirerCountry: "788",
   terminalId: "10000001", acceptorId: "000000000012345",
-  acceptorName: "CAFE DE PARIS TUNIS", posEntry: "051", ucafLevel: "0",
+  acceptorName: "CAFE DE PARIS TUNIS", posEntry: "051", ucafLevel: "0", acceptorCity: "TUNIS",
 };
 
 const MERCHANT_FIELDS = [
@@ -41,6 +41,7 @@ const MERCHANT_FIELDS = [
   ["terminalId","ID terminal (DE-41)","ID terminal DAB (DE-41)"],
   ["acceptorId","ID accepteur (DE-42)","ID exploitant DAB (DE-42)"],
   ["acceptorName","Nom/lieu (DE-43)","Nom/lieu DAB (DE-43)"],
+  ["acceptorCity","Ville accepteur (DE-43 sf3)","Ville DAB (DE-43 sf3)"],
   ["posEntry","Mode saisie (DE-22)","Mode saisie DAB (DE-22)"],
 ];
 
@@ -135,6 +136,7 @@ export default function Terminal() {
       39: approved ? "00" : "05",
       41: merchant.terminalId, 42: merchant.acceptorId,
       43: merchant.acceptorName, 49: currency.code,
+      61: merchant.acceptorCity,
     };
 
     if (isReversal) {

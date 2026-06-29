@@ -901,6 +901,46 @@ class TestDe22Full(unittest.TestCase):
         self.assertIn("DE22", msg)
 
 
+class TestDe43City(unittest.TestCase):
+    """DE-43 subfield 3 (Card Acceptor City) — build_de43 city parameter tests."""
+
+    def test_de43_includes_city(self):
+        """build_de43 avec city='TUNIS' → le sous-champ 3 contient 'TUNIS'."""
+        de43 = mc.build_de43("CAFE", "788", city="TUNIS")
+        parts = de43.split("\\")
+        self.assertGreaterEqual(len(parts), 3)
+        self.assertEqual(parts[2].rstrip(), "TUNIS",
+                         "sous-champ 3 = ville")
+
+    def test_de43_city_empty_when_absent(self):
+        """build_de43 sans city → sous-champ 3 vide (' ')."""
+        de43 = mc.build_de43("CAFE", "788")
+        parts = de43.split("\\")
+        self.assertEqual(parts[2].strip(), "",
+                         "sous-champ 3 vide par défaut")
+
+    def test_presentment_de43_city_from_row(self):
+        """build_presentment avec acceptor_city='TUNIS' → DE43 contient 'TUNIS'."""
+        row = sample_rows(["5413330089020011"])[0]
+        row["acceptor_city"] = "TUNIS"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        de43 = msg["DE43"]
+        parts = de43.split("\\")
+        self.assertIn("TUNIS", parts[2], "DE43 contient la ville du marchand")
+
+    def test_presentment_de43_city_fallback_empty(self):
+        """build_presentment sans acceptor_city → sous-champ 3 vide (préservé)."""
+        row = sample_rows(["5413330089020011"])[0]
+        row.pop("acceptor_city", None)
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        de43 = msg["DE43"]
+        parts = de43.split("\\")
+        self.assertEqual(parts[2].strip(), "",
+                         "ville vide quand acceptor_city absent")
+
+
 class TestFeeCollection(unittest.TestCase):
     """MTI 1740 Fee Collection (Retrieval Fee Billing) — builder unit tests."""
 

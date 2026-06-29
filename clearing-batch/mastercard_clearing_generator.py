@@ -388,7 +388,8 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
     ts = row.get("transmission_ts") or created
     mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
-    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"),
+                       city=row.get("acceptor_city") or "")
     originator_id = build_de33(row.get("acquirer_id"))
     pan_bin = pan[:6] if pan.isdigit() else "000000"
 
@@ -506,7 +507,8 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
 
     ts = row.get("transmission_ts") or created
     mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
-    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"),
+                       city=row.get("acceptor_city") or "")
     originator_id = build_de33(row.get("acquirer_id"))
     pan_bin = pan[:6] if pan.isdigit() else "000000"
 
@@ -628,7 +630,8 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
     ts = row.get("transmission_ts") or created
     mcc = (row.get("mcc") or "0000")[:4].rjust(4, "0")
-    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"))
+    de43 = build_de43(row.get("acceptor_name_loc", ""), row.get("merchant_country", "788"),
+                       city=row.get("acceptor_city") or "")
 
     de3 = (row.get("processing_code") or "000000")[:6].rjust(6, "0")
     func = FUNC_SECOND_PRESENTMENT_PARTIAL if partial else FUNC_SECOND_PRESENTMENT_FULL

@@ -37,6 +37,7 @@ export const FIELD_LABELS = {
   48: "UCAF (e-commerce)",
   37: "RRN", 38: "Code autorisation", 39: "Code réponse", 41: "ID terminal",
   42: "ID accepteur", 43: "Nom/lieu accepteur", 49: "Devise",
+  61: "Ville accepteur (DE-43 sf3)",
   "2_PAN_tokenized": "PAN (tokenisé)", "52_CVV_tokenized": "CVV (tokenisé)",
 };
 
