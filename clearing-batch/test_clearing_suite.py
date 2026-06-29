@@ -348,7 +348,7 @@ class TestMastercardIpm(unittest.TestCase):
     def test_blocked_size_multiple_of_1014(self):
         rows = sample_rows(["5413330089020011", "2223000048400011"])
         data, count, total = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 2)
         self.assertEqual(len(data) % 1014, 0)
@@ -356,7 +356,7 @@ class TestMastercardIpm(unittest.TestCase):
     def test_roundtrip_record_count(self):
         rows = sample_rows(["5413330089020011", "2223000048400011", "5555444433332222"])
         data, count, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         n_records, first_mti = mc.verify_ipm(data, blocked=True)
         self.assertEqual(n_records, count + 2)
@@ -367,7 +367,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -379,7 +379,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         for rec in recs:
@@ -392,7 +392,7 @@ class TestMastercardIpm(unittest.TestCase):
         for r, amt in zip(rows, (1550, 250000)):
             r["txn_amount"] = amt
         data, count, total = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0", created=DT, blocked=True)
+            rows, KEY, txn_env="0", created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         trailer = next(r for r in recs if r.get("MTI") == "1644" and r.get("DE24") == "695")
         self.assertNotIn("DE4", trailer)
@@ -407,7 +407,7 @@ class TestMastercardIpm(unittest.TestCase):
 
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -424,7 +424,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -438,7 +438,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -450,7 +450,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -464,7 +464,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -482,7 +482,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -494,7 +494,7 @@ class TestMastercardIpm(unittest.TestCase):
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         presentment = next(r for r in recs if r.get("MTI") == "1240")
@@ -509,7 +509,7 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["processing_code"] = "200000"
         rows[0]["txn_amount"] = 5000
         data, count, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 1)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
@@ -525,7 +525,7 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["processing_code"] = "120000"
         rows[0]["txn_amount"] = 2500
         data, count, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 1)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
@@ -541,7 +541,7 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["processing_code"] = "090000"
         rows[0]["txn_amount"] = 1500
         data, count, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 1)
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
@@ -556,7 +556,7 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["txn_amount"] = 1500
         rows[0]["de54"] = 500
         msg = mc.build_presentment(rows[0], "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE3"], "090000")
         self.assertEqual(len(msg["DE54"]), 20)
@@ -571,7 +571,7 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["txn_amount"] = 1500
         rows[0]["txn_cashback"] = 750
         msg = mc.build_presentment(rows[0], "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE3"], "090000")
         self.assertEqual(len(msg["DE54"]), 20)
@@ -587,14 +587,14 @@ class TestMastercardIpm(unittest.TestCase):
         rows[0]["txn_cashback"] = 300
         rows[0]["txn_currency"] = "840"
         msg = mc.build_presentment(rows[0], "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE54"][4:7], "840")
 
     def test_build_presentment_reversal_has_pds0025(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_presentment(row, "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT, is_reversal=True)
         self.assertEqual(msg["DE24"], mc.FUNC_REVERSAL)
         self.assertEqual(msg.get("PDS0025"), "R")
@@ -603,7 +603,7 @@ class TestMastercardIpm(unittest.TestCase):
     def test_build_presentment_no_reversal(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_presentment(row, "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE24"], mc.FUNC_PRESENTMENT)
         self.assertNotIn("PDS0025", msg)
@@ -613,7 +613,7 @@ class TestMastercardIpm(unittest.TestCase):
         row["txn_amount"] = 2000
         row["reversal_amount"] = 800
         msg = mc.build_presentment(row, "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT, is_reversal=True)
         self.assertEqual(msg["DE24"], mc.FUNC_REVERSAL)
         self.assertEqual(int(msg["DE4"]), 800)
@@ -624,7 +624,7 @@ class TestMastercardIpm(unittest.TestCase):
         row["reversal_amount"] = 0
         with self.assertRaises(ValueError):
             mc.build_presentment(row, "5413330089020011", 2,
-                                 terminal_type="  Z", txn_env="0",
+                                 txn_env="0",
                                  created=DT, is_reversal=True)
 
     def test_build_presentment_reversal_partial_negative_raises(self):
@@ -633,13 +633,13 @@ class TestMastercardIpm(unittest.TestCase):
         row["reversal_amount"] = -100
         with self.assertRaises(ValueError):
             mc.build_presentment(row, "5413330089020011", 2,
-                                 terminal_type="  Z", txn_env="0",
+                                 txn_env="0",
                                  created=DT, is_reversal=True)
 
     def test_build_chargeback_skeleton(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_chargeback(row, "5413330089020011", 2,
-                                  terminal_type="  Z", txn_env="0",
+                                  txn_env="0",
                                   created=DT)
         self.assertEqual(msg["MTI"], mc.MTI_CHARGEBACK)
         self.assertEqual(msg["DE24"], mc.FUNC_CHARGEBACK)
@@ -650,7 +650,7 @@ class TestMastercardIpm(unittest.TestCase):
     def test_build_chargeback_custom_reason(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_chargeback(row, "5413330089020011", 2,
-                                  terminal_type="  Z", txn_env="0",
+                                  txn_env="0",
                                   created=DT,
                                   chargeback_reason="41")
         self.assertEqual(msg["DE72"], "041")
@@ -675,13 +675,13 @@ class TestMastercardIpm(unittest.TestCase):
         row = sample_rows(["5413330089020011"])[0]
         row["pos_entry_mode"] = "810"
         msg = mc.build_presentment(row, "5413330089020011", 1,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE22_s7"], "S", "810 → e-commerce → S")
 
         row["pos_entry_mode"] = "051"
         msg = mc.build_presentment(row, "5413330089020011", 2,
-                                   terminal_type="  Z", txn_env="0",
+                                   txn_env="0",
                                    created=DT)
         self.assertEqual(msg["DE22_s7"], "C", "051 → chip contact → C")
 
@@ -690,16 +690,73 @@ class TestMastercardIpm(unittest.TestCase):
         # sample_rows has pos_entry_mode="051" → "C"
         msg = mc.build_second_presentment(
             row, "5413330089020011", 5,
-            terminal_type="  Z", txn_env="0",
+            txn_env="0",
             created=DT, reason_code="2002")
         self.assertEqual(msg["DE22_s7"], "C", "second presentment derives from row pos_entry_mode")
 
         row["pos_entry_mode"] = "810"
         msg = mc.build_second_presentment(
             row, "5413330089020011", 6,
-            terminal_type="  Z", txn_env="0",
+            txn_env="0",
             created=DT, reason_code="2003")
         self.assertEqual(msg["DE22_s7"], "S", "810 → S in second presentment")
+
+    def test_map_de22_sf7_to_terminal_type(self):
+        cases = [
+            ("S", "CT6", "e-commerce forces CT6"),
+            ("C", "POI", "chip contact → POI"),
+            ("M", "POI", "contactless → POI"),
+            ("B", "POI", "magstripe → POI"),
+            ("1", "MAN", "manual → MAN"),
+            ("0", "NA ", "unknown → NA "),
+            ("X", "NA ", "unrecognised → NA "),
+            ("", "NA ", "empty → NA "),
+        ]
+        for inp, expected, label in cases:
+            with self.subTest(case=label):
+                val = mc.map_de22_sf7_to_terminal_type(inp)
+                self.assertEqual(val, expected)
+                self.assertEqual(len(val), 3, "all terminal types must be exactly 3 chars")
+
+    def test_presentment_terminal_type_ecommerce(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["pos_entry_mode"] = "810"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        sf7 = msg["DE22_s7"]
+        pds23 = msg.get("PDS0023")
+        self.assertEqual(sf7, "S", "e-commerce → DE22_s7=S")
+        self.assertEqual(pds23, "CT6", "e-commerce → PDS0023=CT6 (spec p.526)")
+
+    def test_presentment_terminal_type_chip(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row["pos_entry_mode"] = "051"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        self.assertEqual(msg["DE22_s7"], "C")
+        self.assertEqual(msg.get("PDS0023"), "POI")
+
+    def test_presentment_terminal_type_default_na(self):
+        row = sample_rows(["5413330089020011"])[0]
+        row.pop("pos_entry_mode", None)
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        self.assertEqual(msg["DE22_s7"], "0")
+        self.assertEqual(msg.get("PDS0023"), "NA ")
+
+    def test_presentment_no_zz_spaces_emitted(self):
+        """Aucune valeur '  Z' ou tout-espaces n'est plus émise dans PDS0023."""
+        for mode in ("051", "071", "901", "011", "810", "", None):
+            row = sample_rows(["5413330089020011"])[0]
+            if mode is None:
+                row.pop("pos_entry_mode", None)
+            else:
+                row["pos_entry_mode"] = mode
+            msg = mc.build_presentment(row, "5413330089020011", 1,
+                                       txn_env="0", created=DT)
+            pds = msg.get("PDS0023", "")
+            self.assertNotEqual(pds.strip(), "", f"PDS0023 must not be all-spaces for mode={mode!r}")
+            self.assertEqual(len(pds), 3, f"PDS0023 must be exactly 3 chars for mode={mode!r}")
 
 
 class TestFeeCollection(unittest.TestCase):
@@ -708,7 +765,7 @@ class TestFeeCollection(unittest.TestCase):
     def test_build_fee_collection_mti_and_codes(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_fee_collection(row, "5413330089020011", 2,
-                                      terminal_type="  Z", txn_env="0",
+                                      txn_env="0",
                                       created=DT)
         self.assertEqual(msg["MTI"], mc.MTI_FEE_COLLECTION)
         self.assertEqual(msg["DE3"], mc.PC_FEE_COLLECTION)
@@ -720,7 +777,7 @@ class TestFeeCollection(unittest.TestCase):
         row["txn_amount"] = 500
         row["original_amount"] = 1550
         msg = mc.build_fee_collection(row, "4532015112830366", 3,
-                                      terminal_type="  Z", txn_env="0",
+                                      txn_env="0",
                                       created=DT)
         self.assertEqual(int(msg["DE4"]), 500)
         self.assertEqual(msg["DE30"], "000000001550")
@@ -731,7 +788,7 @@ class TestFeeCollection(unittest.TestCase):
     def test_fee_collection_no_original_amount(self):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_fee_collection(row, "5413330089020011", 4,
-                                      terminal_type="  Z", txn_env="0",
+                                      txn_env="0",
                                       created=DT)
         self.assertEqual(msg["DE30"], "0" * 12)
 
@@ -743,7 +800,7 @@ class TestSecondPresentment(unittest.TestCase):
         row = sample_rows(["5413330089020011"])[0]
         msg = mc.build_second_presentment(
             row, "5413330089020011", 5,
-            terminal_type="  Z", txn_env="0",
+            txn_env="0",
             created=DT, reason_code="2002")
         self.assertEqual(msg["MTI"], mc.MTI_PRESENTMENT)
         self.assertEqual(msg["DE24"], mc.FUNC_SECOND_PRESENTMENT_FULL)
@@ -758,7 +815,7 @@ class TestSecondPresentment(unittest.TestCase):
         row["txn_amount"] = 2000
         msg = mc.build_second_presentment(
             row, "4532015112830366", 6,
-            terminal_type="  Z", txn_env="0",
+            txn_env="0",
             created=DT, reason_code="2003",
             partial=True, second_amount=800)
         self.assertEqual(msg["DE24"], mc.FUNC_SECOND_PRESENTMENT_PARTIAL)
@@ -771,7 +828,7 @@ class TestSecondPresentment(unittest.TestCase):
         with self.assertRaises(ValueError):
             mc.build_second_presentment(
                 row, "5413330089020011", 7,
-                terminal_type="  Z", txn_env="0",
+                txn_env="0",
                 created=DT, reason_code="2002",
                 partial=True, second_amount=0)
 
@@ -781,7 +838,7 @@ class TestSecondPresentment(unittest.TestCase):
         with self.assertRaises(ValueError):
             mc.build_second_presentment(
                 row, "5413330089020011", 8,
-                terminal_type="  Z", txn_env="0",
+                txn_env="0",
                 created=DT, reason_code="2002",
                 partial=True, second_amount=1500)
 
@@ -789,7 +846,7 @@ class TestSecondPresentment(unittest.TestCase):
         row = sample_rows(["4111111111111111"])[0]
         msg = mc.build_second_presentment(
             row, "4111111111111111", 9,
-            terminal_type="  Z", txn_env="0",
+            txn_env="0",
             created=DT, reason_code="2004")
         for unwanted in ("DE5", "DE6", "DE9", "DE10", "DE93", "DE94"):
             self.assertNotIn(unwanted, msg,
@@ -889,7 +946,7 @@ class TestIssuerInbound(unittest.TestCase):
         from issuer_inbound import parse_mastercard_ipm
         rows = sample_rows(["5413330089020011"])
         data, count, total = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         self.assertEqual(count, 1)
         movements = parse_mastercard_ipm(data, blocked=True)
@@ -928,7 +985,7 @@ class TestIssuerInbound(unittest.TestCase):
         from issuer_inbound import parse_mastercard_ipm, parse_visa_ctf
         rows = sample_rows(["5413330089020011"])
         data, _, _ = mc.generate_ipm_bytes(
-            rows, KEY, terminal_type="  Z", txn_env="0",
+            rows, KEY, txn_env="0",
             created=DT, blocked=True)
         movements = parse_mastercard_ipm(data, blocked=True)
         for m in movements:

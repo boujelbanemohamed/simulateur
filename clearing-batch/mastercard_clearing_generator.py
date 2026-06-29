@@ -144,6 +144,32 @@ def map_pos_entry_to_de22_sf7(pos_entry_mode: str | None) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# PDS 0023 — Terminal Type (IPM Clearing Formats p.500/526)
+# --------------------------------------------------------------------------- #
+_DE22_SF7_TO_TERMINAL_TYPE: dict[str, str] = {
+    "S": "CT6",   # e-commerce → CT6 imposé par la spec (p.526)
+    "C": "POI",   # chip contact → POI terminal
+    "M": "POI",   # contactless   → POI terminal
+    "B": "POI",   # magstripe     → POI terminal
+    "1": "MAN",   # manual        → Manual (no terminal)
+}
+
+_TERMINAL_TYPE_NA = "NA "  # Unknown — 3e caractère = espace, longueur 3 stricte
+
+
+def map_de22_sf7_to_terminal_type(sf7: str) -> str:
+    """Map DE-22 subfield 7 (Card Data Input Mode) to PDS 0023 Terminal Type
+    (ans-3), per IPM Clearing Formats p.500 with mandatory CT6 rule p.526:
+
+        "PDS 0023 must contain a value of CT6 when DE 22 Subfield 7
+         is populated with a value of S."
+
+    Returns exactly 3 characters: CT6, POI, MAN, or "NA " for unknown.
+    """
+    return _DE22_SF7_TO_TERMINAL_TYPE.get(sf7, _TERMINAL_TYPE_NA)
+
+
+# --------------------------------------------------------------------------- #
 # DE-48 builder
 # --------------------------------------------------------------------------- #
 def build_de48(*, terminal_type: str, txn_env: str,
@@ -278,10 +304,14 @@ def build_de54_cashback(cashback_amount: int | str, currency_code: str, *,
 # Message builders
 # --------------------------------------------------------------------------- #
 def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
-                       terminal_type: str, txn_env: str,
+                       txn_env: str,
                        created: datetime,
                        is_reversal: bool = False) -> dict[str, Any]:
     """Build one MTI 1240 First Presentment message dict for cardutil.
+
+    DE-22 subfield 7 (Card Data Input Mode) and PDS 0023 (Terminal Type) are
+    derived from the row's ``pos_entry_mode`` per IPM Clearing Formats.
+    E-commerce (sf7=S) forces PDS 0023 = CT6 per spec p.526.
 
     When `is_reversal=True`, PDS 0025 = "R" is injected into DE-48 and the
     Function Code (DE-24) changes to FUNC_REVERSAL.
@@ -310,11 +340,12 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
                 f"txn_amount ({row['txn_amount']}) for STAN={row.get('stan')}")
     de4 = int(_raw_amt) if _raw_amt is not None else int(row["txn_amount"])
 
+    sf7 = map_pos_entry_to_de22_sf7(row.get("pos_entry_mode"))
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
-        "DE22_s7": map_pos_entry_to_de22_sf7(row.get("pos_entry_mode")),
+        "DE22_s7": sf7,
         "DE4": de4,                                   # minor units, no decimal point
         "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
         "DE24": FUNC_REVERSAL if is_reversal else FUNC_PRESENTMENT,
@@ -329,7 +360,8 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
     extra_pds = {PDS_REVERSAL: "R"} if is_reversal else None
-    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env,
+    msg.update(build_de48(terminal_type=map_de22_sf7_to_terminal_type(sf7),
+                          txn_env=txn_env,
                           extra_pds=extra_pds))
     # DE-54 (Additional Amounts) — requis par IPM pour DE-3 s1=09 (Purchase with
     # Cash Back). Si la row contient un champ txn_cashback (ou de54), on injecte
@@ -375,9 +407,10 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 # NE PAS utiliser pour produire des chargebacks réels.
 # --------------------------------------------------------------------------- #
 def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
-                     terminal_type: str, txn_env: str,
+                     txn_env: str,
                      created: datetime,
-                     chargeback_reason: str = "00") -> dict[str, Any]:
+                     chargeback_reason: str = "00",
+                     terminal_type: str = _TERMINAL_TYPE_NA) -> dict[str, Any]:
     """Build one MTI 1442 Chargeback message dict for cardutil.
 
     .. deprecated::
@@ -426,9 +459,10 @@ def build_chargeback(row: dict[str, Any], pan: str, msg_number: int, *,
 # Fee Collection (MTI 1740 — Retrieval Fee Billing)
 # --------------------------------------------------------------------------- #
 def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
-                         terminal_type: str, txn_env: str,
+                         txn_env: str,
                          created: datetime,
-                         reason_code: str = FEE_REASON_RETRIEVAL) -> dict[str, Any]:
+                         reason_code: str = FEE_REASON_RETRIEVAL,
+                         terminal_type: str = _TERMINAL_TYPE_NA) -> dict[str, Any]:
     """Build one MTI 1740 Fee Collection message dict for cardutil.
 
     Per IPM Clearing Formats p.159-160 — Retrieval Fee Billing.
@@ -481,7 +515,7 @@ def build_fee_collection(row: dict[str, Any], pan: str, msg_number: int, *,
 # Second Presentment (MTI 1240 — acquereur response to issuer chargeback)
 # --------------------------------------------------------------------------- #
 def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
-                             terminal_type: str, txn_env: str,
+                             txn_env: str,
                              created: datetime, reason_code: str,
                              partial: bool = False,
                              second_amount: int | None = None) -> dict[str, Any]:
@@ -489,6 +523,9 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
 
     Per IPM Clearing Formats p.141-142 — Second Presentment (Acquirer's
     response to a First Chargeback initiated by the Issuer).
+
+    DE-22 subfield 7 and PDS 0023 are derived from the row's pos_entry_mode
+    (same as the original presentment), keeping the e-commerce rule CT6.
 
     Règle clef : DE-3 (Processing Code) reste IDENTIQUE à celui de la
     transaction originale sur tout le cycle de vie (chargeback → second
@@ -535,13 +572,15 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     de30 = str(int(original_amt)).rjust(12, "0") if original_amt is not None \
         else str(int(row["txn_amount"])).rjust(12, "0")
 
+    sf7 = map_pos_entry_to_de22_sf7(row.get("pos_entry_mode"))
+
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                       # PAN (LLVAR)
         "DE3": de3,                                       # inchangé vs original
         "DE4": de4,                                       # amount (partiel si partial)
         "DE12": ts,                                       # datetime
-        "DE22_s7": map_pos_entry_to_de22_sf7(row.get("pos_entry_mode")),
+        "DE22_s7": sf7,
         "DE24": func,                                     # 205 / 282
         "DE25": reason_code[:4].rjust(4, "0"),            # message reason code
         "DE26": mcc,                                      # MCC (n-4)
@@ -550,7 +589,8 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE33": build_de33(row.get("acquirer_id")),       # forwarding institution (n-11 LLVAR)
         "DE43": de43,                                     # card acceptor name/location
     }
-    msg.update(build_de48(terminal_type=terminal_type,  txn_env=txn_env))
+    msg.update(build_de48(terminal_type=map_de22_sf7_to_terminal_type(sf7),
+                          txn_env=txn_env))
     return msg
 
 
@@ -612,7 +652,7 @@ def build_file_trailer(msg_number: int, presentment_count: int, amount_total: in
 # Assembly  (pure, testable: returns the raw blocked IPM bytes + totals)
 # --------------------------------------------------------------------------- #
 def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
-                       terminal_type: str, txn_env: str,
+                       txn_env: str,
                        created: datetime | None = None,
                        blocked: bool = True,
                        file_type: str = "000", processor_id: str = "00000000000",
@@ -629,7 +669,7 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq += 1
         pan = decrypt_pan(row["pan_enc"], key)
         writer.write(build_presentment(row, pan, seq,
-                                       terminal_type=terminal_type, txn_env=txn_env,
+                                       txn_env=txn_env,
                                        created=created))
         amount_total += int(row["txn_amount"])
     count = len(rows)
@@ -643,7 +683,7 @@ def generate_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
 
 
 def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
-                                terminal_type: str, txn_env: str,
+                                txn_env: str,
                                 created: datetime | None = None,
                                 blocked: bool = True,
                                 file_type: str = "000",
@@ -667,7 +707,6 @@ def generate_reversal_ipm_bytes(rows: list[dict[str, Any]], key: bytes, *,
         seq += 1
         pan = decrypt_pan(row["pan_enc"], key)
         writer.write(build_presentment(row, pan, seq,
-                                       terminal_type=terminal_type, 
                                        txn_env=txn_env,
                                        created=created,
                                        is_reversal=True))
@@ -713,7 +752,7 @@ def verify_ipm(data: bytes, *, blocked: bool = True) -> tuple[int, str | None]:
 # --------------------------------------------------------------------------- #
 # Orchestration: claim -> write -> verify -> confirm (Temps 2)
 # --------------------------------------------------------------------------- #
-def run(out_dir: str, *, terminal_type: str, txn_env: str,
+def run(out_dir: str, *, txn_env: str,
         include_today: bool, blocked: bool, confirm: bool,
         file_type: str = "000", processor_id: str = "00000000000",
         file_seq: str = "00001") -> int:
@@ -731,8 +770,7 @@ def run(out_dir: str, *, terminal_type: str, txn_env: str,
             return 0
 
         data, count, amount_total = generate_ipm_bytes(
-            result.rows, key, terminal_type=terminal_type, 
-            txn_env=txn_env, blocked=blocked,
+            result.rows, key, txn_env=txn_env, blocked=blocked,
             file_type=file_type, processor_id=processor_id, file_seq=file_seq)
 
         # Invariant: a 1014-blocked file is an exact multiple of 1014 bytes.
@@ -764,7 +802,7 @@ def run(out_dir: str, *, terminal_type: str, txn_env: str,
         conn.close()
 
 
-def run_reversals(out_dir: str, *, terminal_type: str, txn_env: str,
+def run_reversals(out_dir: str, *, txn_env: str,
                   include_today: bool, blocked: bool, confirm: bool,
                   file_type: str = "000", processor_id: str = "00000000000",
                   file_seq: str = "00001") -> int:
@@ -785,8 +823,7 @@ def run_reversals(out_dir: str, *, terminal_type: str, txn_env: str,
             return 0
 
         data, count, amount_total = generate_reversal_ipm_bytes(
-            result.rows, key, terminal_type=terminal_type, 
-            txn_env=txn_env, blocked=blocked,
+            result.rows, key, txn_env=txn_env, blocked=blocked,
             file_type=file_type, processor_id=processor_id, file_seq=file_seq)
 
         if blocked and len(data) % 1014 != 0:
@@ -819,7 +856,6 @@ def run_reversals(out_dir: str, *, terminal_type: str, txn_env: str,
 def _parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Flossx83 — Mastercard IPM generator (Stage 3)")
     p.add_argument("--out-dir", default="./out")
-    p.add_argument("--terminal-type", default="  Z", help="DE48 PDS0023 Terminal Type")
     p.add_argument("--txn-env", default="0", help="DE48 transaction environment / settlement indicator")
     p.add_argument("--include-today", action="store_true")
     p.add_argument("--unblocked", action="store_true", help="Write without 1014 blocking (testing only)")
@@ -830,7 +866,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
 def main(argv: list[str]) -> int:
     args = _parse_args(argv)
     return run(args.out_dir,
-               terminal_type=args.terminal_type, txn_env=args.txn_env,
+               txn_env=args.txn_env,
                include_today=args.include_today,
                blocked=not args.unblocked,
                confirm=not args.no_confirm)
