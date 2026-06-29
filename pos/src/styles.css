@@ -246,6 +246,29 @@ body {
 .clr-neutral { color: var(--amber); background: rgba(242,182,90,.14); }
 .clr-note { font-style: italic; opacity: .65; font-size: 11px; }
 
+/* ---- info icon / tooltip ---- */
+.info-tip {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; margin-left: 6px;
+  border: 1px solid var(--line); border-radius: 50%;
+  font-size: 11px; color: var(--muted); cursor: help; user-select: none;
+  vertical-align: middle; font-style: normal;
+}
+.info-tip-content {
+  position: absolute; bottom: 125%; left: 0; z-index: 50; width: 280px;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 6px;
+  padding: 10px 12px; font-size: 12px; line-height: 1.4; font-weight: normal;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  opacity: 0; visibility: hidden; transition: opacity .15s;
+  pointer-events: none; white-space: normal;
+}
+.info-tip:hover .info-tip-content,
+.info-tip:focus .info-tip-content,
+.info-tip:focus-within .info-tip-content {
+  opacity: 1; visibility: visible;
+}
+
 /* ---- DAB amounts ---- */
 .dab-amounts { margin-bottom: 8px; }
 

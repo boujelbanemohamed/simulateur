@@ -56,6 +56,17 @@ export default function Terminal() {
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [stan, setStan] = useState(() => randomDigits(6));
+
+  const isEcom = merchant.posEntry === "810";
+  const ECOMMERCE_OPS = ["purchase", "refund", "fullReversal", "partialReversal"];
+  const ECOMMERCE_HIDDEN_FIELDS = ["terminalId"];
+
+  // Auto-switch to purchase when entering e-commerce mode with an invalid op
+  useEffect(() => {
+    if (isEcom && !ECOMMERCE_OPS.includes(operationType)) {
+      setOperationType("purchase");
+    }
+  }, [isEcom]);
   const HISTORY_KEY = "fx_terminal_history";
   const [history, setHistory] = useState(() => {
     try {
@@ -205,7 +216,9 @@ export default function Terminal() {
             <span className="tag tag-opt" style={{ marginLeft: 8, fontSize: 10 }}>convention simulateur</span>
           </span>
             <select value={operationType} onChange={(e) => { setOperationType(e.target.value); setResult(null); }}>
-              {Object.entries(OP_TYPES).map(([k, v]) => (
+              {Object.entries(OP_TYPES)
+                .filter(([k]) => !isEcom || ECOMMERCE_OPS.includes(k))
+                .map(([k, v]) => (
                 <option key={k} value={k}>{v.label} — MTI {v.mti} · DE-3 {v.de3 || "(=original)"}</option>
               ))}
             </select>
@@ -286,7 +299,9 @@ export default function Terminal() {
               {!getToken() && (
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8 }}>Connectez-vous en admin pour sélectionner une institution</p>
               )}
-              {MERCHANT_FIELDS.map(([k, labelDefault, labelDab]) => (
+              {MERCHANT_FIELDS
+                .filter(([k]) => !(isEcom && ECOMMERCE_HIDDEN_FIELDS.includes(k)))
+                .map(([k, labelDefault, labelDab]) => (
                 <label key={k} className="field"><span>{isDab ? labelDab : labelDefault}</span>
                   {k === "posEntry" ? (
                     <select value={merchant.posEntry} onChange={(e) => setMerchant((m) => ({ ...m, posEntry: e.target.value }))}>
@@ -301,7 +316,19 @@ export default function Terminal() {
                 </label>
               ))}
               {merchant.posEntry === "810" && (
-                <label className="field"><span>Niveau d'authentification e-commerce (UCAF)</span>
+                <label className="field"><span>Niveau d'authentification e-commerce (UCAF)
+                  <span className="info-tip" tabIndex={0}>ⓘ
+                    <span className="info-tip-content">
+                      <strong>Niveau 0 — Non authentifié :</strong> la collecte UCAF n&apos;est pas
+                      supportée par le marchand, ou le marchand SecureCode a choisi de ne pas
+                      authentifier cette transaction.<br/><br/>
+                      <strong>Niveau 1 — Merchant UCAF :</strong> le marchand supporte la collecte UCAF&nbsp;;
+                      une authentification a été tentée (AAV de tentative présent).<br/><br/>
+                      <strong>Niveau 2 — Full UCAF :</strong> marchand ET émetteur compatibles UCAF —
+                      authentification complète du porteur des deux côtés (protection la plus forte).
+                    </span>
+                  </span>
+                </span>
                   <select value={merchant.ucafLevel} onChange={(e) => setMerchant((m) => ({ ...m, ucafLevel: e.target.value }))}>
                     {Object.entries(UCAF_LEVELS).map(([code, label]) => (
                       <option key={code} value={code}>{label}</option>
