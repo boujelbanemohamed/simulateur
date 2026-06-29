@@ -414,7 +414,7 @@ class TestMastercardIpm(unittest.TestCase):
 
     def test_pds0052_coherence(self):
         """Si PDS0052 présent alors PDS0023="CT6" (conséquence round-trippable de sf7=S).
-        DE22_s7 n'est pas round-trippé par cardutil — testé dans test_presentment_de22_sf7_from_row."""
+        DE22 complète n'est pas round-trippée par cardutil — testé dans test_presentment_de22_from_row."""
         import io
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
@@ -713,35 +713,60 @@ class TestMastercardIpm(unittest.TestCase):
             with self.subTest(case=label):
                 self.assertEqual(mc.map_pos_entry_to_de22_sf7(inp), expected)
 
-    def test_presentment_de22_sf7_from_row(self):
+    def test_presentment_de22_from_row(self):
         row = sample_rows(["5413330089020011"])[0]
         row["pos_entry_mode"] = "810"
         msg = mc.build_presentment(row, "5413330089020011", 1,
                                    txn_env="0",
                                    created=DT)
-        self.assertEqual(msg["DE22_s7"], "S", "810 → e-commerce → S")
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12, "DE22 must be exactly 12 characters")
+        self.assertEqual(de22[6], "S", "810 → position 7 = S (e-commerce)")
 
         row["pos_entry_mode"] = "051"
         msg = mc.build_presentment(row, "5413330089020011", 2,
                                    txn_env="0",
                                    created=DT)
-        self.assertEqual(msg["DE22_s7"], "C", "051 → chip contact → C")
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12, "DE22 must be exactly 12 characters")
+        self.assertEqual(de22[6], "C", "051 → position 7 = C (chip contact)")
 
-    def test_second_presentment_de22_sf7_derived(self):
+    def test_presentment_no_de22_s7_key(self):
+        """Ancienne clé DE22_s7 est remplacée par DE22 (12 car)."""
+        row = sample_rows(["5413330089020011"])[0]
+        row["pos_entry_mode"] = "810"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0",
+                                   created=DT)
+        self.assertNotIn("DE22_s7", msg)
+        self.assertIn("DE22", msg)
+
+        row["pos_entry_mode"] = "051"
+        msg = mc.build_presentment(row, "5413330089020011", 2,
+                                   txn_env="0",
+                                   created=DT)
+        self.assertNotIn("DE22_s7", msg)
+        self.assertIn("DE22", msg)
+
+    def test_second_presentment_de22_derived(self):
         row = sample_rows(["5413330089020011"])[0]
         # sample_rows has pos_entry_mode="051" → "C"
         msg = mc.build_second_presentment(
             row, "5413330089020011", 5,
             txn_env="0",
             created=DT, reason_code="2002")
-        self.assertEqual(msg["DE22_s7"], "C", "second presentment derives from row pos_entry_mode")
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12, "DE22 must be exactly 12 characters")
+        self.assertEqual(de22[6], "C", "051 → position 7 = C in second presentment")
 
         row["pos_entry_mode"] = "810"
         msg = mc.build_second_presentment(
             row, "5413330089020011", 6,
             txn_env="0",
             created=DT, reason_code="2003")
-        self.assertEqual(msg["DE22_s7"], "S", "810 → S in second presentment")
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12)
+        self.assertEqual(de22[6], "S", "810 → S in second presentment")
 
     def test_map_de22_sf7_to_terminal_type(self):
         cases = [
@@ -765,17 +790,20 @@ class TestMastercardIpm(unittest.TestCase):
         row["pos_entry_mode"] = "810"
         msg = mc.build_presentment(row, "5413330089020011", 1,
                                    txn_env="0", created=DT)
-        sf7 = msg["DE22_s7"]
+        de22 = msg["DE22"]
         pds23 = msg.get("PDS0023")
-        self.assertEqual(sf7, "S", "e-commerce → DE22_s7=S")
+        self.assertEqual(de22[6], "S", "e-commerce → DE22 position 7 = S")
         self.assertEqual(pds23, "CT6", "e-commerce → PDS0023=CT6 (spec p.526)")
+        self.assertIn("PDS0052", msg, "e-commerce → PDS0052 present")
 
     def test_presentment_terminal_type_chip(self):
         row = sample_rows(["5413330089020011"])[0]
         row["pos_entry_mode"] = "051"
         msg = mc.build_presentment(row, "5413330089020011", 1,
                                    txn_env="0", created=DT)
-        self.assertEqual(msg["DE22_s7"], "C")
+        de22 = msg["DE22"]
+        self.assertEqual(de22[6], "C")
+        self.assertEqual(len(de22), 12)
         self.assertEqual(msg.get("PDS0023"), "POI")
 
     def test_presentment_terminal_type_default_na(self):
@@ -783,7 +811,9 @@ class TestMastercardIpm(unittest.TestCase):
         row.pop("pos_entry_mode", None)
         msg = mc.build_presentment(row, "5413330089020011", 1,
                                    txn_env="0", created=DT)
-        self.assertEqual(msg["DE22_s7"], "0")
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12)
+        self.assertEqual(de22[6], "0")
         self.assertEqual(msg.get("PDS0023"), "NA ")
 
     def test_presentment_no_zz_spaces_emitted(self):
@@ -799,6 +829,76 @@ class TestMastercardIpm(unittest.TestCase):
             pds = msg.get("PDS0023", "")
             self.assertNotEqual(pds.strip(), "", f"PDS0023 must not be all-spaces for mode={mode!r}")
             self.assertEqual(len(pds), 3, f"PDS0023 must be exactly 3 chars for mode={mode!r}")
+
+
+class TestDe22Full(unittest.TestCase):
+    """DE-22 complet (12 positions) — build_de22 unit tests."""
+
+    def test_build_de22_length(self):
+        """Tous les modes retournent exactement 12 caractères."""
+        for mode in ("051", "071", "901", "011", "810", "", None, "999"):
+            with self.subTest(mode=mode):
+                de22 = mc.build_de22(mode)
+                self.assertEqual(len(de22), 12,
+                                 f"DE22 must be 12 chars for mode={mode!r}")
+
+    def test_build_de22_ecommerce(self):
+        """E-commerce (810) → pos5=5 (electronic order), pos6=0 (card not present), pos7=S."""
+        de22 = mc.build_de22("810")
+        self.assertEqual(de22[4], "5", "pos5: cardholder not present (electronic order)")
+        self.assertEqual(de22[5], "0", "pos6: card not present")
+        self.assertEqual(de22[6], "S", "pos7: e-commerce input mode")
+
+    def test_build_de22_chip(self):
+        """Chip contact (051) → pos6=1 (card present), pos7=C."""
+        de22 = mc.build_de22("051")
+        self.assertEqual(de22[5], "1", "pos6: card present")
+        self.assertEqual(de22[6], "C", "pos7: chip contact input mode")
+
+    def test_build_de22_contactless(self):
+        """Contactless (071) → pos1=A (contactless magstripe), pos7=M."""
+        de22 = mc.build_de22("071")
+        self.assertEqual(de22[0], "A", "pos1: contactless magstripe capability")
+        self.assertEqual(de22[6], "M", "pos7: contactless input mode")
+
+    def test_build_de22_magstripe(self):
+        """Magstripe (901) → pos7=B."""
+        de22 = mc.build_de22("901")
+        self.assertEqual(de22[6], "B", "pos7: magstripe input mode")
+
+    def test_build_de22_manual(self):
+        """Manual (011) → pos7=1."""
+        de22 = mc.build_de22("011")
+        self.assertEqual(de22[6], "1", "pos7: manual input mode")
+
+    def test_build_de22_default(self):
+        """Inconnu → default 099099000001 (pos7=0)."""
+        for mode in ("", None, "999"):
+            with self.subTest(mode=mode):
+                de22 = mc.build_de22(mode)
+                self.assertEqual(de22, "099099000001",
+                                 f"default for {mode!r}")
+                self.assertEqual(de22[6], "0", "pos7: unknown input mode")
+
+    def test_presentment_emits_de22_and_ecom_chain(self):
+        """DE22 émis avec 12 car, pos7=S, ET PDS0023=CT6, ET PDS0052 présent."""
+        row = sample_rows(["5413330089020011"])[0]
+        row["pos_entry_mode"] = "810"
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        de22 = msg["DE22"]
+        self.assertEqual(len(de22), 12)
+        self.assertEqual(de22[6], "S")
+        self.assertEqual(msg.get("PDS0023"), "CT6")
+        self.assertIn("PDS0052", msg)
+
+    def test_presentment_no_de22_s7_key(self):
+        """build_presentment n'émet plus la clé DE22_s7."""
+        row = sample_rows(["5413330089020011"])[0]
+        msg = mc.build_presentment(row, "5413330089020011", 1,
+                                   txn_env="0", created=DT)
+        self.assertNotIn("DE22_s7", msg)
+        self.assertIn("DE22", msg)
 
 
 class TestFeeCollection(unittest.TestCase):
@@ -850,7 +950,8 @@ class TestSecondPresentment(unittest.TestCase):
         self.assertEqual(msg["DE25"], "2002")
         self.assertEqual(int(msg["DE4"]), 1000)
         self.assertEqual(msg["DE30"], "000000001000")
-        self.assertIn("DE22_s7", msg)
+        self.assertIn("DE22", msg)
+        self.assertEqual(len(msg["DE22"]), 12)
 
     def test_second_presentment_partial(self):
         row = sample_rows(["4532015112830366"])[0]

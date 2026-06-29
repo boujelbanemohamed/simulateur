@@ -145,6 +145,48 @@ def map_pos_entry_to_de22_sf7(pos_entry_mode: str | None) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# DE-22 Full Point of Service Data Code (IPM Clearing Formats p.252-267)
+# --------------------------------------------------------------------------- #
+# DE-22 is an-12, 12 fixed positions:
+#   pos1  (an-1) Card Data Input Capability       p.259-260
+#   pos2  (n-1)  Cardholder Auth Capability        p.260-261
+#   pos3  (n-1)  Card Capture Capability           p.261
+#   pos4  (n-1)  Terminal Operating Environment    p.261-262
+#   pos5  (n-1)  Cardholder Present Data           p.262
+#   pos6  (n-1)  Card Present Data                 p.262
+#   pos7  (an-1) Card Data Input Mode              p.263
+#   pos8  (an-1) Cardholder Auth Method            p.264
+#   pos9  (n-1)  Cardholder Auth Entity            p.264-265
+#   pos10 (an-1) Card Data Output Capability       p.266
+#   pos11 (n-1)  Terminal Data Output Capability   p.266
+#   pos12 (an-1) PIN Capture Capability            p.267
+
+_DE22_BY_SF7: dict[str, str] = {
+    #   111111
+    # 123456789012
+    "S": "600550S00110",   # e-commerce: key entry, no PIN, unattended, electronic order, card not present
+    "C": "510101C13140",   # chip contact: EMV contact, PIN attended, card present
+    "M": "A10101M13140",   # contactless: contactless magstripe, PIN attended, card present
+    "B": "210101B13140",   # magstripe: magstripe, PIN attended, card present
+    "1": "600101100110",   # manual: key entry, no PIN, attended, card present
+    "0": "099099000001",   # default / unknown
+}
+
+_DE22_UNKNOWN = "099099000001"
+
+
+def build_de22(pos_entry_mode: str | None) -> str:
+    """Build the full 12-character DE-22 Point of Service Data Code.
+
+    Derives sf7 via ``map_pos_entry_to_de22_sf7`` then looks up the
+    complete 12-position string from ``_DE22_BY_SF7``. Always returns
+    exactly 12 characters.
+    """
+    sf7 = map_pos_entry_to_de22_sf7(pos_entry_mode)
+    return _DE22_BY_SF7.get(sf7, _DE22_UNKNOWN)
+
+
+# --------------------------------------------------------------------------- #
 # PDS 0023 — Terminal Type (IPM Clearing Formats p.500/526)
 # --------------------------------------------------------------------------- #
 _DE22_SF7_TO_TERMINAL_TYPE: dict[str, str] = {
@@ -380,7 +422,7 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
         "DE3": (row.get("processing_code") or "000000")[:6].rjust(6, "0"),
-        "DE22_s7": sf7,
+        "DE22": build_de22(row.get("pos_entry_mode")),
         "DE4": de4,                                   # minor units, no decimal point
         "DE12": ts,                                   # datetime → cardutil formatte en YYMMDDhhmmss
         "DE24": FUNC_REVERSAL if is_reversal else FUNC_PRESENTMENT,
@@ -614,7 +656,7 @@ def build_second_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE3": de3,                                       # inchangé vs original
         "DE4": de4,                                       # amount (partiel si partial)
         "DE12": ts,                                       # datetime
-        "DE22_s7": sf7,
+        "DE22": build_de22(row.get("pos_entry_mode")),
         "DE24": func,                                     # 205 / 282
         "DE25": reason_code[:4].rjust(4, "0"),            # message reason code
         "DE26": mcc,                                      # MCC (n-4)
