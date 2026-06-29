@@ -134,3 +134,6 @@ CREATE INDEX IF NOT EXISTS idx_fi_role
 CREATE INDEX IF NOT EXISTS idx_fi_acquirer
     ON financial_institution (acquirer_id)
     WHERE acquirer_id IS NOT NULL;
+
+-- E-commerce UCAF level (E-com-3): captured from DE-48 during clearing capture.
+ALTER TABLE clearing_transaction ADD COLUMN IF NOT EXISTS ucaf_level CHAR(1);

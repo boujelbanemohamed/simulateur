@@ -117,6 +117,7 @@ PDS_TXN_ENV = "0165"          # transaction environment / settlement indicator
 # DE-3 and DE-22. A legacy single-char TCC has no generic PDS home in modern
 # IPM (chip: EMV 9F53 in DE-55). Removed the incorrect PDS 0052=tcc emission.
 PDS_REVERSAL = "0025"         # Return/Reversal Indicator — "R" pour un reversal
+PDS_ECOMMERCE_SECURITY_LEVEL = "0052"  # E-Commerce Security Level Indicator (n-3), IPM p.530
 
 
 # --------------------------------------------------------------------------- #
@@ -170,6 +171,30 @@ def map_de22_sf7_to_terminal_type(sf7: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# PDS 0052 — E-Commerce Security Level Indicator (IPM Clearing Formats p.530)
+# --------------------------------------------------------------------------- #
+_PDS0052_SF3_UCAF_MAP: dict[str, str] = {
+    "0": "0",  # Non authentifié (SecureCode non entrepris)
+    "1": "1",  # Merchant UCAF (tentative)
+    "2": "2",  # Full UCAF (marchand + émetteur)
+}
+
+
+def map_pds0052_sf3(ucaf_level: str | None) -> str:
+    """Map UCAF collection indicator to PDS 0052 subfield 3 (n-1).
+
+    Per IPM Clearing Formats p.530-531:
+        0 = Non authentifié (SecureCode not attempted)
+        1 = Merchant UCAF (attempted by merchant)
+        2 = Full UCAF (merchant + issuer)
+
+    Returns "0" for any unknown or missing value.
+    Value "3" (MUPP) is out of scope — would require PDS 0176.
+    """
+    return _PDS0052_SF3_UCAF_MAP.get(ucaf_level, "0")
+
+
+# --------------------------------------------------------------------------- #
 # DE-48 builder
 # --------------------------------------------------------------------------- #
 def build_de48(*, terminal_type: str, txn_env: str,
@@ -178,12 +203,12 @@ def build_de48(*, terminal_type: str, txn_env: str,
     Return a dict of PDSxxxx keys. cardutil serialises each into DE-48 as
     tag(4) + length(3) + value, concatenated (PDS / TLV).
 
-    PDS 0052 is the E-Commerce Security Level Indicator (n-3) per IPM spec,
-    NOT the Transaction Category Code. The transaction category is carried by
-    DE-3 and DE-22. A legacy single-char TCC has no generic PDS home in modern
-    IPM (chip: EMV 9F53 in DE-55). Removed the incorrect PDS 0052=tcc emission.
+    PDS 0052 (E-Commerce Security Level) is NOT emitted here — it is set
+    directly in build_presentment when DE22_s7 == "S" (e-commerce), after
+    the sf7 and terminal type have been determined.
 
-    When `is_reversal=True`, PDS 0025 (Return/Reversal Indicator) is set to "R".
+    When `extra_pds` is provided (e.g. PDS0025="R" for reversals), each
+    entry is normalised to the "PDS{tag}" key format.
     """
     pds: dict[str, str] = {
         f"PDS{PDS_TERMINAL_TYPE}": terminal_type,
@@ -341,6 +366,16 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
     de4 = int(_raw_amt) if _raw_amt is not None else int(row["txn_amount"])
 
     sf7 = map_pos_entry_to_de22_sf7(row.get("pos_entry_mode"))
+    # PDS 0052 — E-Commerce Security Level Indicator (IPM p.530)
+    # sf1=1 (channel encryption), sf2=1 (cert not used), sf3=ucaf_level (0/1/2)
+    # Émis UNIQUEMENT pour les transactions e-commerce (sf7=S).
+    # Valeur "3" (MUPP) hors périmètre — exigerait PDS 0176.
+    extra_pds: dict[str, str] = {}
+    if is_reversal:
+        extra_pds[PDS_REVERSAL] = "R"
+    if sf7 == "S":
+        ucaf_sf3 = map_pds0052_sf3(row.get("ucaf_level"))
+        extra_pds[PDS_ECOMMERCE_SECURITY_LEVEL] = "1" + "1" + ucaf_sf3
     msg: dict[str, Any] = {
         "MTI": MTI_PRESENTMENT,
         "DE2": pan,                                   # PAN (LLVAR)
@@ -359,10 +394,9 @@ def build_presentment(row: dict[str, Any], pan: str, msg_number: int, *,
         "DE94": originator_id,                        # originator institution (acquirer, n-11 LLVAR)
     }
     # DE-48 private data (rolled up from PDS keys by cardutil)
-    extra_pds = {PDS_REVERSAL: "R"} if is_reversal else None
     msg.update(build_de48(terminal_type=map_de22_sf7_to_terminal_type(sf7),
                           txn_env=txn_env,
-                          extra_pds=extra_pds))
+                          extra_pds=extra_pds if extra_pds else None))
     # DE-54 (Additional Amounts) — requis par IPM pour DE-3 s1=09 (Purchase with
     # Cash Back). Si la row contient un champ txn_cashback (ou de54), on injecte
     # une occurrence complète à 20 caractères via build_de54_cashback().

@@ -38,6 +38,7 @@ public class ClearingCaptureService {
     private static final int DE_MCC = 18;
     private static final int DE_ACQUIRING_COUNTRY = 19;
     private static final int DE_POS_ENTRY = 22;
+    private static final int DE_UCAF_LEVEL = 48;
     private static final int DE_ACQUIRER_ID = 32;
     private static final int DE_RRN = 37;
     private static final int DE_AUTH_ID = 38;
@@ -103,6 +104,7 @@ public class ClearingCaptureService {
                 .acceptorId(msg.getDataElement(DE_ACCEPTOR_ID))
                 .acceptorNameLoc(msg.getDataElement(DE_ACCEPTOR_NAME_LOC))
                 .posEntryMode(msg.getDataElement(DE_POS_ENTRY))
+                .ucafLevel(msg.getDataElement(DE_UCAF_LEVEL))
                 .network(network)
                 .responseCode(responseCode)
                 .authIdResponse(msg.getDataElement(DE_AUTH_ID))

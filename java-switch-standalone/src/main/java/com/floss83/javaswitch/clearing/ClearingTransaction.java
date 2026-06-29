@@ -103,6 +103,9 @@ public class ClearingTransaction {
     @Column(name = "pos_entry_mode", length = 3)
     private String posEntryMode;
 
+    @Column(name = "ucaf_level", length = 1)
+    private String ucafLevel;
+
     @Column(name = "network", nullable = false, length = 10)
     private String network;
 

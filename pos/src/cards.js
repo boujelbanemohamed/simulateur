@@ -22,12 +22,19 @@ export const POS_ENTRY_MODES = [
   { code: "810", label: "E-commerce (en ligne)" },
 ];
 
+export const UCAF_LEVELS = {
+  "0": "Non authentifié (SecureCode non entrepris)",
+  "1": "Merchant UCAF (tentative)",
+  "2": "Full UCAF (marchand + émetteur)",
+};
+
 // Human labels for the decoded-field table (subset we care about).
 export const FIELD_LABELS = {
   2: "PAN", 3: "Code traitement", 4: "Montant", 5: "Montant règlement",
   6: "Montant facturation", 7: "Date/heure transmission",
   11: "STAN", 12: "Heure locale", 13: "Date locale", 14: "Expiration",
   18: "MCC", 19: "Pays acquéreur", 22: "Mode saisie POS", 32: "ID acquéreur",
+  48: "Données additionnelles privé / UCAF",
   37: "RRN", 38: "Code autorisation", 39: "Code réponse", 41: "ID terminal",
   42: "ID accepteur", 43: "Nom/lieu accepteur", 49: "Devise",
   "2_PAN_tokenized": "PAN (tokenisé)", "52_CVV_tokenized": "CVV (tokenisé)",

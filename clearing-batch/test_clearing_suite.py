@@ -374,7 +374,7 @@ class TestMastercardIpm(unittest.TestCase):
         self.assertIn("PDS0023", presentment)
         self.assertEqual(int(presentment["DE4"]), 1000)
 
-    def test_pds0052_not_emitted(self):
+    def test_pds0052_absent_for_non_ecommerce(self):
         import io
         from cardutil.mciipm import IpmReader
         rows = sample_rows(["5413330089020011"])
@@ -384,6 +384,48 @@ class TestMastercardIpm(unittest.TestCase):
         recs = list(IpmReader(io.BytesIO(data), blocked=True))
         for rec in recs:
             self.assertNotIn("PDS0052", rec, f"PDS0052 should not be present in MTI {rec.get('MTI')}")
+
+    def test_pds0052_emitted_for_ecommerce(self):
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0]["ucaf_level"] = "1"
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment.get("PDS0052"), "111")
+
+    def test_pds0052_default_ucaf(self):
+        """810 e-commerce sans ucaf_level → PDS0052 sf3 = "0"."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0].pop("ucaf_level", None)
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertEqual(presentment.get("PDS0052"), "110")
+
+    def test_pds0052_coherence(self):
+        """Si PDS0052 présent alors PDS0023="CT6" (conséquence round-trippable de sf7=S).
+        DE22_s7 n'est pas round-trippé par cardutil — testé dans test_presentment_de22_sf7_from_row."""
+        import io
+        from cardutil.mciipm import IpmReader
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["pos_entry_mode"] = "810"
+        data, _, _ = mc.generate_ipm_bytes(
+            rows, KEY, txn_env="0",
+            created=DT, blocked=True)
+        recs = list(IpmReader(io.BytesIO(data), blocked=True))
+        presentment = next(r for r in recs if r.get("MTI") == "1240")
+        self.assertIn("PDS0052", presentment)
+        self.assertEqual(presentment["PDS0023"], "CT6")
 
     def test_trailer_reconciliation_pds(self):
         import io

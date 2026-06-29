@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { encode, encodeSegments, MTI_INFO } from "./iso8583.js";
-import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS, POS_ENTRY_MODES } from "./cards.js";
+import { TEST_CARDS, CURRENCIES, FIELD_LABELS, RESPONSE_LABELS, DAB_RESPONSE_LABELS, POS_ENTRY_MODES, UCAF_LEVELS } from "./cards.js";
 import { authedFetch, getToken } from "./api.js";
 import Decoder from "./Decoder.jsx";
 
@@ -31,7 +31,7 @@ const OP_TYPES = {
 const MERCHANT_DEFAULTS = {
   mcc: "5812", acquirerId: "40010001234", acquirerCountry: "788",
   terminalId: "10000001", acceptorId: "000000000012345",
-  acceptorName: "CAFE DE PARIS TUNIS", posEntry: "051",
+  acceptorName: "CAFE DE PARIS TUNIS", posEntry: "051", ucafLevel: "0",
 };
 
 const MERCHANT_FIELDS = [
@@ -135,6 +135,7 @@ export default function Terminal() {
         4: revAmt,
         11: voidTarget.stan,
         37: voidTarget.rrn,
+        ...(merchant.posEntry === "810" ? { 48: merchant.ucafLevel } : {}),
       };
     }
 
@@ -144,6 +145,7 @@ export default function Terminal() {
       11: stan,
       ...(isDab ? { 5: pad(de5Amount || amount || "0", 12), 6: pad(de6Amount || amount || "0", 12) } : {}),
       ...(isCashback ? { 54: pad(de54Amount || "0", 12) } : {}),
+      ...(merchant.posEntry === "810" ? { 48: merchant.ucafLevel } : {}),
     };
   }, [operationType, card, amount, currency, approved, merchant, stan, voidTarget, isDab, isReversal, isPartial, isCashback, reversalAmount, de5Amount, de6Amount, de54Amount, opConfig.de3]);
 
@@ -298,6 +300,15 @@ export default function Terminal() {
                   )}
                 </label>
               ))}
+              {merchant.posEntry === "810" && (
+                <label className="field"><span>Niveau d'authentification e-commerce (UCAF)</span>
+                  <select value={merchant.ucafLevel} onChange={(e) => setMerchant((m) => ({ ...m, ucafLevel: e.target.value }))}>
+                    {Object.entries(UCAF_LEVELS).map(([code, label]) => (
+                      <option key={code} value={code}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </div>
           )}
           {isReversal && (
