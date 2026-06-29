@@ -34,7 +34,7 @@ from claim_clearing import decrypt_pan, IV_LEN, load_key
 import visa_clearing_generator as visa
 import mastercard_clearing_generator as mc
 import issuer_chargeback as icb
-from issuer_reception import aggregate_results
+from issuer_reception import aggregate_results, reception_succeeded
 from issuer_posting import build_movement_ref
 
 KEY = os.urandom(32)
@@ -1658,6 +1658,43 @@ class TestIssuerReception(unittest.TestCase):
         self.assertEqual(s["rejected"], 1)
         self.assertEqual(s["already_posted"], 2)
         self.assertEqual(s["total_movements"], 5)
+
+
+class TestReceptionSucceeded(unittest.TestCase):
+    """reception_succeeded — la phase réussit tant qu'elle tourne sans exception."""
+
+    def test_succeeds_with_rejected(self):
+        """rejected > 0 → True (le rejet est un refus métier, pas un échec phase)."""
+        s = {"files": 1, "applied": 0, "no_account": 0, "rejected": 2,
+             "already_posted": 0, "total_movements": 2}
+        self.assertTrue(reception_succeeded(s))
+
+    def test_succeeds_all_no_account(self):
+        """100% no_account → True (porteurs inconnus, normal en sandbox)."""
+        s = {"files": 1, "applied": 0, "no_account": 3, "rejected": 0,
+             "already_posted": 0, "total_movements": 3}
+        self.assertTrue(reception_succeeded(s))
+
+    def test_succeeds_all_already_posted(self):
+        """100% already_posted → True (idempotence, phase déjà exécutée)."""
+        s = {"files": 1, "applied": 0, "no_account": 0, "rejected": 0,
+             "already_posted": 5, "total_movements": 5}
+        self.assertTrue(reception_succeeded(s))
+
+    def test_succeeds_empty(self):
+        """Aucun fichier → True (la phase a tourné, rien à faire)."""
+        s = {"files": 0, "applied": 0, "no_account": 0, "rejected": 0,
+             "already_posted": 0, "total_movements": 0}
+        self.assertTrue(reception_succeeded(s))
+
+    def test_fails_on_none(self):
+        """None → False (la phase n'a pas tourné du tout)."""
+        self.assertFalse(reception_succeeded(None))
+
+    def test_fails_on_non_dict(self):
+        """Une chaîne ou un int → False."""
+        self.assertFalse(reception_succeeded("corrupted"))
+        self.assertFalse(reception_succeeded(42))
 
 
 if __name__ == "__main__":

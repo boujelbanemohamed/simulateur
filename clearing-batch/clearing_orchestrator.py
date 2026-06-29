@@ -153,8 +153,16 @@ def main(argv: list[str]) -> int:
     ))
 
     # Step F — Issuer reception: consume generated files and post to accounts
-    recv_ok = _run_phase("ISSUER-RECEPTION",
-                         lambda: issuer_reception(out_dir, load_key()))
+    # NOTE: the lambda wraps issuer_reception to return 0 (success) as long as
+    # no exception was raised; the dict summary is never == 0 and would always
+    # trip _run_phase's rc==0 check.
+    def _do_reception() -> int:
+        summary = issuer_reception(out_dir, load_key())
+        if summary.get("rejected", 0) > 0:
+            _log(f"[ISSUER-RECEPTION] WARN: {summary['rejected']} mouvement(s) "
+                 f"rejeté(s) (compte bloqué/clôturé)")
+        return 0
+    recv_ok = _run_phase("ISSUER-RECEPTION", _do_reception)
 
     all_ok = visa_ok and mc_ok and visa_rev_ok and mc_rev_ok and recv_ok
     _log(f"clearing run complete | visa={'OK' if visa_ok else 'FAIL'} "

@@ -133,3 +133,23 @@ def issuer_reception(output_dir: str, key: bytes | None = None) -> dict[str, Any
          f"{summary['already_posted']} already_posted "
          f"({summary['total_movements']} total movements)")
     return summary
+
+
+def reception_succeeded(summary: dict[str, Any]) -> bool:
+    """Determine whether the reception phase succeeded.
+
+    The phase succeeds whenever it ran without a Python exception.
+    Counters like ``rejected`` (BLOCKED/CLOSED account), ``no_account``
+    (unknown cardholder), and ``already_posted`` (idempotent replay)
+    are normal business outcomes — NOT phase failures.
+
+    Returns ``True`` if *summary* is a dict (i.e. the phase executed).
+    A non-dict or ``None`` signals that the phase did not run at all.
+
+    RÉSERVE conformité : un compte BLOCKED/CLOSED produit ``REJECTED_STATUS``
+    localement mais le simulateur n'émet PAS le chargeback de retour réseau
+    correspondant (Mastercard First Chargeback/1442 avec reason code DE-25,
+    ou rejet Visa Base II). Le rejet est compté, pas renvoyé au réseau.
+    À implémenter si le cycle de rejet réseau devient nécessaire.
+    """
+    return isinstance(summary, dict)
