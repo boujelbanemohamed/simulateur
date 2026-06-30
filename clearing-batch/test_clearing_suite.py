@@ -245,6 +245,97 @@ class TestVisaCtf(unittest.TestCase):
         self.assertEqual(net, debit_total - credit_total)
         self.assertEqual(net, 700)
 
+    def test_map_ucaf_to_visa_ecom(self):
+        """Mapping ucaf_level → Visa TCR 1 pos 116 indicator."""
+        cases = [
+            ("810", "2", "5", "Full UCAF → 3-D Secure"),
+            ("810", "1", "6", "Merchant UCAF → 3DS attempted"),
+            ("810", "0", "8", "ucaf=0 → unsecured"),
+            ("810", None, "8", "no ucaf → unsecured"),
+            ("810", "x", "8", "unknown ucaf → unsecured"),
+            ("051", "2", None, "non-ecom returns None"),
+            ("", None, None, "empty mode returns None"),
+            (None, None, None, "None mode returns None"),
+        ]
+        for mode, ucaf, expected, label in cases:
+            with self.subTest(case=label):
+                self.assertEqual(
+                    visa.map_ucaf_to_visa_ecom_indicator(mode, ucaf), expected)
+
+    def test_visa_tcr1_emitted_for_ecommerce(self):
+        """TCR 1 émis pour e-commerce avec pos 116 = indicateur."""
+        rows = sample_rows(["4111111111111111"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0]["ucaf_level"] = "1"
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        # lines: header, TC05, TCR1, batch trailer, file trailer
+        self.assertGreater(len(lines), 4)
+        # Find the TCR 1 (pos 4 == "1")
+        tcr1s = [ln for ln in lines if ln[3:4] == "1"]
+        self.assertEqual(len(tcr1s), 1, "exactly one TCR 1 in single e-com txn")
+        tcr1 = tcr1s[0]
+        self.assertEqual(len(tcr1), visa.RECORD_LEN)
+        self.assertEqual(tcr1[115:116], "6", "ucaf=1 → 3DS attempted")
+
+    def test_visa_no_tcr1_for_non_ecommerce(self):
+        """Pas de TCR 1 pour transaction non e-commerce (chip 051)."""
+        rows = sample_rows(["4111111111111111"])
+        # pos_entry_mode="051" (sample_rows default) — non e-commerce
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        tcr1s = [ln for ln in lines if ln[3:4] == "1"]
+        self.assertEqual(len(tcr1s), 0, "no TCR 1 for non-e-com txn")
+
+    def test_visa_tcr1_tc_matches_parent(self):
+        """TC du TCR 1 == TC du TCR 0 parent."""
+        rows = sample_rows(["4111111111111111", "5413330089020011"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0]["ucaf_level"] = "2"
+        rows[0]["processing_code"] = "000000"   # purchase → TC05
+        rows[1]["pos_entry_mode"] = "810"
+        rows[1]["ucaf_level"] = "2"
+        rows[1]["processing_code"] = "200000"   # refund → TC06
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        tcr0s = [ln for ln in lines if ln[3:4] == "0" and ln[:2] in ("05", "06", "07")]
+        tcr1s = [ln for ln in lines if ln[3:4] == "1"]
+        self.assertEqual(len(tcr0s), 2)
+        self.assertEqual(len(tcr1s), 2)
+        for tcr1, tcr0 in zip(tcr1s, tcr0s):
+            self.assertEqual(tcr1[:2], tcr0[:2],
+                             f"TCR1 TC ({tcr1[:2]}) must match TCR0 TC ({tcr0[:2]})")
+
+    def test_visa_tcr1_updates_trailer_tcr_count(self):
+        """TC92 Number of TCRs (pos 49) inclut les TCR 1."""
+        rows = sample_rows(["4111111111111111"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0]["ucaf_level"] = "0"
+        lines, count, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        tc92 = [ln for ln in lines if ln[:2] == visa.TRAILER_TC][0]
+        self.assertEqual(count, 1, "1 monetary transaction")
+        # pos 49 = Number of TCRs = count (1 TCR0) + 1 TCR1 = 2
+        self.assertEqual(int(tc92[48:60]), 2, "TCR count must include TCR 1")
+        # pos 75 = Number of Transactions (unchanged = 1)
+        self.assertEqual(int(tc92[74:83]), 1, "transaction count unchanged")
+
+    def test_visa_no_tcr1_for_ucaf_level_0_in_ecom(self):
+        """Même e-commerce, ucaf_level=0 émet TCR 1 avec indicateur '8'."""
+        rows = sample_rows(["5413330089020011"])
+        rows[0]["pos_entry_mode"] = "810"
+        rows[0]["ucaf_level"] = "0"
+        lines, _, _, _ = visa.generate_ctf_lines(
+            rows, KEY, sending_id="400100", receiving_id="000000",
+            merchant_country="788", created=DT)
+        tcr1s = [ln for ln in lines if ln[3:4] == "1"]
+        self.assertEqual(len(tcr1s), 1, "TCR 1 émis même avec ucaf=0")
+        self.assertEqual(tcr1s[0][115:116], "8", "ucaf=0 → unsecured indicator")
+
     def test_build_reversal_partial_zero_raises(self):
         """reversal_amount=0 → ValueError."""
         row = sample_rows(["4111111111111111"])[0]

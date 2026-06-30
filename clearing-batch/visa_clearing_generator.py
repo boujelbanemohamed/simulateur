@@ -167,6 +167,65 @@ def build_arn(acquirer_id: str | None, stan: str | None, dt: datetime) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Mail/Phone/Ecom Indicator mapping (CTF Data Dictionary, TCR 1 pos 116)
+# --------------------------------------------------------------------------- #
+# Sources:
+#   CTF Data Dictionary § "TCR 1 — Additional Data"
+#   pos 116: Mail/Phone/Ecom Indicator
+#     ' ' = card present / NA
+#     '1' = Mail/Phone Order
+#     '5' = E-commerce 3-D Secure
+#     '6' = E-commerce 3DS attempted
+#     '7' = E-commerce encrypted
+#     '8' = E-commerce unsecured
+# --------------------------------------------------------------------------- #
+def map_ucaf_to_visa_ecom_indicator(pos_entry_mode: str | None,
+                                    ucaf_level: str | None) -> str | None:
+    """Map e-commerce context to TCR 1 pos 116 Mail/Phone/Ecom Indicator.
+
+    Non-e-commerce (``pos_entry_mode`` not starting with ``"81"``) returns
+    ``None`` — no TCR 1 should be emitted.
+
+    E-commerce mapping per ucaf_level (same data captured for Mastercard PDS 0052):
+        Full UCAF (``"2"``) → ``"5"`` (3-D Secure)
+        Merchant UCAF (``"1"``) → ``"6"`` (3DS attempted)
+        None / unknown (``"0"`` or absent) → ``"8"`` (unsecured e-commerce)
+    """
+    if not pos_entry_mode or not pos_entry_mode.startswith("81"):
+        return None
+    if ucaf_level == "2":
+        return "5"
+    if ucaf_level == "1":
+        return "6"
+    return "8"
+
+
+def build_tcr1(row: dict[str, Any], pan: str, tc: str) -> str | None:
+    """Build a TCR 1 Additional Data record for e-commerce transactions.
+
+    The TCR 1 inherits the Transaction Code from its parent TCR 0 and carries
+    the Mail/Phone/Ecom Indicator at position 116. Non-e-commerce transactions
+    return ``None`` (no TCR 1).
+
+    All other positions are left at spaces (conditionals not needed for the
+    e-commerce marking).
+    """
+    indicator = map_ucaf_to_visa_ecom_indicator(
+        row.get("pos_entry_mode"), row.get("ucaf_level"))
+    if indicator is None:
+        return None
+    buf = [" "] * RECORD_LEN
+    place = _placer(buf)
+    place(1, 2, tc)         # Transaction Code = same as parent TCR 0
+    place(3, 1, "0")        # TC Qualifier
+    place(4, 1, "1")        # TCR Sequence No = 1 (Additional Data)
+    place(116, 1, indicator)  # Mail/Phone/Ecom Indicator
+    line = "".join(buf)
+    assert len(line) == RECORD_LEN
+    return line
+
+
+# --------------------------------------------------------------------------- #
 # Record builders (each returns exactly 168 chars)
 # --------------------------------------------------------------------------- #
 def build_header(sending_id: str, receiving_id: str, created: datetime,
@@ -349,7 +408,8 @@ def build_reversal(row: dict[str, Any], pan: str, *, merchant_country: str,
 
 def build_count_trailer(tc: str, count: int, debit_total: int, credit_total: int, *,
                         processing: datetime, cib: str = "000000",
-                        batch_number: int = 1) -> str:
+                        batch_number: int = 1,
+                        tcr_count: int | None = None) -> str:
     """Build a TC 91 (batch) or TC 92 (file) trailer.
 
     Both share the same TCR-0 layout per CTF_Data_Dictionary 'Batch / File
@@ -361,6 +421,9 @@ def build_count_trailer(tc: str, count: int, debit_total: int, credit_total: int
     net_total = debit_total - credit_total  (convention simulateur mono-devise)
     The trailer stores net_total in the hash fields (positions 16 and 102).
 
+    ``tcr_count`` — total TCR records (0 + 1) for the batch/file.
+    Defaults to ``count`` (1 TCR0 per transaction, no TCR 1s).
+
     NOTE : la spec Base II n'impose pas de décomposition débit/crédit dans le
     trailer TCR 91/92 ; les totaux séparés sont conservés en paramètre pour
     traçabilité et calcul explicite du net. En multi-devise, le net serait
@@ -368,6 +431,7 @@ def build_count_trailer(tc: str, count: int, debit_total: int, credit_total: int
     """
     net_total = debit_total - credit_total
     hash_val = abs(net_total)  # Base II trailer hash fields are unsigned numeric
+    _tcr_count = tcr_count if tcr_count is not None else count
     buf = [" "] * RECORD_LEN
     place = _placer(buf)
     place(1, 2, tc)                                    # Transaction Code (91 or 92)
@@ -379,7 +443,7 @@ def build_count_trailer(tc: str, count: int, debit_total: int, credit_total: int
     place(16, 15, numeric(hash_val, 15))               # Destination Amount (net total, unsigned)
     place(31, 12, numeric(count, 12))                  # Number of Monetary Transactions
     place(43, 6, numeric(batch_number, 6))             # Batch Number
-    place(49, 12, numeric(count, 12))                  # Number of TCRs (1 TCR0 per txn)
+    place(49, 12, numeric(_tcr_count, 12))             # Number of TCRs
     place(67, 8, numeric(batch_number, 8))             # Center Batch ID
     place(75, 9, numeric(count, 9))                    # Number of Transactions
     place(102, 15, numeric(hash_val, 15))            # Source Amount (net total, unsigned)
@@ -415,6 +479,7 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
     chunk = batch_size if (batch_size and batch_size > 0) else max(count, 1)
     file_debits = 0
     file_credits = 0
+    file_tcrs = 0
     batch_number = 0
 
     for start in range(0, count, chunk):
@@ -424,6 +489,7 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
         batch_number += 1
         batch_debits = 0
         batch_credits = 0
+        batch_tcrs = len(batch_rows)  # TCR 0 per transaction
         for row in batch_rows:
             pan = decrypt_pan(row["pan_enc"], key)
             txn_type = _txn_type_from_pc(row.get("processing_code"))
@@ -433,17 +499,26 @@ def generate_ctf_lines(rows: list[dict[str, Any]], key: bytes, *,
                 batch_credits += amt
             else:
                 batch_debits += amt
+            # TCR 1 for e-commerce transactions (Additional Data)
+            txn_code = REFUND_TC if txn_type == "refund" else CASH_TC if txn_type == "withdrawal" else DRAFT_TC
+            tcr1 = build_tcr1(row, pan, txn_code)
+            if tcr1 is not None:
+                lines.append(tcr1)
+                batch_tcrs += 1
         # TC91 batch trailer: this batch's own counters/totals
         lines.append(build_count_trailer(
             BATCH_TC, len(batch_rows), batch_debits, batch_credits,
-            processing=created, batch_number=batch_number))
+            processing=created, batch_number=batch_number,
+            tcr_count=batch_tcrs))
         file_debits += batch_debits
         file_credits += batch_credits
+        file_tcrs += batch_tcrs
 
     # TC92 file trailer: file-level totals; Batch Number = number of batches
     lines.append(build_count_trailer(
         TRAILER_TC, count, file_debits, file_credits,
-        processing=created, batch_number=max(batch_number, 1)))
+        processing=created, batch_number=max(batch_number, 1),
+        tcr_count=file_tcrs))
     return lines, count, file_debits, file_credits
 
 
