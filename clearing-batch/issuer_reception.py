@@ -146,10 +146,21 @@ def reception_succeeded(summary: dict[str, Any]) -> bool:
     Returns ``True`` if *summary* is a dict (i.e. the phase executed).
     A non-dict or ``None`` signals that the phase did not run at all.
 
-    RÉSERVE conformité : un compte BLOCKED/CLOSED produit ``REJECTED_STATUS``
-    localement mais le simulateur n'émet PAS le chargeback de retour réseau
-    correspondant (Mastercard First Chargeback/1442 avec reason code DE-25,
-    ou rejet Visa Base II). Le rejet est compté, pas renvoyé au réseau.
-    À implémenter si le cycle de rejet réseau devient nécessaire.
+    NOTE conformité : ``REJECTED_STATUS`` (compte BLOCKED/CLOSED détecté à la
+    réception) est un FILET DE SÉCURITÉ DÉFENSIF, pas un manque. Vérifié contre
+    les specs réseau (Mastercard IPM, Visa Base II) et les guides chargeback
+    publics : un compte bloqué/fermé est traité À L'AUTORISATION (DE-39 ``'57'``,
+    transaction not permitted), ce que ``decide_authorization`` (Python,
+    ``clearing-batch/issuer_authorization.py:122``) et
+    ``IssuerAuthorizationService`` (Java,
+    ``java-switch-standalone/.../IssuerAuthorizationService.java:99``) font déjà
+    — les tests ``test_auth_declined_blocked`` le vérifient. Un chargeback
+    (MC 1442 / dispute Visa) est un mécanisme de contestation du PORTEUR
+    (fraude, duplicata, litige montant), avec son propre cycle de vie (délais,
+    arbitrage). Il ne s'applique PAS à un rejet technique de réception sur
+    compte fermé. Une telle transaction est refusée à l'autorisation et
+    n'atteint jamais le clearing ; si elle y parvient malgré tout,
+    ``REJECTED_STATUS`` empêche le postage. Le système est conforme — aucun
+    chargeback de retour n'est attendu ici.
     """
     return isinstance(summary, dict)
