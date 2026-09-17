@@ -95,6 +95,9 @@ function assertSelectableMcc(code, champ) {
   if (code == null) return;
   const mcc = getMcc(code);
   if (!mcc) throw badRequest(`MCC inconnu pour ${champ} : ${code}`);
+  if (!mcc.active) {
+    throw badRequest(`Le MCC ${mcc.code} (${mcc.label}) a été désactivé dans le référentiel.`);
+  }
   if (mcc.riskLevel === 'INTERDIT') {
     throw badRequest(
       `Le MCC ${mcc.code} (${mcc.label}) n'est pas éligible à l'affiliation ClickToPay.`,

@@ -255,3 +255,21 @@ dl { margin: 0; }
   .paire { flex-direction: column; gap: 0.1rem; }
   .paire dd { text-align: left; max-width: 100%; }
 }
+
+/* ---------- Sous-navigation de l'administration ---------- */
+.sous-nav {
+  display: flex; gap: 0.25rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--gris-300); margin-bottom: 1.25rem;
+}
+.sous-nav a {
+  padding: 0.5rem 0.9rem; text-decoration: none; color: var(--gris-700);
+  font-weight: 600; font-size: 0.9rem; border-bottom: 3px solid transparent;
+  margin-bottom: -1px; transition: color var(--transition), border-color var(--transition);
+}
+.sous-nav a:hover { color: var(--bleu-700); }
+.sous-nav a.actif { color: var(--bleu-900); border-bottom-color: var(--bleu-500); }
+
+.topbar__user:hover { background: rgba(255, 255, 255, 0.08); border-radius: var(--rayon); }
+.topbar__user { padding: 0.2rem 0.5rem; color: var(--blanc); }
+
+details summary { font-size: 0.9rem; font-weight: 600; }

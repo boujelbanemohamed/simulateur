@@ -45,6 +45,14 @@ async function request(path, { method = 'GET', body, signal } = {}) {
   return payload;
 }
 
+/** Sérialise des paramètres de requête en ignorant les valeurs vides. */
+const qs = (params) => {
+  const chaine = new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== '' && v != null)
+  ).toString();
+  return chaine ? `?${chaine}` : '';
+};
+
 export const api = {
   login: (email, password) => request('/auth/login', { method: 'POST', body: { email, password } }),
   me: () => request('/auth/me'),
@@ -54,6 +62,31 @@ export const api = {
     request(`/mcc?search=${encodeURIComponent(search)}&limit=${limit}&eligibleOnly=${eligibleOnly}`),
   getMcc: (code) => request(`/mcc/${code}`),
   suggest: (profile, signal) => request('/mcc/suggest', { method: 'POST', body: profile, signal }),
+
+  changePassword: (currentPassword, newPassword) =>
+    request('/auth/password', { method: 'POST', body: { currentPassword, newPassword } }),
+
+  // --- Administration (profil ADMIN uniquement)
+  admin: {
+    listUsers: (params = {}) => request(`/admin/users${qs(params)}`),
+    createUser: (payload) => request('/admin/users', { method: 'POST', body: payload }),
+    updateUser: (id, payload) => request(`/admin/users/${id}`, { method: 'PUT', body: payload }),
+    resetPassword: (id, password) =>
+      request(`/admin/users/${id}/password`, { method: 'POST', body: { password } }),
+
+    listBanks: () => request('/admin/banks'),
+    createBank: (payload) => request('/admin/banks', { method: 'POST', body: payload }),
+    updateBank: (id, payload) => request(`/admin/banks/${id}`, { method: 'PUT', body: payload }),
+
+    listMcc: (params = {}) => request(`/admin/mcc${qs(params)}`),
+    getMcc: (code) => request(`/admin/mcc/${code}`),
+    mccHistory: (code) => request(`/admin/mcc/${code}/history`),
+    createMcc: (payload) => request('/admin/mcc', { method: 'POST', body: payload }),
+    updateMcc: (code, payload) => request(`/admin/mcc/${code}`, { method: 'PUT', body: payload }),
+    importMcc: (payload) => request('/admin/mcc/import', { method: 'POST', body: payload }),
+
+    events: (limit = 100) => request(`/admin/events?limit=${limit}`),
+  },
 
   listRequests: (params = {}) => {
     const qs = new URLSearchParams(

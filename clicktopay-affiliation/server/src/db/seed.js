@@ -1,7 +1,13 @@
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import bcrypt from 'bcryptjs';
 import { pool, withTransaction } from './pool.js';
 import { migrate } from './migrate.js';
-import { catalog } from '../services/mccCatalog.js';
+import { rechargerCatalogue } from '../services/mccCatalog.js';
+
+// Fichier d'amorçage : il n'alimente que les codes absents de la base, qui fait foi.
+const catalogPath = fileURLToPath(new URL('../../data/mcc-catalog.json', import.meta.url));
+const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 
 const BANKS = [
   { code: 'BQ001', name: 'Banque Nationale de Tunisie' },
@@ -16,7 +22,7 @@ const USERS = [
   { email: 'admin@clicktopay.tn', firstName: 'Admin', lastName: 'ClickToPay', role: 'ADMIN', bank: 'BQ001', password: 'Admin#2026' },
 ];
 
-export async function seed({ withDemoUsers = true } = {}) {
+export async function seed({ withDemoUsers = true, forceMcc = false } = {}) {
   await migrate();
 
   await withTransaction(async (client) => {
@@ -28,14 +34,11 @@ export async function seed({ withDemoUsers = true } = {}) {
       );
     }
 
-    // Le référentiel MCC est rejoué à chaque seed : il suit le fichier catalogue.
-    for (const mcc of catalog) {
-      await client.query(
-        `INSERT INTO mcc_codes (code, label_fr, description_fr, label_en, description_en,
-                                keywords, similar_codes, ecommerce_relevance, risk_level,
-                                note, networks, source)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-         ON CONFLICT (code) DO UPDATE SET
+    // Amorçage du référentiel. Par défaut les codes déjà présents ne sont pas
+    // touchés : la base fait foi et les ajustements de la conformité doivent
+    // survivre à un redéploiement. `forceMcc` rejoue le fichier d'origine.
+    const surConflit = forceMcc
+      ? `DO UPDATE SET
            label_fr = EXCLUDED.label_fr,
            description_fr = EXCLUDED.description_fr,
            label_en = EXCLUDED.label_en,
@@ -46,7 +49,17 @@ export async function seed({ withDemoUsers = true } = {}) {
            risk_level = EXCLUDED.risk_level,
            note = EXCLUDED.note,
            networks = EXCLUDED.networks,
-           source = EXCLUDED.source`,
+           source = EXCLUDED.source,
+           updated_at = now()`
+      : 'DO NOTHING';
+
+    for (const mcc of catalog) {
+      await client.query(
+        `INSERT INTO mcc_codes (code, label_fr, description_fr, label_en, description_en,
+                                keywords, similar_codes, ecommerce_relevance, risk_level,
+                                note, networks, source)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+         ON CONFLICT (code) ${surConflit}`,
         [
           mcc.code, mcc.label, mcc.description, mcc.labelEn, mcc.descriptionEn,
           mcc.keywords, mcc.similar, mcc.ecommerceRelevance, mcc.riskLevel,
@@ -72,6 +85,8 @@ export async function seed({ withDemoUsers = true } = {}) {
       }
     }
   });
+
+  await rechargerCatalogue();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

@@ -15,8 +15,13 @@ z.setErrorMap((issue, ctx) => {
 const trimmed = (max) => z.string().trim().max(max);
 const requiredText = (max, champ) =>
   trimmed(max).min(1, `${champ} est obligatoire`);
+// `.optional()` enveloppe la transformation : un champ absent reste absent et
+// n'écrase rien lors d'une mise à jour partielle.
 const optionalText = (max) =>
-  trimmed(max).optional().nullable().transform((v) => (v === '' ? null : v ?? null));
+  trimmed(max)
+    .nullable()
+    .transform((v) => (v === '' ? null : v))
+    .optional();
 const optionalNumber = z.coerce
   .number()
   .nonnegative('La valeur doit être positive')

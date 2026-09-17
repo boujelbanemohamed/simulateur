@@ -5,16 +5,34 @@ process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://clicktopay:clicktopay@127.0.0.1:5432/clicktopay_test';
 process.env.JWT_SECRET = 'secret-de-test';
 
+const { readFile } = await import('node:fs/promises');
+const { fileURLToPath } = await import('node:url');
+
 const { createApp } = await import('../src/app.js');
 const { pool } = await import('../src/db/pool.js');
 const { seed } = await import('../src/db/seed.js');
+const { rechargerCatalogue } = await import('../src/services/mccCatalog.js');
+
+const CODES_DE_REFERENCE = JSON.parse(
+  await readFile(fileURLToPath(new URL('../data/mcc-catalog.json', import.meta.url)), 'utf8')
+).map((m) => m.code);
 
 export { pool };
 export const app = createApp();
 
+/**
+ * Remet la base dans l'état d'origine : demandes vidées, référentiel MCC réaligné
+ * sur le fichier d'amorçage (les tests d'administration le modifient et lui
+ * ajoutent des codes).
+ */
 export async function resetDatabase() {
-  await seed();
   await pool.query('TRUNCATE affiliation_requests RESTART IDENTITY CASCADE');
+  await pool.query('DELETE FROM mcc_codes WHERE code <> ALL($1::text[])', [CODES_DE_REFERENCE]);
+  await pool.query('DELETE FROM mcc_code_history');
+  await pool.query('DELETE FROM admin_events');
+  await seed({ forceMcc: true });
+  await pool.query("UPDATE mcc_codes SET active = TRUE WHERE NOT active");
+  await rechargerCatalogue();
 }
 
 export const CREDENTIALS = {

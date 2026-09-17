@@ -1,4 +1,4 @@
-import { catalog, normalize } from './mccCatalog.js';
+import { catalogueActif, normalize } from './mccCatalog.js';
 import { getSector } from './sectors.js';
 import { config } from '../config.js';
 
@@ -83,7 +83,7 @@ export function suggestMcc(profile = {}, options = {}) {
   const sector = getSector(activitySector);
   const sectorMccs = new Map((sector?.mccs ?? []).map((code, index) => [code, index]));
 
-  const scored = catalog
+  const scored = catalogueActif()
     .filter((mcc) => mcc.riskLevel !== 'INTERDIT')
     .map((mcc) => {
       let raw = 0;
@@ -154,7 +154,7 @@ export function suggestMcc(profile = {}, options = {}) {
 
   // Filet de sécurité : jamais de liste vide renvoyée à l'agent.
   if (scored.length === 0) {
-    const fallback = catalog.find((m) => m.code === '5999');
+    const fallback = catalogueActif().find((m) => m.code === '5999');
     return [{ ...fallback, score: 10, rawScore: 0, matchedTerms: ['aucune correspondance : code de repli'] }];
   }
 

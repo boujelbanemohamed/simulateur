@@ -152,3 +152,43 @@ CREATE INDEX IF NOT EXISTS idx_events_request ON request_events(request_id, crea
 
 -- Compteur de références AFF-<année>-<séquence>
 CREATE SEQUENCE IF NOT EXISTS affiliation_reference_seq START 1;
+
+-- ===========================================================================
+-- Administration : la base devient la référence du référentiel MCC, et les
+-- profils, banques et codes sont administrables depuis l'application.
+-- ===========================================================================
+
+ALTER TABLE mcc_codes ADD COLUMN IF NOT EXISTS active     BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE mcc_codes ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE mcc_codes ADD COLUMN IF NOT EXISTS updated_by INTEGER REFERENCES users(id);
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Historique des modifications du référentiel : un MCC est une donnée
+-- réglementaire, chaque changement doit rester justifiable.
+CREATE TABLE IF NOT EXISTS mcc_code_history (
+  id         SERIAL PRIMARY KEY,
+  code       CHAR(4)     NOT NULL,
+  user_id    INTEGER     REFERENCES users(id),
+  action     VARCHAR(24) NOT NULL,
+  avant      JSONB,
+  apres      JSONB,
+  comment    TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcc_history_code ON mcc_code_history(code, created_at DESC);
+
+-- Journal des actions d'administration (utilisateurs, banques, imports).
+CREATE TABLE IF NOT EXISTS admin_events (
+  id         SERIAL PRIMARY KEY,
+  user_id    INTEGER     REFERENCES users(id),
+  entity     VARCHAR(24) NOT NULL,
+  entity_id  VARCHAR(64),
+  action     VARCHAR(32) NOT NULL,
+  payload    JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC);

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncRoute, notFound, validate } from '../middleware/errors.js';
-import { catalog, getMcc, searchCatalog } from '../services/mccCatalog.js';
+import { catalogueActif, getMcc, searchCatalog } from '../services/mccCatalog.js';
 import { suggestForNetworks } from '../services/mccSuggestion.js';
 import { SECTORS } from '../services/sectors.js';
 import { suggestionProfileSchema } from '../services/requestSchema.js';
@@ -17,14 +17,14 @@ mccRouter.get('/', (req, res) => {
     limit: Math.min(Number(limit) || 30, 300),
     includeProhibited: eligibleOnly !== 'true',
   });
-  res.json({ total: catalog.length, count: results.length, items: results });
+  res.json({ total: catalogueActif().length, count: results.length, items: results });
 });
 
 mccRouter.get('/secteurs', (req, res) => res.json(SECTORS));
 
 mccRouter.get('/:code', (req, res) => {
   const mcc = getMcc(req.params.code);
-  if (!mcc) throw notFound(`MCC ${req.params.code} introuvable`);
+  if (!mcc || !mcc.active) throw notFound(`MCC ${req.params.code} introuvable`);
   res.json(mcc);
 });
 

@@ -5,17 +5,30 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import RequestFormPage from './pages/RequestFormPage.jsx';
 import RequestDetailPage from './pages/RequestDetailPage.jsx';
 import CatalogPage from './pages/CatalogPage.jsx';
+import PasswordPage from './pages/PasswordPage.jsx';
+import AdminLayout from './pages/AdminLayout.jsx';
+import AdminUsersPage from './pages/AdminUsersPage.jsx';
+import AdminBanksPage from './pages/AdminBanksPage.jsx';
+import AdminMccPage from './pages/AdminMccPage.jsx';
+import AdminMccImportPage from './pages/AdminMccImportPage.jsx';
+import AdminEventsPage from './pages/AdminEventsPage.jsx';
 
-function Protege({ children }) {
-  const { user, loading } = useAuth();
+function Protege({ children, adminSeul = false }) {
+  const { user, loading, isAdmin, mustChangePassword } = useAuth();
   const location = useLocation();
   if (loading) return <p className="vide">Chargement de la session…</p>;
   if (!user) return <Navigate to="/connexion" state={{ from: location }} replace />;
+  // Un mot de passe réinitialisé doit être changé avant tout autre écran :
+  // le serveur refuse de toute façon les autres routes.
+  if (mustChangePassword && location.pathname !== '/mot-de-passe') {
+    return <Navigate to="/mot-de-passe" replace />;
+  }
+  if (adminSeul && !isAdmin) return <Navigate to="/demandes" replace />;
   return children;
 }
 
 function Entete() {
-  const { user, logout, isAgent } = useAuth();
+  const { user, logout, isAgent, isAdmin } = useAuth();
   const lien = ({ isActive }) => (isActive ? 'actif' : undefined);
 
   return (
@@ -35,8 +48,13 @@ function Entete() {
         <NavLink to="/referentiel" className={lien}>
           Référentiel MCC
         </NavLink>
+        {isAdmin && (
+          <NavLink to="/administration" className={lien}>
+            Administration
+          </NavLink>
+        )}
       </nav>
-      <div className="topbar__user">
+      <NavLink to="/mot-de-passe" className="topbar__user" style={{ textDecoration: 'none' }}>
         <strong>
           {user.firstName} {user.lastName}
         </strong>
@@ -44,7 +62,7 @@ function Entete() {
           {user.role === 'AGENT' ? 'Agent' : user.role === 'BANQUIER' ? 'Banquier' : 'Administrateur'} —{' '}
           {user.bankCode}
         </span>
-      </div>
+      </NavLink>
       <button type="button" className="bouton bouton--secondaire bouton--petit" onClick={logout}>
         Déconnexion
       </button>
@@ -66,6 +84,15 @@ export default function App() {
           <Route path="/demandes/:id" element={<Protege><RequestDetailPage /></Protege>} />
           <Route path="/demandes/:id/modifier" element={<Protege><RequestFormPage /></Protege>} />
           <Route path="/referentiel" element={<Protege><CatalogPage /></Protege>} />
+          <Route path="/mot-de-passe" element={<Protege><PasswordPage /></Protege>} />
+          <Route path="/administration" element={<Protege adminSeul><AdminLayout /></Protege>}>
+            <Route index element={<Navigate to="comptes" replace />} />
+            <Route path="comptes" element={<AdminUsersPage />} />
+            <Route path="banques" element={<AdminBanksPage />} />
+            <Route path="referentiel" element={<AdminMccPage />} />
+            <Route path="import" element={<AdminMccImportPage />} />
+            <Route path="journal" element={<AdminEventsPage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/demandes" replace />} />
         </Routes>
       </main>

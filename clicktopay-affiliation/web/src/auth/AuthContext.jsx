@@ -35,16 +35,29 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  /**
+   * Changement de mot de passe. Le serveur renvoie un jeton neuf, sans
+   * l'obligation de changement : il remplace celui en mémoire.
+   */
+  const changePassword = useCallback(async (currentPassword, newPassword) => {
+    const { token } = await api.changePassword(currentPassword, newPassword);
+    setToken(token);
+    setUser((u) => (u ? { ...u, mustChangePassword: false } : u));
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
       loading,
       login,
       logout,
+      changePassword,
       isAgent: user?.role === 'AGENT' || user?.role === 'ADMIN',
       isBanquier: user?.role === 'BANQUIER' || user?.role === 'ADMIN',
+      isAdmin: user?.role === 'ADMIN',
+      mustChangePassword: Boolean(user?.mustChangePassword),
     }),
-    [user, loading, login, logout]
+    [user, loading, login, logout, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

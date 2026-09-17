@@ -1,24 +1,77 @@
-import { readFile } from 'node:fs/promises';
-import { fileURLToPath } from 'node:url';
+import { query } from '../db/pool.js';
 
-const catalogPath = fileURLToPath(new URL('../../data/mcc-catalog.json', import.meta.url));
+/**
+ * Référentiel MCC.
+ *
+ * La base de données fait foi : `data/mcc-catalog.json` ne sert qu'à l'amorçage
+ * initial (npm run db:seed). Les ajustements faits depuis l'écran d'administration
+ * ne sont donc jamais écrasés par un redéploiement.
+ *
+ * Le catalogue est lu en mémoire une fois puis servi depuis le cache : il est
+ * consulté à chaque frappe dans le formulaire, et il change rarement.
+ * Toute écriture doit appeler `rechargerCatalogue()`.
+ */
 
-/** @type {Array<object>} */
-export const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
+let cache = { items: [], byCode: new Map() };
+let chargement = null;
 
-const byCode = new Map(catalog.map((mcc) => [mcc.code, mcc]));
+const versMcc = (row) => ({
+  code: row.code,
+  label: row.label_fr,
+  description: row.description_fr,
+  labelEn: row.label_en,
+  descriptionEn: row.description_en,
+  keywords: row.keywords,
+  similar: row.similar_codes,
+  ecommerceRelevance: row.ecommerce_relevance,
+  riskLevel: row.risk_level,
+  note: row.note,
+  networks: row.networks,
+  source: row.source,
+  active: row.active,
+  updatedAt: row.updated_at,
+});
 
-export const getMcc = (code) => byCode.get(String(code ?? '').trim()) ?? null;
+async function chargerCatalogue() {
+  const { rows } = await query('SELECT * FROM mcc_codes ORDER BY code');
+  const items = rows.map(versMcc);
+  cache = { items, byCode: new Map(items.map((m) => [m.code, m])) };
+  return cache;
+}
 
-export const isEligible = (code) => {
+/** Charge le catalogue au premier besoin ; les appels concurrents partagent la promesse. */
+export function assurerCatalogueCharge() {
+  chargement ??= chargerCatalogue().catch((err) => {
+    chargement = null; // un échec ne doit pas figer un cache vide
+    throw err;
+  });
+  return chargement;
+}
+
+/** À appeler après toute écriture sur mcc_codes. */
+export async function rechargerCatalogue() {
+  chargement = chargerCatalogue();
+  return chargement;
+}
+
+/** Tous les codes, y compris désactivés : vue de l'administrateur. */
+export const catalogueComplet = () => cache.items;
+
+/** Codes actifs : seuls ceux-ci sont proposés et sélectionnables. */
+export const catalogueActif = () => cache.items.filter((m) => m.active);
+
+export const getMcc = (code) => cache.byCode.get(String(code ?? '').trim()) ?? null;
+
+export const estSelectionnable = (code) => {
   const mcc = getMcc(code);
-  return Boolean(mcc) && mcc.riskLevel !== 'INTERDIT';
+  return Boolean(mcc) && mcc.active && mcc.riskLevel !== 'INTERDIT';
 };
 
-/** Recherche plein texte simple, pour la sélection manuelle par le banquier. */
-export function searchCatalog(term, { limit = 30, includeProhibited = true } = {}) {
+/** Recherche plein texte, pour la sélection manuelle et l'écran d'administration. */
+export function searchCatalog(term, { limit = 30, includeProhibited = true, includeInactive = false } = {}) {
   const needle = normalize(term ?? '');
-  const pool = includeProhibited ? catalog : catalog.filter((m) => m.riskLevel !== 'INTERDIT');
+  let pool = includeInactive ? catalogueComplet() : catalogueActif();
+  if (!includeProhibited) pool = pool.filter((m) => m.riskLevel !== 'INTERDIT');
   if (!needle) return pool.slice(0, limit);
 
   return pool
