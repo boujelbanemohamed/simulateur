@@ -1,0 +1,154 @@
+-- Schéma de la plateforme d'affiliation ClickToPay
+-- Exécuté par `npm run db:migrate` (idempotent).
+
+CREATE TABLE IF NOT EXISTS banks (
+  id          SERIAL PRIMARY KEY,
+  code        VARCHAR(16)  NOT NULL UNIQUE,
+  name        VARCHAR(160) NOT NULL,
+  active      BOOLEAN      NOT NULL DEFAULT TRUE,
+  created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+-- AGENT    : saisit et soumet les demandes d'affiliation
+-- BANQUIER : valide, modifie les MCC, rejette ou demande un complément
+-- ADMIN    : administre les utilisateurs et le référentiel
+CREATE TABLE IF NOT EXISTS users (
+  id            SERIAL PRIMARY KEY,
+  bank_id       INTEGER      NOT NULL REFERENCES banks(id),
+  email         VARCHAR(160) NOT NULL UNIQUE,
+  password_hash VARCHAR(120) NOT NULL,
+  first_name    VARCHAR(80)  NOT NULL,
+  last_name     VARCHAR(80)  NOT NULL,
+  role          VARCHAR(16)  NOT NULL CHECK (role IN ('AGENT', 'BANQUIER', 'ADMIN')),
+  active        BOOLEAN      NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_bank ON users(bank_id);
+
+-- Référentiel MCC (source : Visa Merchant Data Standards Manual, codes ISO 18245
+-- partagés avec Mastercard). Alimenté par `npm run db:seed`.
+CREATE TABLE IF NOT EXISTS mcc_codes (
+  code            CHAR(4)      PRIMARY KEY,
+  label_fr        VARCHAR(255) NOT NULL,
+  description_fr  TEXT         NOT NULL,
+  label_en        VARCHAR(255) NOT NULL,
+  description_en  TEXT         NOT NULL,
+  keywords        TEXT[]       NOT NULL DEFAULT '{}',
+  similar_codes   TEXT[]       NOT NULL DEFAULT '{}',
+  ecommerce_relevance VARCHAR(8) NOT NULL DEFAULT 'LOW'
+                   CHECK (ecommerce_relevance IN ('HIGH', 'MEDIUM', 'LOW')),
+  risk_level      VARCHAR(12)  NOT NULL DEFAULT 'STANDARD'
+                   CHECK (risk_level IN ('STANDARD', 'SENSIBLE', 'INTERDIT')),
+  note            TEXT,
+  networks        TEXT[]       NOT NULL DEFAULT '{VISA,MASTERCARD}',
+  source          VARCHAR(160) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcc_relevance ON mcc_codes(ecommerce_relevance);
+
+CREATE TABLE IF NOT EXISTS affiliation_requests (
+  id          SERIAL PRIMARY KEY,
+  reference   VARCHAR(24)  NOT NULL UNIQUE,
+  bank_id     INTEGER      NOT NULL REFERENCES banks(id),
+  created_by  INTEGER      NOT NULL REFERENCES users(id),
+  status      VARCHAR(24)  NOT NULL DEFAULT 'BROUILLON'
+               CHECK (status IN ('BROUILLON', 'SOUMISE', 'COMPLEMENT_REQUIS', 'VALIDEE', 'REJETEE')),
+
+  -- Site marchand
+  site_name          VARCHAR(160) NOT NULL,
+  site_url           VARCHAR(255) NOT NULL,
+  site_languages     VARCHAR(120),
+
+  -- Société
+  company_name       VARCHAR(160) NOT NULL,
+  legal_form         VARCHAR(40),
+  rne                VARCHAR(32)  NOT NULL,
+  tax_id             VARCHAR(32),
+  company_created_on DATE,
+  share_capital      NUMERIC(14, 3),
+
+  -- Contact
+  contact_first_name VARCHAR(80)  NOT NULL,
+  contact_last_name  VARCHAR(80)  NOT NULL,
+  contact_email      VARCHAR(160) NOT NULL,
+  contact_phone      VARCHAR(32)  NOT NULL,
+
+  -- Adresse physique
+  address_line1      VARCHAR(180) NOT NULL,
+  address_line2      VARCHAR(180),
+  city               VARCHAR(80)  NOT NULL,
+  postal_code        VARCHAR(16),
+  governorate        VARCHAR(80),
+  country            VARCHAR(80)  NOT NULL DEFAULT 'Tunisie',
+
+  -- Activité (alimente le moteur de suggestion MCC)
+  activity_sector      VARCHAR(80),
+  activity_description TEXT         NOT NULL,
+  product_types        TEXT,
+  delivery_mode        VARCHAR(16)  NOT NULL DEFAULT 'PHYSIQUE'
+                        CHECK (delivery_mode IN ('PHYSIQUE', 'NUMERIQUE', 'SERVICE', 'MIXTE')),
+  has_subscription     BOOLEAN      NOT NULL DEFAULT FALSE,
+  is_marketplace       BOOLEAN      NOT NULL DEFAULT FALSE,
+  sells_abroad         BOOLEAN      NOT NULL DEFAULT FALSE,
+  average_basket       NUMERIC(14, 3),
+  monthly_volume       NUMERIC(14, 3),
+  currency             CHAR(3)      NOT NULL DEFAULT 'TND',
+
+  -- Coordonnées bancaires
+  rib             VARCHAR(24),
+  account_holder  VARCHAR(160),
+  bank_agency     VARCHAR(120),
+
+  -- MCC : proposé par l'agent (assisté par le moteur), puis arbitré par le banquier
+  proposed_visa_mcc        CHAR(4) REFERENCES mcc_codes(code),
+  proposed_mastercard_mcc  CHAR(4) REFERENCES mcc_codes(code),
+  proposed_justification   TEXT,
+  final_visa_mcc           CHAR(4) REFERENCES mcc_codes(code),
+  final_mastercard_mcc     CHAR(4) REFERENCES mcc_codes(code),
+
+  -- Workflow
+  submitted_at     TIMESTAMPTZ,
+  decided_at       TIMESTAMPTZ,
+  decided_by       INTEGER REFERENCES users(id),
+  decision_comment TEXT,
+
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_requests_bank_status ON affiliation_requests(bank_id, status);
+CREATE INDEX IF NOT EXISTS idx_requests_created_by ON affiliation_requests(created_by);
+
+-- Photographie des MCC proposés par le moteur au moment de la soumission :
+-- le banquier doit pouvoir voir ce qui avait été proposé, et pourquoi.
+CREATE TABLE IF NOT EXISTS mcc_suggestions (
+  id            SERIAL PRIMARY KEY,
+  request_id    INTEGER     NOT NULL REFERENCES affiliation_requests(id) ON DELETE CASCADE,
+  network       VARCHAR(12) NOT NULL CHECK (network IN ('VISA', 'MASTERCARD')),
+  mcc_code      CHAR(4)     NOT NULL REFERENCES mcc_codes(code),
+  rank          SMALLINT    NOT NULL,
+  score         SMALLINT    NOT NULL,
+  matched_terms TEXT[]      NOT NULL DEFAULT '{}',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (request_id, network, mcc_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_suggestions_request ON mcc_suggestions(request_id);
+
+-- Piste d'audit : toute action métier laisse une trace horodatée et nominative.
+CREATE TABLE IF NOT EXISTS request_events (
+  id          SERIAL PRIMARY KEY,
+  request_id  INTEGER     NOT NULL REFERENCES affiliation_requests(id) ON DELETE CASCADE,
+  user_id     INTEGER     REFERENCES users(id),
+  event_type  VARCHAR(32) NOT NULL,
+  comment     TEXT,
+  payload     JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_request ON request_events(request_id, created_at);
+
+-- Compteur de références AFF-<année>-<séquence>
+CREATE SEQUENCE IF NOT EXISTS affiliation_reference_seq START 1;

@@ -1,0 +1,3316 @@
+{
+  "4011": {
+    "description": "Compagnies ferroviaires assurant le transport de fret.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "train",
+      "fret ferroviaire",
+      "chemin de fer",
+      "transport marchandises"
+    ],
+    "label": "Transport ferroviaire de marchandises"
+  },
+  "4111": {
+    "description": "Transport collectif de voyageurs sur lignes et horaires réguliers : métro, tramway, train de banlieue, ferry.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "metro",
+      "tramway",
+      "bus urbain",
+      "ferry",
+      "transport en commun",
+      "abonnement transport"
+    ],
+    "label": "Transport urbain et suburbain de voyageurs, y compris ferries"
+  },
+  "4112": {
+    "description": "Compagnies ferroviaires de transport de voyageurs longue distance.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "billet de train",
+      "sncft",
+      "train",
+      "voyageur",
+      "reservation ferroviaire"
+    ],
+    "label": "Transport ferroviaire de voyageurs"
+  },
+  "4119": {
+    "description": "Transport sanitaire d'urgence avec personnel formé.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "ambulance",
+      "transport sanitaire",
+      "urgence medicale"
+    ],
+    "label": "Services d'ambulance"
+  },
+  "4121": {
+    "description": "Transport de personnes en automobile sans horaire ni itinéraire fixe, y compris les plateformes de VTC.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "taxi",
+      "vtc",
+      "chauffeur",
+      "course",
+      "transport de personnes",
+      "reservation chauffeur"
+    ],
+    "label": "Taxis, VTC et limousines"
+  },
+  "4131": {
+    "description": "Transport régulier de voyageurs par autocar.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "autocar",
+      "bus",
+      "billet de bus",
+      "ligne interurbaine"
+    ],
+    "label": "Lignes d'autocars"
+  },
+  "4214": {
+    "description": "Transporteurs routiers locaux et longue distance, sociétés de déménagement, de garde-meubles et services de livraison locale.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "transport routier",
+      "camion",
+      "demenagement",
+      "livraison",
+      "logistique",
+      "garde meuble"
+    ],
+    "label": "Transport routier de marchandises, déménagement, stockage et livraison locale"
+  },
+  "4215": {
+    "description": "Sociétés de courrier express, de messagerie et commissionnaires de transport.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "messagerie",
+      "colis",
+      "coursier",
+      "express",
+      "transitaire",
+      "fret",
+      "livraison colis",
+      "dedouanement"
+    ],
+    "label": "Services de messagerie et transitaires (air et terre)"
+  },
+  "4225": {
+    "description": "Entreposage de produits agricoles, de marchandises réfrigérées et de biens ménagers.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "entrepot",
+      "stockage",
+      "entreposage",
+      "chambre froide"
+    ],
+    "label": "Entreposage et stockage public"
+  },
+  "4411": {
+    "description": "Transport maritime de passagers et croisières.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "croisiere",
+      "bateau",
+      "traversee",
+      "compagnie maritime",
+      "ferry"
+    ],
+    "label": "Compagnies maritimes et de croisière"
+  },
+  "4457": {
+    "description": "Location et crédit-bail de bateaux de plaisance.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "location bateau",
+      "yacht",
+      "plaisance",
+      "voilier"
+    ],
+    "label": "Location de bateaux"
+  },
+  "4468": {
+    "description": "Ports de plaisance, services portuaires et vente de fournitures nautiques.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "marina",
+      "port de plaisance",
+      "nautisme",
+      "accastillage"
+    ],
+    "label": "Marinas, services et fournitures nautiques"
+  },
+  "4511": {
+    "description": "Transporteurs aériens de voyageurs et de fret ne disposant pas d'un code de marque dédié.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "billet avion",
+      "compagnie aerienne",
+      "vol",
+      "aerien",
+      "reservation vol"
+    ],
+    "label": "Compagnies aériennes (non classées ailleurs)"
+  },
+  "4582": {
+    "description": "Exploitants d'aéroports, d'aérodromes et de terminaux.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "aeroport",
+      "terminal",
+      "parking aeroport",
+      "salon aeroport"
+    ],
+    "label": "Aéroports et terminaux aéroportuaires"
+  },
+  "4722": {
+    "description": "Vente de voyages, de séjours, de billetterie et de prestations touristiques pour le compte de tiers.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "agence de voyage",
+      "voyage",
+      "sejour",
+      "tourisme",
+      "tour operateur",
+      "billetterie",
+      "omra",
+      "hadj",
+      "circuit"
+    ],
+    "label": "Agences de voyages et tour-opérateurs"
+  },
+  "4723": {
+    "description": "Tour-opérateurs de voyages à forfait, usage réservé à l'Allemagne.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "forfait",
+      "allemagne",
+      "voyagiste"
+    ],
+    "label": "Voyagistes à forfait – Allemagne uniquement"
+  },
+  "4784": {
+    "description": "Perception de péages routiers, de ponts et de tunnels.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "peage",
+      "autoroute",
+      "pont",
+      "telepeage"
+    ],
+    "label": "Péages et droits de passage"
+  },
+  "4789": {
+    "description": "Services de transport de personnes non couverts par un code plus précis : navettes, transferts, transport à la demande.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "navette",
+      "transfert",
+      "transport",
+      "shuttle"
+    ],
+    "label": "Services de transport (non classés ailleurs)"
+  },
+  "4812": {
+    "description": "Vente de téléphones, de terminaux et d'équipements de télécommunication.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "telephone",
+      "smartphone",
+      "mobile",
+      "terminal",
+      "equipement telecom",
+      "gsm"
+    ],
+    "label": "Vente d'équipements et de terminaux de télécommunication"
+  },
+  "4814": {
+    "description": "Opérateurs et revendeurs de services de télécommunication : communications locales et longue distance, cartes prépayées, recharges.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "recharge",
+      "credit telephonique",
+      "operateur",
+      "telecom",
+      "forfait mobile",
+      "carte prepayee",
+      "voip",
+      "fibre",
+      "adsl"
+    ],
+    "label": "Services de télécommunication et recharges téléphoniques",
+    "risk": "SENSIBLE"
+  },
+  "4816": {
+    "description": "Fournisseurs de services en ligne : hébergement, accès internet, services informatiques et d'information délivrés par réseau.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "hebergement",
+      "hosting",
+      "nom de domaine",
+      "internet",
+      "cloud",
+      "saas",
+      "service en ligne",
+      "fournisseur acces",
+      "serveur"
+    ],
+    "label": "Services réseau et services d'information en ligne"
+  },
+  "4821": {
+    "description": "Services de télégraphie et de télex.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "telegraphe",
+      "telex"
+    ],
+    "label": "Services télégraphiques"
+  },
+  "4829": {
+    "description": "Opérateurs de transfert de fonds nationaux et internationaux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "transfert d'argent",
+      "envoi de fonds",
+      "money transfer",
+      "remittance",
+      "mandat"
+    ],
+    "label": "Transfert d'argent",
+    "note": "Activité réglementée : agrément BCT et dispositif LAB/FT à vérifier avant affiliation.",
+    "risk": "SENSIBLE"
+  },
+  "4899": {
+    "description": "Fournisseurs de télévision et de radio payantes par câble ou satellite, et services de streaming de contenu par abonnement.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "streaming",
+      "abonnement video",
+      "svod",
+      "television payante",
+      "satellite",
+      "chaine",
+      "vod",
+      "musique en ligne"
+    ],
+    "label": "Télévision et radio payantes, câble, satellite et streaming"
+  },
+  "4900": {
+    "description": "Facturation de fournitures d'électricité, de gaz, d'eau et de services d'assainissement.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "facture",
+      "electricite",
+      "steg",
+      "eau",
+      "sonede",
+      "gaz",
+      "assainissement",
+      "quittance"
+    ],
+    "label": "Services publics – électricité, gaz, eau et assainissement"
+  },
+  "5013": {
+    "description": "Distributeurs en gros de fournitures et de pièces neuves pour véhicules.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "pieces auto",
+      "pieces detachees",
+      "gros",
+      "accessoires automobiles"
+    ],
+    "label": "Fournitures et pièces détachées automobiles (gros)"
+  },
+  "5021": {
+    "description": "Distributeurs en gros de mobilier de bureau et d'agencement commercial.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "mobilier de bureau",
+      "agencement",
+      "bureau",
+      "chaise",
+      "gros"
+    ],
+    "label": "Mobilier de bureau et commercial (gros)"
+  },
+  "5039": {
+    "description": "Distributeurs en gros de matériaux de construction non couverts par un code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "materiaux",
+      "construction",
+      "batiment",
+      "ciment",
+      "gros"
+    ],
+    "label": "Matériaux de construction (gros, non classés ailleurs)"
+  },
+  "5044": {
+    "description": "Distributeurs en gros de matériel photographique, de reprographie et de microfilm.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "photocopieur",
+      "imprimante",
+      "reprographie",
+      "materiel photo",
+      "gros"
+    ],
+    "label": "Matériel photographique, de photocopie et de microfilm (gros)"
+  },
+  "5045": {
+    "description": "Distributeurs en gros de matériel informatique, de périphériques et de logiciels.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "informatique",
+      "ordinateur",
+      "pc",
+      "peripherique",
+      "logiciel",
+      "materiel informatique",
+      "hardware",
+      "gros"
+    ],
+    "label": "Informatique, périphériques et logiciels (gros)"
+  },
+  "5046": {
+    "description": "Distributeurs en gros d'équipements professionnels non couverts par un code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "equipement professionnel",
+      "materiel commercial",
+      "cuisine professionnelle",
+      "gros"
+    ],
+    "label": "Équipements commerciaux (gros, non classés ailleurs)"
+  },
+  "5047": {
+    "description": "Distributeurs en gros de matériel et de fournitures médicales, dentaires, ophtalmiques et hospitalières.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "materiel medical",
+      "dentaire",
+      "hospitalier",
+      "dispositif medical",
+      "ophtalmique",
+      "gros"
+    ],
+    "label": "Matériel médical, dentaire, ophtalmique et hospitalier (gros)",
+    "risk": "SENSIBLE"
+  },
+  "5051": {
+    "description": "Négociants et centres de service en produits métalliques.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "metal",
+      "acier",
+      "fer",
+      "aluminium",
+      "metallurgie"
+    ],
+    "label": "Centres de service et négoce de métaux"
+  },
+  "5065": {
+    "description": "Distributeurs en gros de composants, de câblage et d'équipements électriques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "electrique",
+      "cable",
+      "composant",
+      "electricite",
+      "gros"
+    ],
+    "label": "Composants et équipements électriques (gros)"
+  },
+  "5072": {
+    "description": "Distributeurs en gros de quincaillerie, d'outillage et de fournitures.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "quincaillerie",
+      "outillage",
+      "outils",
+      "visserie",
+      "gros"
+    ],
+    "label": "Quincaillerie et outillage (gros)"
+  },
+  "5074": {
+    "description": "Distributeurs en gros d'équipements et de fournitures de plomberie et de chauffage.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "plomberie",
+      "chauffage",
+      "sanitaire",
+      "chauffe eau",
+      "gros"
+    ],
+    "label": "Équipements de plomberie et de chauffage (gros)"
+  },
+  "5085": {
+    "description": "Distributeurs en gros de fournitures industrielles non couvertes par un code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "fourniture industrielle",
+      "industrie",
+      "consommable",
+      "gros"
+    ],
+    "label": "Fournitures industrielles (gros, non classées ailleurs)"
+  },
+  "5094": {
+    "description": "Distributeurs en gros de pierres et de métaux précieux, de montres et de bijoux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "bijouterie",
+      "or",
+      "argent",
+      "pierre precieuse",
+      "montre",
+      "joaillerie",
+      "gros"
+    ],
+    "label": "Pierres et métaux précieux, montres et bijoux (gros)",
+    "risk": "SENSIBLE"
+  },
+  "5099": {
+    "description": "Distributeurs en gros de biens durables non couverts par un code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "biens durables",
+      "gros",
+      "distribution"
+    ],
+    "label": "Biens durables (gros, non classés ailleurs)"
+  },
+  "5111": {
+    "description": "Distributeurs en gros de papeterie, de fournitures de bureau et de papier d'impression.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "papeterie",
+      "fourniture bureau",
+      "papier",
+      "impression",
+      "gros"
+    ],
+    "label": "Papeterie et fournitures de bureau (gros)"
+  },
+  "5122": {
+    "description": "Grossistes répartiteurs en médicaments et produits para-pharmaceutiques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "medicament",
+      "pharmaceutique",
+      "grossiste repartiteur",
+      "parapharmacie",
+      "gros"
+    ],
+    "label": "Médicaments et produits pharmaceutiques (gros)",
+    "note": "Vente de médicaments soumise à autorisation du ministère de la Santé.",
+    "risk": "SENSIBLE"
+  },
+  "5131": {
+    "description": "Distributeurs en gros de tissus, de mercerie et d'articles textiles.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "tissu",
+      "mercerie",
+      "textile",
+      "confection",
+      "gros"
+    ],
+    "label": "Tissus, mercerie et articles textiles (gros)"
+  },
+  "5137": {
+    "description": "Distributeurs en gros d'uniformes et de vêtements professionnels pour hommes, femmes et enfants.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "uniforme",
+      "vetement de travail",
+      "blouse",
+      "epi",
+      "gros"
+    ],
+    "label": "Uniformes et vêtements professionnels (gros)"
+  },
+  "5139": {
+    "description": "Distributeurs en gros de chaussures, notamment professionnelles.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "chaussure",
+      "gros",
+      "chaussure de securite"
+    ],
+    "label": "Chaussures professionnelles (gros)"
+  },
+  "5169": {
+    "description": "Distributeurs en gros de produits chimiques et dérivés à usage principalement industriel.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "produit chimique",
+      "chimie",
+      "detergent",
+      "resine",
+      "industriel",
+      "gros"
+    ],
+    "label": "Produits chimiques (gros, non classés ailleurs)",
+    "risk": "SENSIBLE"
+  },
+  "5172": {
+    "description": "Distributeurs en gros de pétrole et de produits pétroliers.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "petrole",
+      "carburant",
+      "lubrifiant",
+      "hydrocarbure",
+      "gros"
+    ],
+    "label": "Produits pétroliers (gros)",
+    "risk": "SENSIBLE"
+  },
+  "5192": {
+    "description": "Distributeurs en gros de livres, de périodiques et de journaux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "livre",
+      "journal",
+      "periodique",
+      "revue",
+      "edition",
+      "gros"
+    ],
+    "label": "Livres, périodiques et journaux (gros)"
+  },
+  "5193": {
+    "description": "Distributeurs en gros de fleurs, de plants de pépinière et de fournitures pour fleuristes.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "fleur",
+      "plante",
+      "pepiniere",
+      "horticulture",
+      "gros"
+    ],
+    "label": "Fleurs, plants et fournitures horticoles (gros)"
+  },
+  "5198": {
+    "description": "Distributeurs en gros de peintures, de vernis et de fournitures associées.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "peinture",
+      "vernis",
+      "enduit",
+      "gros"
+    ],
+    "label": "Peintures, vernis et fournitures (gros)"
+  },
+  "5199": {
+    "description": "Distributeurs en gros de biens non durables non couverts par un code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "biens non durables",
+      "gros",
+      "consommable"
+    ],
+    "label": "Biens non durables (gros, non classés ailleurs)"
+  },
+  "5200": {
+    "description": "Magasins entrepôts vendant matériaux, outillage et équipements pour la maison.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "bricolage",
+      "maison",
+      "amenagement",
+      "outillage",
+      "grande surface"
+    ],
+    "label": "Grandes surfaces de bricolage et d'équipement de la maison"
+  },
+  "5211": {
+    "description": "Vente au détail de bois de construction et de matériaux de bâtiment.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "bois",
+      "materiaux",
+      "construction",
+      "menuiserie",
+      "batiment"
+    ],
+    "label": "Magasins de bois et de matériaux de construction"
+  },
+  "5231": {
+    "description": "Vente au détail de vitrerie, de peinture et de revêtements muraux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "verre",
+      "vitrerie",
+      "peinture",
+      "papier peint",
+      "revetement mural"
+    ],
+    "label": "Magasins de verre, peinture et papier peint"
+  },
+  "5251": {
+    "description": "Vente au détail de quincaillerie, d'outillage et de petites fournitures.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "quincaillerie",
+      "outillage",
+      "bricolage",
+      "visserie"
+    ],
+    "label": "Quincailleries"
+  },
+  "5261": {
+    "description": "Vente au détail de plantes, de graines et de fournitures de jardin.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "jardinerie",
+      "pepiniere",
+      "plante",
+      "jardin",
+      "graine",
+      "engrais"
+    ],
+    "label": "Jardineries et pépinières"
+  },
+  "5262": {
+    "description": "Plateformes mettant en relation des vendeurs tiers et des acheteurs, et intervenant dans le règlement des transactions.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "marketplace",
+      "place de marche",
+      "plateforme",
+      "vendeurs tiers",
+      "intermediation",
+      "petites annonces"
+    ],
+    "label": "Places de marché (marketplaces)",
+    "note": "Le statut de marketplace impose des obligations spécifiques (contrat marketplace, reversement aux vendeurs)."
+  },
+  "5271": {
+    "description": "Vente de maisons mobiles et préfabriquées.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "maison mobile",
+      "mobil home",
+      "prefabrique"
+    ],
+    "label": "Concessionnaires de maisons mobiles"
+  },
+  "5300": {
+    "description": "Magasins de type club-entrepôt réservés aux adhérents.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "club entrepot",
+      "adherent",
+      "cash and carry",
+      "gros"
+    ],
+    "label": "Clubs-entrepôts (vente en gros aux adhérents)"
+  },
+  "5309": {
+    "description": "Points de vente hors taxes en zone sous douane.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "duty free",
+      "hors taxe",
+      "aeroport",
+      "detaxe"
+    ],
+    "label": "Boutiques hors taxes (duty free)"
+  },
+  "5310": {
+    "description": "Magasins généralistes pratiquant des prix réduits sur un assortiment large.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "discount",
+      "prix reduit",
+      "bazar",
+      "solde"
+    ],
+    "label": "Magasins discount"
+  },
+  "5311": {
+    "description": "Grands magasins proposant un assortiment large organisé par rayons.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "grand magasin",
+      "rayon",
+      "pret a porter",
+      "generaliste"
+    ],
+    "label": "Grands magasins"
+  },
+  "5331": {
+    "description": "Magasins proposant un assortiment large de produits courants à petits prix.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "bazar",
+      "variete",
+      "petit prix",
+      "generaliste"
+    ],
+    "label": "Magasins de variétés (bazars)"
+  },
+  "5399": {
+    "description": "Vente de marchandises générales non couverte par un code de commerce de détail plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "marchandise generale",
+      "generaliste",
+      "divers",
+      "multi produits",
+      "boutique en ligne generaliste"
+    ],
+    "label": "Marchandises générales diverses"
+  },
+  "5411": {
+    "description": "Vente au détail de produits alimentaires et de produits de grande consommation.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "supermarche",
+      "epicerie",
+      "alimentation",
+      "courses",
+      "drive",
+      "grande surface alimentaire",
+      "produits frais"
+    ],
+    "label": "Épiceries et supermarchés"
+  },
+  "5422": {
+    "description": "Vente de viande au détail en gros conditionnement et de produits congelés.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "viande",
+      "boucherie",
+      "surgele",
+      "congele"
+    ],
+    "label": "Vente de viande en gros et congelée"
+  },
+  "5441": {
+    "description": "Vente au détail de confiseries, de fruits secs et de chocolat.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "confiserie",
+      "chocolat",
+      "bonbon",
+      "fruits secs",
+      "patisserie orientale"
+    ],
+    "label": "Confiseries et chocolateries"
+  },
+  "5451": {
+    "description": "Vente au détail de lait et de produits laitiers.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "produits laitiers",
+      "lait",
+      "fromage",
+      "cremerie"
+    ],
+    "label": "Crèmeries et produits laitiers"
+  },
+  "5462": {
+    "description": "Fabrication et vente de pain, de viennoiseries et de pâtisseries.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "boulangerie",
+      "patisserie",
+      "pain",
+      "viennoiserie",
+      "gateau"
+    ],
+    "label": "Boulangeries et pâtisseries"
+  },
+  "5499": {
+    "description": "Supérettes, épiceries de proximité et commerces alimentaires spécialisés (produits bio, diététiques, compléments).",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "superette",
+      "proximite",
+      "bio",
+      "dietetique",
+      "complement alimentaire",
+      "epicerie fine",
+      "produits du terroir"
+    ],
+    "label": "Commerces alimentaires spécialisés et supérettes"
+  },
+  "5511": {
+    "description": "Vente, entretien, réparation, pièces et location de véhicules neufs et d'occasion.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "concession",
+      "voiture",
+      "automobile",
+      "vehicule neuf",
+      "occasion",
+      "camion"
+    ],
+    "label": "Concessionnaires automobiles (neuf et occasion)"
+  },
+  "5521": {
+    "description": "Vente, entretien et réparation de véhicules d'occasion exclusivement.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "voiture occasion",
+      "vehicule occasion",
+      "automobile"
+    ],
+    "label": "Concessionnaires automobiles (occasion uniquement)"
+  },
+  "5532": {
+    "description": "Vente et pose de pneumatiques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "pneu",
+      "pneumatique",
+      "jante",
+      "montage"
+    ],
+    "label": "Magasins de pneumatiques"
+  },
+  "5533": {
+    "description": "Vente au détail de pièces détachées et d'accessoires pour véhicules.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "piece auto",
+      "accessoire auto",
+      "detachee",
+      "entretien vehicule",
+      "huile moteur"
+    ],
+    "label": "Pièces et accessoires automobiles (détail)"
+  },
+  "5541": {
+    "description": "Vente au détail de carburant, avec ou sans services annexes.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "station service",
+      "carburant",
+      "essence",
+      "gasoil",
+      "pompe"
+    ],
+    "label": "Stations-service"
+  },
+  "5542": {
+    "description": "Vente de carburant par automate activé par carte.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "automate carburant",
+      "pompe automatique",
+      "carburant"
+    ],
+    "label": "Distributeurs automatiques de carburant"
+  },
+  "5551": {
+    "description": "Vente de bateaux de plaisance et d'équipements associés.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "bateau",
+      "yacht",
+      "jet ski",
+      "plaisance"
+    ],
+    "label": "Concessionnaires de bateaux"
+  },
+  "5552": {
+    "description": "Vente d'électricité destinée à la recharge de véhicules.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "borne de recharge",
+      "vehicule electrique",
+      "recharge",
+      "ev"
+    ],
+    "label": "Recharge de véhicules électriques"
+  },
+  "5561": {
+    "description": "Vente de caravanes, de remorques de loisir et utilitaires.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "caravane",
+      "remorque",
+      "camping car"
+    ],
+    "label": "Concessionnaires de caravanes et remorques"
+  },
+  "5571": {
+    "description": "Vente et entretien de motos, de scooters et d'accessoires.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "moto",
+      "scooter",
+      "deux roues",
+      "casque",
+      "accessoire moto"
+    ],
+    "label": "Magasins et concessionnaires de motos"
+  },
+  "5592": {
+    "description": "Vente de camping-cars et d'autocaravanes.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "camping car",
+      "autocaravane"
+    ],
+    "label": "Concessionnaires de camping-cars"
+  },
+  "5598": {
+    "description": "Vente de motoneiges et d'équipements associés.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "motoneige"
+    ],
+    "label": "Concessionnaires de motoneiges"
+  },
+  "5599": {
+    "description": "Vente de véhicules, d'aéronefs et de matériel agricole non couverte par un code plus précis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "materiel agricole",
+      "tracteur",
+      "aeronef",
+      "engin"
+    ],
+    "label": "Autres concessionnaires automobiles, aéronautiques et agricoles"
+  },
+  "5611": {
+    "description": "Vente au détail de vêtements et d'accessoires pour hommes et garçons.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement homme",
+      "pret a porter",
+      "chemise",
+      "costume",
+      "mode homme"
+    ],
+    "label": "Prêt-à-porter homme et garçon"
+  },
+  "5621": {
+    "description": "Vente au détail de vêtements de prêt-à-porter pour femmes.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement femme",
+      "robe",
+      "mode femme",
+      "pret a porter",
+      "abaya",
+      "jebba"
+    ],
+    "label": "Prêt-à-porter féminin"
+  },
+  "5631": {
+    "description": "Vente au détail d'accessoires de mode et d'articles spécialisés pour femmes.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "accessoire femme",
+      "sac a main",
+      "foulard",
+      "hijab",
+      "bijou fantaisie"
+    ],
+    "label": "Accessoires et boutiques spécialisées pour femmes"
+  },
+  "5641": {
+    "description": "Vente au détail de vêtements pour enfants et nourrissons.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement enfant",
+      "bebe",
+      "puericulture",
+      "layette",
+      "mode enfant"
+    ],
+    "label": "Vêtements pour enfants et bébés"
+  },
+  "5651": {
+    "description": "Vente au détail de vêtements pour toute la famille, sans spécialisation.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement",
+      "habillement",
+      "famille",
+      "mode",
+      "pret a porter"
+    ],
+    "label": "Habillement familial"
+  },
+  "5655": {
+    "description": "Vente au détail de vêtements de sport et de tenues d'équitation.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement sport",
+      "sportswear",
+      "equitation",
+      "tenue de sport"
+    ],
+    "label": "Vêtements de sport et d'équitation"
+  },
+  "5661": {
+    "description": "Vente au détail de chaussures.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "chaussure",
+      "basket",
+      "sandale",
+      "sneaker",
+      "bottes"
+    ],
+    "label": "Magasins de chaussures"
+  },
+  "5681": {
+    "description": "Vente au détail d'articles de fourrure.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "fourrure",
+      "peau"
+    ],
+    "label": "Fourrures"
+  },
+  "5691": {
+    "description": "Vente au détail de vêtements pour hommes et femmes dans un même point de vente.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vetement",
+      "mode",
+      "boutique",
+      "pret a porter",
+      "homme femme"
+    ],
+    "label": "Magasins de vêtements homme et femme"
+  },
+  "5697": {
+    "description": "Tailleurs, couturières et services de retouche et de réparation de vêtements.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "retouche",
+      "couture",
+      "tailleur",
+      "sur mesure",
+      "coutureiere"
+    ],
+    "label": "Retouches et couture sur mesure"
+  },
+  "5698": {
+    "description": "Vente de perruques, de postiches et d'extensions.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "perruque",
+      "postiche",
+      "extension cheveux"
+    ],
+    "label": "Perruques et postiches"
+  },
+  "5699": {
+    "description": "Vente d'articles d'habillement et d'accessoires non couverte par un code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "accessoire mode",
+      "habillement divers",
+      "ceinture",
+      "chapeau"
+    ],
+    "label": "Articles d'habillement et accessoires divers"
+  },
+  "5712": {
+    "description": "Vente au détail de meubles, d'articles d'ameublement et d'équipement de la maison, hors électroménager.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "meuble",
+      "ameublement",
+      "canape",
+      "literie",
+      "matelas",
+      "decoration",
+      "salon"
+    ],
+    "label": "Meubles et équipement de la maison (hors électroménager)"
+  },
+  "5713": {
+    "description": "Vente et pose de revêtements de sol : moquette, parquet, carrelage souple.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "revetement de sol",
+      "moquette",
+      "parquet",
+      "tapis"
+    ],
+    "label": "Revêtements de sol"
+  },
+  "5714": {
+    "description": "Vente de rideaux, de voilages, de stores et prestations de tapisserie d'ameublement.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "rideau",
+      "store",
+      "voilage",
+      "tapisserie",
+      "tissu ameublement"
+    ],
+    "label": "Rideaux, stores et tapisserie d'ameublement"
+  },
+  "5718": {
+    "description": "Vente de cheminées, de pare-feu et d'accessoires.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "cheminee",
+      "poele",
+      "insert"
+    ],
+    "label": "Cheminées et accessoires"
+  },
+  "5719": {
+    "description": "Vente au détail spécialisée d'articles de maison non couverte par un code plus précis : linge de maison, arts de la table, luminaires.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "linge de maison",
+      "arts de la table",
+      "vaisselle",
+      "luminaire",
+      "decoration",
+      "ustensile"
+    ],
+    "label": "Articles de maison spécialisés divers"
+  },
+  "5722": {
+    "description": "Vente au détail d'appareils électroménagers.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "electromenager",
+      "refrigerateur",
+      "lave linge",
+      "four",
+      "climatiseur",
+      "cuisiniere"
+    ],
+    "label": "Électroménager"
+  },
+  "5723": {
+    "description": "Vente d'armes à feu et de munitions.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "arme",
+      "munition",
+      "fusil",
+      "chasse"
+    ],
+    "label": "Armes et munitions",
+    "note": "Activité non éligible à l'acceptation e-commerce sans autorisation légale spécifique.",
+    "risk": "INTERDIT"
+  },
+  "5732": {
+    "description": "Vente au détail de produits électroniques grand public : téléviseurs, audio, informatique, téléphonie.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "electronique",
+      "televiseur",
+      "audio",
+      "high tech",
+      "informatique",
+      "telephone",
+      "gadget",
+      "console"
+    ],
+    "label": "Magasins d'électronique"
+  },
+  "5733": {
+    "description": "Vente au détail d'instruments de musique, de pianos et de partitions.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "instrument de musique",
+      "guitare",
+      "piano",
+      "partition",
+      "sonorisation"
+    ],
+    "label": "Instruments de musique et partitions"
+  },
+  "5734": {
+    "description": "Vente au détail de logiciels professionnels et grand public, y compris les licences téléchargées.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "logiciel",
+      "licence",
+      "software",
+      "antivirus",
+      "application",
+      "abonnement logiciel"
+    ],
+    "label": "Magasins de logiciels"
+  },
+  "5735": {
+    "description": "Vente au détail de supports musicaux enregistrés.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "disque",
+      "cd",
+      "vinyle",
+      "musique"
+    ],
+    "label": "Magasins de disques"
+  },
+  "5811": {
+    "description": "Préparation et livraison de repas pour réceptions et événements.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "traiteur",
+      "reception",
+      "evenement",
+      "buffet",
+      "repas"
+    ],
+    "label": "Traiteurs"
+  },
+  "5812": {
+    "description": "Établissements servant des repas préparés consommés sur place ou à emporter.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "restaurant",
+      "repas",
+      "cuisine",
+      "reservation table",
+      "livraison repas",
+      "food"
+    ],
+    "label": "Restaurants"
+  },
+  "5813": {
+    "description": "Bars, tavernes, boîtes de nuit et établissements servant des boissons alcoolisées.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "bar",
+      "boite de nuit",
+      "discotheque",
+      "alcool",
+      "cocktail"
+    ],
+    "label": "Débits de boissons alcoolisées, bars et discothèques",
+    "risk": "SENSIBLE"
+  },
+  "5814": {
+    "description": "Établissements de restauration rapide servant des plats et boissons préparés, sur place, à emporter ou en livraison.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "fast food",
+      "restauration rapide",
+      "livraison",
+      "pizza",
+      "sandwich",
+      "burger",
+      "commande en ligne"
+    ],
+    "label": "Restauration rapide"
+  },
+  "5815": {
+    "description": "Vente de livres, de films, d'images et de musique livrés exclusivement sous forme électronique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "ebook",
+      "livre numerique",
+      "film en telechargement",
+      "musique en ligne",
+      "image numerique",
+      "contenu numerique",
+      "telechargement"
+    ],
+    "label": "Biens numériques – livres, films, images et musique",
+    "note": "Pour du streaming par abonnement, utiliser plutôt le MCC 4899."
+  },
+  "5816": {
+    "description": "Vente de jeux livrés sous forme électronique, y compris les achats intégrés (in-app).",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "jeu video",
+      "jeu en ligne",
+      "achat in app",
+      "gaming",
+      "credit de jeu",
+      "telechargement jeu"
+    ],
+    "label": "Biens numériques – jeux"
+  },
+  "5817": {
+    "description": "Vente d'applications logicielles téléchargeables, hors jeux.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "application mobile",
+      "app",
+      "telechargement",
+      "abonnement application",
+      "logiciel mobile"
+    ],
+    "label": "Biens numériques – applications (hors jeux)"
+  },
+  "5818": {
+    "description": "Plateformes de grande taille distribuant plusieurs catégories de biens numériques.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "plateforme numerique",
+      "store",
+      "contenu numerique",
+      "distributeur"
+    ],
+    "label": "Biens numériques – grand distributeur de contenus"
+  },
+  "5912": {
+    "description": "Vente au détail de médicaments et de produits de parapharmacie.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "pharmacie",
+      "parapharmacie",
+      "medicament",
+      "ordonnance",
+      "sante"
+    ],
+    "label": "Pharmacies et parapharmacies",
+    "note": "Vente en ligne de médicaments strictement encadrée en Tunisie.",
+    "risk": "SENSIBLE"
+  },
+  "5921": {
+    "description": "Vente au détail de boissons alcoolisées à emporter.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "vin",
+      "biere",
+      "alcool",
+      "spiritueux",
+      "caviste"
+    ],
+    "label": "Cavistes – bière, vin et spiritueux",
+    "risk": "SENSIBLE"
+  },
+  "5931": {
+    "description": "Vente au détail de marchandises d'occasion et de seconde main.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "occasion",
+      "seconde main",
+      "friperie",
+      "depot vente",
+      "reconditionne"
+    ],
+    "label": "Articles d'occasion et dépôt-vente"
+  },
+  "5932": {
+    "description": "Vente, réparation et restauration d'objets anciens.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "antiquite",
+      "brocante",
+      "objet ancien",
+      "restauration"
+    ],
+    "label": "Antiquaires – vente, réparation et restauration"
+  },
+  "5933": {
+    "description": "Établissements de prêt sur gage.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "pret sur gage",
+      "gage"
+    ],
+    "label": "Prêteurs sur gage",
+    "risk": "SENSIBLE"
+  },
+  "5935": {
+    "description": "Démolition de véhicules et récupération de matériaux.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "casse",
+      "ferraille",
+      "recuperation",
+      "epave"
+    ],
+    "label": "Casses et récupération"
+  },
+  "5937": {
+    "description": "Vente de reproductions d'objets anciens.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "reproduction",
+      "copie ancienne",
+      "artisanat"
+    ],
+    "label": "Reproductions d'antiquités"
+  },
+  "5940": {
+    "description": "Vente et entretien de bicyclettes et d'accessoires.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "velo",
+      "bicyclette",
+      "cycle",
+      "vtt",
+      "trottinette"
+    ],
+    "label": "Magasins de cycles – vente et réparation"
+  },
+  "5941": {
+    "description": "Vente au détail d'équipements et d'articles de sport.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "sport",
+      "fitness",
+      "musculation",
+      "ballon",
+      "equipement sportif",
+      "camping",
+      "randonnee"
+    ],
+    "label": "Articles de sport"
+  },
+  "5942": {
+    "description": "Vente au détail de livres imprimés.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "librairie",
+      "livre",
+      "roman",
+      "manuel scolaire",
+      "bd"
+    ],
+    "label": "Librairies"
+  },
+  "5943": {
+    "description": "Vente au détail de papeterie, de fournitures de bureau et de fournitures scolaires.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "papeterie",
+      "fourniture scolaire",
+      "cartable",
+      "stylo",
+      "bureau"
+    ],
+    "label": "Papeteries et fournitures scolaires"
+  },
+  "5944": {
+    "description": "Vente au détail de bijoux, de montres, d'horlogerie et d'argenterie.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "bijouterie",
+      "bijou",
+      "montre",
+      "or",
+      "argent",
+      "horlogerie",
+      "alliance"
+    ],
+    "label": "Bijouteries, horlogeries et orfèvrerie",
+    "risk": "SENSIBLE"
+  },
+  "5945": {
+    "description": "Vente au détail de jouets, de jeux et d'articles de loisirs créatifs.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "jouet",
+      "jeu",
+      "puzzle",
+      "loisir creatif",
+      "maquette",
+      "enfant"
+    ],
+    "label": "Jouets, jeux et loisirs créatifs"
+  },
+  "5946": {
+    "description": "Vente au détail d'appareils photo et de fournitures photographiques.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "appareil photo",
+      "photo",
+      "objectif",
+      "camera",
+      "drone"
+    ],
+    "label": "Photo et matériel photographique"
+  },
+  "5947": {
+    "description": "Vente au détail d'articles-cadeaux, de cartes, de nouveautés et de souvenirs.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "cadeau",
+      "souvenir",
+      "carte",
+      "article de fete",
+      "artisanat",
+      "coffret"
+    ],
+    "label": "Cadeaux, souvenirs et articles de fête"
+  },
+  "5948": {
+    "description": "Vente au détail de bagages et d'articles en cuir.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "maroquinerie",
+      "bagage",
+      "valise",
+      "sac",
+      "cuir",
+      "portefeuille"
+    ],
+    "label": "Maroquinerie et bagagerie"
+  },
+  "5949": {
+    "description": "Vente au détail de tissus, de mercerie et de fournitures de couture.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "tissu",
+      "mercerie",
+      "couture",
+      "fil",
+      "broderie",
+      "laine"
+    ],
+    "label": "Tissus, mercerie et travaux d'aiguille (détail)"
+  },
+  "5950": {
+    "description": "Vente au détail de verrerie et d'articles en cristal.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "verrerie",
+      "cristal",
+      "verre",
+      "art de la table"
+    ],
+    "label": "Verrerie et cristallerie"
+  },
+  "5960": {
+    "description": "Commercialisation de produits d'assurance à distance, sans intervention d'un point de vente physique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "assurance",
+      "vente a distance",
+      "police",
+      "prime",
+      "souscription en ligne"
+    ],
+    "label": "Vente à distance – services d'assurance",
+    "risk": "SENSIBLE"
+  },
+  "5962": {
+    "description": "Commercialisation à distance de prestations de voyage, y compris les clubs de voyage à tarifs réduits.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "voyage a distance",
+      "club de voyage",
+      "reservation en ligne",
+      "sejour"
+    ],
+    "label": "Vente à distance – prestations liées au voyage",
+    "risk": "SENSIBLE"
+  },
+  "5963": {
+    "description": "Vente directe au domicile du client.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "porte a porte",
+      "vente directe",
+      "vente a domicile"
+    ],
+    "label": "Vente à domicile (porte-à-porte)"
+  },
+  "5964": {
+    "description": "Vente à distance sur catalogue, sans point de vente physique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "catalogue",
+      "vente par correspondance",
+      "vpc",
+      "commande a distance"
+    ],
+    "label": "Vente à distance – vente par catalogue"
+  },
+  "5965": {
+    "description": "Activité combinant la vente par catalogue et la vente en magasin physique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "catalogue et magasin",
+      "omnicanal",
+      "click and collect",
+      "vpc"
+    ],
+    "label": "Vente à distance – catalogue et magasin"
+  },
+  "5966": {
+    "description": "Vente réalisée par appels téléphoniques sortants vers le client.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "telemarketing",
+      "appel sortant",
+      "centre d'appel",
+      "prospection telephonique"
+    ],
+    "label": "Vente à distance – télémarketing sortant",
+    "note": "Code à surveillance renforcée (taux de contestation élevé).",
+    "risk": "SENSIBLE"
+  },
+  "5967": {
+    "description": "Vente de contenus et de services à caractère adulte.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "adulte",
+      "contenu adulte",
+      "x"
+    ],
+    "label": "Contenus et services pour adultes",
+    "note": "Activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "5968": {
+    "description": "Vente à distance sur la base d'abonnements ou de livraisons récurrentes.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "abonnement",
+      "recurrent",
+      "box mensuelle",
+      "prelevement recurrent",
+      "renouvellement"
+    ],
+    "label": "Vente à distance – abonnements et ventes récurrentes",
+    "note": "Paiement récurrent : mandat client et conditions de résiliation à documenter."
+  },
+  "5969": {
+    "description": "Vente à distance non couverte par un code de vente directe plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "vente a distance",
+      "vente directe",
+      "e-commerce",
+      "boutique en ligne"
+    ],
+    "label": "Vente à distance – autres formes de vente directe"
+  },
+  "5970": {
+    "description": "Vente au détail de matériel pour artistes et de fournitures d'artisanat.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "beaux arts",
+      "peinture artistique",
+      "pinceau",
+      "loisir creatif",
+      "artisanat"
+    ],
+    "label": "Fournitures pour artistes et loisirs créatifs"
+  },
+  "5971": {
+    "description": "Vente d'œuvres d'art par des galeries et des marchands.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "art",
+      "galerie",
+      "tableau",
+      "oeuvre",
+      "sculpture",
+      "peinture"
+    ],
+    "label": "Galeries d'art et marchands d'art"
+  },
+  "5972": {
+    "description": "Vente de timbres et de pièces de collection.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "timbre",
+      "piece de collection",
+      "numismatique",
+      "philatelie",
+      "collection"
+    ],
+    "label": "Philatélie et numismatique",
+    "risk": "SENSIBLE"
+  },
+  "5973": {
+    "description": "Vente au détail d'articles à usage religieux.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "religieux",
+      "coran",
+      "tapis de priere",
+      "article de culte"
+    ],
+    "label": "Articles religieux"
+  },
+  "5975": {
+    "description": "Vente, adaptation et service après-vente d'appareils auditifs.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "audioprothese",
+      "appareil auditif",
+      "audition"
+    ],
+    "label": "Audioprothèses – vente et service"
+  },
+  "5976": {
+    "description": "Vente d'articles orthopédiques et de dispositifs prothétiques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "orthopedie",
+      "prothese",
+      "orthese",
+      "materiel medical"
+    ],
+    "label": "Orthopédie et prothèses"
+  },
+  "5977": {
+    "description": "Vente au détail de produits cosmétiques, de parfums et de produits de beauté.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "cosmetique",
+      "parfum",
+      "beaute",
+      "maquillage",
+      "soin",
+      "creme",
+      "parapharmacie beaute"
+    ],
+    "label": "Cosmétiques et parfumerie"
+  },
+  "5978": {
+    "description": "Vente, location et entretien de machines à écrire.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "machine a ecrire"
+    ],
+    "label": "Machines à écrire – vente, location et service"
+  },
+  "5983": {
+    "description": "Vente de fioul, de bois, de charbon et de gaz de pétrole liquéfié.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "fioul",
+      "bois de chauffage",
+      "charbon",
+      "gaz",
+      "combustible",
+      "bouteille de gaz"
+    ],
+    "label": "Négociants en combustibles"
+  },
+  "5992": {
+    "description": "Vente au détail et livraison de fleurs et de compositions florales.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "fleuriste",
+      "fleur",
+      "bouquet",
+      "livraison de fleurs",
+      "composition florale"
+    ],
+    "label": "Fleuristes"
+  },
+  "5993": {
+    "description": "Vente au détail de tabac et d'articles pour fumeurs.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "tabac",
+      "cigare",
+      "cigarette",
+      "narguile",
+      "chicha"
+    ],
+    "label": "Tabac et cigares",
+    "risk": "SENSIBLE"
+  },
+  "5994": {
+    "description": "Vente au détail de journaux et de magazines.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "journal",
+      "magazine",
+      "kiosque",
+      "presse",
+      "abonnement presse"
+    ],
+    "label": "Kiosques à journaux"
+  },
+  "5995": {
+    "description": "Vente au détail d'animaux de compagnie, d'aliments et d'accessoires pour animaux.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "animalerie",
+      "animaux",
+      "chien",
+      "chat",
+      "croquette",
+      "accessoire animal",
+      "veterinaire produit"
+    ],
+    "label": "Animalerie – animaux, aliments et accessoires"
+  },
+  "5996": {
+    "description": "Vente, installation et entretien de piscines et d'équipements associés.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "piscine",
+      "spa",
+      "traitement de l'eau",
+      "pompe piscine"
+    ],
+    "label": "Piscines – vente et service"
+  },
+  "5997": {
+    "description": "Vente et réparation de rasoirs électriques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "rasoir electrique",
+      "tondeuse"
+    ],
+    "label": "Rasoirs électriques – vente et service"
+  },
+  "5998": {
+    "description": "Vente de tentes, de chapiteaux et de stores d'extérieur.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "tente",
+      "chapiteau",
+      "store exterieur",
+      "bache"
+    ],
+    "label": "Tentes et stores d'extérieur"
+  },
+  "5999": {
+    "description": "Vente de produits spécifiques ou spécialisés ne relevant d'aucun code de commerce de détail plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "boutique specialisee",
+      "divers",
+      "produit specialise",
+      "vente en ligne",
+      "e-commerce"
+    ],
+    "label": "Commerces de détail spécialisés divers",
+    "note": "Code de repli : à n'utiliser que si aucun MCC plus précis ne correspond à l'activité."
+  },
+  "6010": {
+    "description": "Décaissement manuel d'espèces par une institution financière.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "retrait guichet",
+      "espece",
+      "banque"
+    ],
+    "label": "Institutions financières – retrait d'espèces au guichet",
+    "note": "Code réservé aux opérations de guichet, non applicable au e-commerce.",
+    "risk": "INTERDIT"
+  },
+  "6011": {
+    "description": "Décaissement automatique d'espèces au distributeur.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "dab",
+      "gab",
+      "retrait",
+      "distributeur"
+    ],
+    "label": "Institutions financières – retrait automatique (DAB)",
+    "note": "Code réservé aux automates bancaires, non applicable au e-commerce.",
+    "risk": "INTERDIT"
+  },
+  "6012": {
+    "description": "Opérations d'institutions financières portant sur la vente de biens, de services ou le remboursement de crédits.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "banque",
+      "remboursement credit",
+      "echeance",
+      "service financier",
+      "institution financiere"
+    ],
+    "label": "Institutions financières – biens, services et remboursement de dette",
+    "risk": "SENSIBLE"
+  },
+  "6051": {
+    "description": "Vente de devises, d'actifs liquides, de crypto-actifs, de chèques de voyage et opérations de transfert assimilées.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "change",
+      "devise",
+      "crypto",
+      "bitcoin",
+      "cheque de voyage",
+      "actif numerique"
+    ],
+    "label": "Institutions non financières – devises, actifs liquides et crypto-actifs",
+    "note": "Crypto-actifs et change : activité non éligible sans autorisation BCT explicite.",
+    "risk": "INTERDIT"
+  },
+  "6211": {
+    "description": "Courtiers et négociants en valeurs mobilières.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "bourse",
+      "courtier",
+      "titre",
+      "action",
+      "intermediaire en bourse",
+      "trading"
+    ],
+    "label": "Sociétés de bourse et intermédiaires en valeurs mobilières",
+    "risk": "SENSIBLE"
+  },
+  "6300": {
+    "description": "Compagnies et intermédiaires d'assurance encaissant primes et cotisations.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "assurance",
+      "prime",
+      "police",
+      "cotisation",
+      "courtier assurance",
+      "mutuelle"
+    ],
+    "label": "Assurances – vente, souscription et primes",
+    "risk": "SENSIBLE"
+  },
+  "6513": {
+    "description": "Agents immobiliers et gestionnaires de biens, y compris l'encaissement de loyers.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "immobilier",
+      "agence immobiliere",
+      "loyer",
+      "location",
+      "gestion locative",
+      "syndic"
+    ],
+    "label": "Agences immobilières et gestion locative"
+  },
+  "6540": {
+    "description": "Achat et rechargement de cartes à valeur stockée.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "carte prepayee",
+      "rechargement",
+      "wallet",
+      "porte monnaie electronique",
+      "e-dinar"
+    ],
+    "label": "Institutions non financières – chargement de cartes prépayées",
+    "risk": "SENSIBLE"
+  },
+  "7011": {
+    "description": "Hôtels, motels, résidences de tourisme et centrales de réservation d'hébergement.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "hotel",
+      "hebergement",
+      "reservation",
+      "nuitee",
+      "maison d'hote",
+      "resort",
+      "chambre"
+    ],
+    "label": "Hébergement – hôtels, résidences et centrales de réservation"
+  },
+  "7012": {
+    "description": "Commercialisation de droits d'occupation en multipropriété.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "multipropriete",
+      "timeshare",
+      "residence"
+    ],
+    "label": "Multipropriété (timeshare)",
+    "risk": "SENSIBLE"
+  },
+  "7032": {
+    "description": "Exploitation de camps sportifs et récréatifs.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "colonie",
+      "camp",
+      "stage sportif",
+      "centre de loisirs"
+    ],
+    "label": "Camps sportifs et de loisirs"
+  },
+  "7033": {
+    "description": "Exploitation de terrains de camping et de parcs pour caravanes.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "camping",
+      "caravane",
+      "emplacement",
+      "bungalow"
+    ],
+    "label": "Campings et parcs de caravanes"
+  },
+  "7210": {
+    "description": "Services de blanchisserie, de nettoyage et d'entretien de vêtements.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "blanchisserie",
+      "pressing",
+      "linge",
+      "nettoyage vetement"
+    ],
+    "label": "Blanchisserie, nettoyage et entretien du linge"
+  },
+  "7211": {
+    "description": "Blanchisseries destinées aux particuliers et aux professionnels.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "blanchisserie",
+      "laverie",
+      "linge"
+    ],
+    "label": "Blanchisseries familiales et industrielles"
+  },
+  "7216": {
+    "description": "Nettoyage à sec de vêtements et de textiles.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "pressing",
+      "nettoyage a sec",
+      "teinturerie"
+    ],
+    "label": "Pressing et nettoyage à sec"
+  },
+  "7217": {
+    "description": "Nettoyage de moquettes, de tapis et de tissus d'ameublement.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "nettoyage tapis",
+      "moquette",
+      "canape",
+      "shampouinage"
+    ],
+    "label": "Nettoyage de tapis et de tissus d'ameublement"
+  },
+  "7221": {
+    "description": "Prestations de photographie en studio pour particuliers.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "photographe",
+      "studio photo",
+      "portrait",
+      "mariage",
+      "shooting"
+    ],
+    "label": "Studios photographiques"
+  },
+  "7230": {
+    "description": "Prestations de coiffure, de soins de beauté et d'esthétique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "coiffure",
+      "salon de beaute",
+      "esthetique",
+      "manucure",
+      "barbier",
+      "soin"
+    ],
+    "label": "Salons de coiffure et instituts de beauté"
+  },
+  "7251": {
+    "description": "Réparation de chaussures, cirage et nettoyage de chapeaux.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "cordonnerie",
+      "reparation chaussure"
+    ],
+    "label": "Cordonnerie et entretien de chaussures"
+  },
+  "7261": {
+    "description": "Pompes funèbres et crématoriums.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "pompes funebres",
+      "funeraire",
+      "obseques"
+    ],
+    "label": "Services funéraires"
+  },
+  "7273": {
+    "description": "Agences et plateformes de mise en relation à but sentimental ou matrimonial.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "rencontre",
+      "dating",
+      "matrimonial",
+      "site de rencontre"
+    ],
+    "label": "Services de rencontre",
+    "note": "Code à surveillance renforcée (taux de contestation élevé).",
+    "risk": "SENSIBLE"
+  },
+  "7276": {
+    "description": "Assistance à l'établissement des déclarations fiscales.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "fiscal",
+      "declaration",
+      "impot",
+      "liasse"
+    ],
+    "label": "Services de préparation de déclarations fiscales"
+  },
+  "7277": {
+    "description": "Conseil en gestion de dettes, conseil conjugal et accompagnement personnel.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "conseil",
+      "coaching",
+      "accompagnement",
+      "psychologie",
+      "surendettement"
+    ],
+    "label": "Services de conseil – endettement, conjugal et personnel",
+    "risk": "SENSIBLE"
+  },
+  "7278": {
+    "description": "Clubs et services d'achat groupé pour le compte d'adhérents.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "club d'achat",
+      "achat groupe",
+      "adhesion",
+      "bon plan"
+    ],
+    "label": "Services et clubs d'achat",
+    "risk": "SENSIBLE"
+  },
+  "7296": {
+    "description": "Location de costumes, d'uniformes et de tenues de cérémonie.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "location vetement",
+      "costume",
+      "robe de mariee",
+      "deguisement",
+      "smoking"
+    ],
+    "label": "Location de vêtements – costumes, uniformes, tenues de cérémonie"
+  },
+  "7297": {
+    "description": "Prestations de massage thérapeutique et services de bien-être associés.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "massage",
+      "bien etre",
+      "relaxation"
+    ],
+    "label": "Salons de massage",
+    "risk": "SENSIBLE"
+  },
+  "7298": {
+    "description": "Centres de soins esthétiques et de bien-être.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "spa",
+      "hammam",
+      "thalasso",
+      "bien etre",
+      "soin du corps",
+      "institut"
+    ],
+    "label": "Spas et centres de bien-être"
+  },
+  "7299": {
+    "description": "Services à la personne ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "service a la personne",
+      "aide a domicile",
+      "divers",
+      "prestation personnelle"
+    ],
+    "label": "Services aux particuliers divers"
+  },
+  "7311": {
+    "description": "Agences de publicité, régies et prestataires de campagnes publicitaires, y compris en ligne.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "publicite",
+      "agence de communication",
+      "marketing",
+      "campagne",
+      "regie",
+      "referencement",
+      "social media"
+    ],
+    "label": "Services de publicité"
+  },
+  "7321": {
+    "description": "Agences de renseignement et de notation sur le crédit des particuliers.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "scoring",
+      "credit",
+      "renseignement",
+      "solvabilite"
+    ],
+    "label": "Sociétés d'information sur le crédit des consommateurs",
+    "risk": "SENSIBLE"
+  },
+  "7322": {
+    "description": "Recouvrement de créances pour le compte de tiers.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "recouvrement",
+      "creance",
+      "impaye"
+    ],
+    "label": "Sociétés de recouvrement",
+    "risk": "SENSIBLE"
+  },
+  "7333": {
+    "description": "Prestations de photographie commerciale, de graphisme et de création visuelle.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "graphisme",
+      "design",
+      "photographie commerciale",
+      "logo",
+      "identite visuelle",
+      "infographie"
+    ],
+    "label": "Photographie commerciale, graphisme et arts appliqués"
+  },
+  "7338": {
+    "description": "Services de copie rapide, de reproduction et de tirage de plans.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "impression",
+      "reprographie",
+      "photocopie",
+      "tirage de plan",
+      "imprimerie"
+    ],
+    "label": "Reprographie, impression rapide et tirage de plans"
+  },
+  "7339": {
+    "description": "Prestations de sténographie, de secrétariat et de saisie de documents.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "secretariat",
+      "saisie",
+      "transcription",
+      "redaction"
+    ],
+    "label": "Services de secrétariat et de saisie"
+  },
+  "7342": {
+    "description": "Traitement contre les nuisibles et prestations de désinfection.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "deratisation",
+      "desinsectisation",
+      "desinfection",
+      "nuisible"
+    ],
+    "label": "Désinsectisation et désinfection"
+  },
+  "7349": {
+    "description": "Prestations de nettoyage, d'entretien et de conciergerie de bâtiments.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "nettoyage",
+      "menage",
+      "entretien locaux",
+      "conciergerie",
+      "proprete"
+    ],
+    "label": "Nettoyage et entretien de locaux"
+  },
+  "7361": {
+    "description": "Placement de personnel et mise à disposition de travailleurs temporaires.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "recrutement",
+      "emploi",
+      "interim",
+      "placement",
+      "offre d'emploi",
+      "cv"
+    ],
+    "label": "Agences d'emploi et travail temporaire"
+  },
+  "7372": {
+    "description": "Prestations de développement logiciel, de conception de systèmes et de sites web, de saisie et de traitement de données.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "developpement",
+      "informatique",
+      "site web",
+      "application",
+      "integration",
+      "traitement de donnees",
+      "esn",
+      "ssii",
+      "programmation",
+      "hebergement applicatif"
+    ],
+    "label": "Développement informatique, traitement de données et intégration de systèmes"
+  },
+  "7375": {
+    "description": "Fourniture professionnelle de services d'accès à des bases de données et de recherche d'information en ligne.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "base de donnees",
+      "recherche d'information",
+      "veille",
+      "annuaire",
+      "donnees en ligne"
+    ],
+    "label": "Services de recherche d'information"
+  },
+  "7379": {
+    "description": "Conseil informatique, maintenance, réparation, développement de bases de données et analyse des besoins.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "maintenance informatique",
+      "reparation ordinateur",
+      "support technique",
+      "infogerance",
+      "conseil informatique"
+    ],
+    "label": "Maintenance et services informatiques (non classés ailleurs)"
+  },
+  "7392": {
+    "description": "Conseil en stratégie, en organisation, en finance, en marketing et en ressources humaines, et relations publiques.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "conseil",
+      "consulting",
+      "strategie",
+      "management",
+      "relations publiques",
+      "audit organisationnel",
+      "coaching entreprise"
+    ],
+    "label": "Conseil en management et relations publiques"
+  },
+  "7393": {
+    "description": "Agences de détectives, services de protection, gardiennage, transport de fonds et systèmes d'alarme.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "securite",
+      "gardiennage",
+      "alarme",
+      "videosurveillance",
+      "transport de fonds",
+      "detective"
+    ],
+    "label": "Sécurité, gardiennage et enquêtes"
+  },
+  "7394": {
+    "description": "Location et crédit-bail d'équipements, d'outillage, de mobilier et d'électroménager.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "location materiel",
+      "location outillage",
+      "location mobilier",
+      "leasing equipement"
+    ],
+    "label": "Location de matériel, d'outillage et de mobilier"
+  },
+  "7395": {
+    "description": "Développement, tirage et finition de photographies.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "developpement photo",
+      "tirage photo",
+      "impression photo",
+      "album"
+    ],
+    "label": "Laboratoires photo et développement"
+  },
+  "7399": {
+    "description": "Prestations de services aux entreprises ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "service aux entreprises",
+      "b2b",
+      "prestation",
+      "externalisation",
+      "divers"
+    ],
+    "label": "Services aux entreprises (non classés ailleurs)",
+    "note": "Code de repli B2B : à n'utiliser que si aucun MCC plus précis ne correspond."
+  },
+  "7512": {
+    "description": "Agences de location de véhicules de tourisme.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "location voiture",
+      "rent a car",
+      "location vehicule",
+      "reservation voiture"
+    ],
+    "label": "Location de voitures"
+  },
+  "7513": {
+    "description": "Location de véhicules utilitaires et de remorques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "location camion",
+      "utilitaire",
+      "remorque",
+      "demenagement"
+    ],
+    "label": "Location de camions et de remorques utilitaires"
+  },
+  "7519": {
+    "description": "Location de camping-cars et de véhicules récréatifs.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "location camping car",
+      "vehicule de loisir"
+    ],
+    "label": "Location de camping-cars et de véhicules de loisirs"
+  },
+  "7523": {
+    "description": "Exploitation de parcs de stationnement, de parcmètres et de garages.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "parking",
+      "stationnement",
+      "parcmetre",
+      "garage"
+    ],
+    "label": "Parkings et stationnement"
+  },
+  "7531": {
+    "description": "Réparation de carrosserie de véhicules.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "carrosserie",
+      "tolerie",
+      "reparation vehicule"
+    ],
+    "label": "Carrosserie automobile"
+  },
+  "7534": {
+    "description": "Réparation et rechapage de pneumatiques.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "pneu",
+      "rechapage",
+      "reparation pneu"
+    ],
+    "label": "Rechapage et réparation de pneus"
+  },
+  "7535": {
+    "description": "Ateliers de peinture de véhicules.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "peinture automobile",
+      "carrosserie"
+    ],
+    "label": "Peinture automobile"
+  },
+  "7538": {
+    "description": "Entretien et réparation mécanique de véhicules hors réseau concessionnaire.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "garage",
+      "mecanique",
+      "vidange",
+      "entretien vehicule",
+      "reparation auto",
+      "diagnostic"
+    ],
+    "label": "Ateliers de mécanique automobile (hors concession)"
+  },
+  "7542": {
+    "description": "Stations de lavage automobile.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "lavage auto",
+      "car wash",
+      "nettoyage vehicule"
+    ],
+    "label": "Lavage de véhicules"
+  },
+  "7549": {
+    "description": "Services de dépannage et de remorquage de véhicules.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "depannage",
+      "remorquage",
+      "assistance routiere"
+    ],
+    "label": "Dépannage et remorquage"
+  },
+  "7622": {
+    "description": "Réparation d'appareils électroniques grand public.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "reparation electronique",
+      "sav",
+      "televiseur",
+      "reparation telephone"
+    ],
+    "label": "Réparation de matériel électronique"
+  },
+  "7623": {
+    "description": "Installation et réparation d'équipements de climatisation et de froid.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "climatisation",
+      "froid",
+      "refrigeration",
+      "installation clim"
+    ],
+    "label": "Réparation de climatisation et de réfrigération"
+  },
+  "7629": {
+    "description": "Réparation d'appareils électriques et de petit électroménager.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "reparation electromenager",
+      "petit electromenager",
+      "sav"
+    ],
+    "label": "Réparation d'appareils électriques et de petit électroménager"
+  },
+  "7631": {
+    "description": "Réparation de montres, d'horloges et de bijoux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "reparation montre",
+      "horlogerie",
+      "bijou"
+    ],
+    "label": "Réparation d'horlogerie et de bijouterie"
+  },
+  "7641": {
+    "description": "Réfection, réparation et restauration de mobilier.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "restauration meuble",
+      "tapisserie",
+      "renovation mobilier"
+    ],
+    "label": "Restauration et réfection de meubles"
+  },
+  "7692": {
+    "description": "Prestations de soudure et de travail des métaux.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "soudure",
+      "metallerie",
+      "ferronnerie"
+    ],
+    "label": "Services de soudure"
+  },
+  "7699": {
+    "description": "Réparations et services associés ne relevant d'aucun code plus précis.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "reparation",
+      "atelier",
+      "sav",
+      "divers"
+    ],
+    "label": "Ateliers de réparation divers"
+  },
+  "7800": {
+    "description": "Loteries détenues par l'État, usage réservé à la région États-Unis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "loterie"
+    ],
+    "label": "Loteries d'État (région États-Unis)",
+    "note": "Jeux d'argent : activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "7801": {
+    "description": "Casinos en ligne sous licence, usage réservé à la région États-Unis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "casino en ligne",
+      "jeu d'argent"
+    ],
+    "label": "Casinos en ligne agréés (région États-Unis)",
+    "note": "Jeux d'argent : activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "7802": {
+    "description": "Paris sur courses sous licence, usage réservé à la région États-Unis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "pari hippique",
+      "course"
+    ],
+    "label": "Courses hippiques et canines agréées (région États-Unis)",
+    "note": "Jeux d'argent : activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "7829": {
+    "description": "Production et distribution de films et de programmes vidéo.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "production audiovisuelle",
+      "film",
+      "video",
+      "distribution",
+      "montage"
+    ],
+    "label": "Production et distribution cinématographique et vidéo"
+  },
+  "7832": {
+    "description": "Exploitation de salles de projection cinématographique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "cinema",
+      "billet de cinema",
+      "seance",
+      "salle"
+    ],
+    "label": "Salles de cinéma"
+  },
+  "7841": {
+    "description": "Location de supports vidéo.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "location dvd",
+      "video club"
+    ],
+    "label": "Location de vidéos et de DVD"
+  },
+  "7911": {
+    "description": "Cours de danse, studios et salles de bal.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "danse",
+      "cours de danse",
+      "studio"
+    ],
+    "label": "Salles et écoles de danse"
+  },
+  "7922": {
+    "description": "Vente de billets et production de spectacles vivants, hors cinéma.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "billetterie",
+      "spectacle",
+      "concert",
+      "theatre",
+      "festival",
+      "ticket",
+      "evenement"
+    ],
+    "label": "Billetteries et producteurs de spectacles"
+  },
+  "7929": {
+    "description": "Prestations d'artistes, de groupes et d'orchestres non classées ailleurs.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "orchestre",
+      "musicien",
+      "artiste",
+      "animation",
+      "dj"
+    ],
+    "label": "Groupes, orchestres et artistes du spectacle"
+  },
+  "7932": {
+    "description": "Établissements de billard et de snooker.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "billard",
+      "snooker"
+    ],
+    "label": "Salles de billard"
+  },
+  "7933": {
+    "description": "Exploitation de pistes de bowling.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "bowling",
+      "quilles"
+    ],
+    "label": "Bowlings"
+  },
+  "7941": {
+    "description": "Clubs sportifs professionnels, stades et organisateurs d'événements sportifs.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "club sportif",
+      "stade",
+      "match",
+      "billet de match",
+      "evenement sportif",
+      "abonnement club"
+    ],
+    "label": "Sport professionnel, clubs et organisateurs sportifs"
+  },
+  "7991": {
+    "description": "Exploitation de sites touristiques, de musées et d'expositions.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "musee",
+      "site touristique",
+      "exposition",
+      "visite",
+      "billet d'entree",
+      "monument"
+    ],
+    "label": "Sites touristiques et expositions"
+  },
+  "7992": {
+    "description": "Parcours de golf ouverts au public.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "golf",
+      "green fee",
+      "parcours"
+    ],
+    "label": "Golfs publics"
+  },
+  "7993": {
+    "description": "Vente de machines de jeu à pièces et de fournitures associées.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "machine de jeu",
+      "arcade",
+      "borne"
+    ],
+    "label": "Fournitures pour jeux d'arcade",
+    "risk": "SENSIBLE"
+  },
+  "7994": {
+    "description": "Exploitation de salles de jeux vidéo et d'arcade.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "salle de jeux",
+      "arcade",
+      "gaming center"
+    ],
+    "label": "Salles de jeux vidéo et d'arcade"
+  },
+  "7995": {
+    "description": "Paris, billets de loterie, jetons de casino et jeux de hasard.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "pari",
+      "loterie",
+      "casino",
+      "jeu de hasard",
+      "mise",
+      "betting"
+    ],
+    "label": "Paris, loteries et jeux de hasard",
+    "note": "Jeux d'argent : activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "7996": {
+    "description": "Parcs d'attractions, cirques, carnavals et activités foraines.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "parc d'attraction",
+      "cirque",
+      "fete foraine",
+      "manege",
+      "billet parc"
+    ],
+    "label": "Parcs d'attractions, cirques et fêtes foraines"
+  },
+  "7997": {
+    "description": "Clubs sportifs, de remise en forme et de loisirs fonctionnant par adhésion, y compris les golfs privés.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "salle de sport",
+      "fitness",
+      "club prive",
+      "abonnement sportif",
+      "adhesion",
+      "piscine club"
+    ],
+    "label": "Clubs privés sportifs et de loisirs"
+  },
+  "7998": {
+    "description": "Exploitation d'aquariums, de delphinariums et de zoos.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "zoo",
+      "aquarium",
+      "parc animalier",
+      "billet"
+    ],
+    "label": "Aquariums et parcs zoologiques"
+  },
+  "7999": {
+    "description": "Activités récréatives et de loisirs ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "loisir",
+      "activite",
+      "recreatif",
+      "excursion",
+      "escape game",
+      "divers"
+    ],
+    "label": "Services de loisirs (non classés ailleurs)"
+  },
+  "8011": {
+    "description": "Consultations et actes de médecins non classés ailleurs.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "medecin",
+      "consultation",
+      "cabinet medical",
+      "teleconsultation",
+      "rendez vous medical"
+    ],
+    "label": "Médecins",
+    "risk": "SENSIBLE"
+  },
+  "8021": {
+    "description": "Soins dentaires et traitements orthodontiques.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "dentiste",
+      "orthodontie",
+      "soin dentaire",
+      "implant"
+    ],
+    "label": "Dentistes et orthodontistes",
+    "risk": "SENSIBLE"
+  },
+  "8031": {
+    "description": "Consultations d'ostéopathie.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "osteopathe",
+      "osteopathie"
+    ],
+    "label": "Ostéopathes",
+    "risk": "SENSIBLE"
+  },
+  "8041": {
+    "description": "Consultations de chiropraxie.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "chiropracteur",
+      "chiropraxie"
+    ],
+    "label": "Chiropracteurs",
+    "risk": "SENSIBLE"
+  },
+  "8042": {
+    "description": "Consultations et actes de vision.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "ophtalmologue",
+      "optometriste",
+      "vue",
+      "examen de vue"
+    ],
+    "label": "Optométristes et ophtalmologistes",
+    "risk": "SENSIBLE"
+  },
+  "8043": {
+    "description": "Vente de lunettes, de lentilles et d'articles d'optique.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "opticien",
+      "lunette",
+      "lentille",
+      "monture",
+      "optique",
+      "verre correcteur"
+    ],
+    "label": "Opticiens et optique"
+  },
+  "8049": {
+    "description": "Soins de podologie et de pédicurie.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "podologue",
+      "pedicure",
+      "soin du pied"
+    ],
+    "label": "Podologues et pédicures",
+    "risk": "SENSIBLE"
+  },
+  "8050": {
+    "description": "Maisons de soins, soins à domicile et établissements de prise en charge personnelle.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "soins infirmiers",
+      "maison de retraite",
+      "aide a domicile",
+      "ehpad",
+      "soin a domicile"
+    ],
+    "label": "Établissements de soins infirmiers et d'aide à la personne",
+    "risk": "SENSIBLE"
+  },
+  "8062": {
+    "description": "Établissements hospitaliers publics et privés.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "hopital",
+      "clinique",
+      "hospitalisation",
+      "sante",
+      "urgences"
+    ],
+    "label": "Cliniques et hôpitaux",
+    "risk": "SENSIBLE"
+  },
+  "8071": {
+    "description": "Laboratoires réalisant des analyses médicales et des travaux dentaires.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "laboratoire",
+      "analyse medicale",
+      "prelevement",
+      "prothese dentaire",
+      "biologie"
+    ],
+    "label": "Laboratoires d'analyses médicales et dentaires",
+    "risk": "SENSIBLE"
+  },
+  "8099": {
+    "description": "Prestations de santé et praticiens ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "sante",
+      "praticien",
+      "kinesitherapeute",
+      "dietetique",
+      "psychologue",
+      "telemedecine"
+    ],
+    "label": "Services médicaux et praticiens de santé (non classés ailleurs)",
+    "risk": "SENSIBLE"
+  },
+  "8111": {
+    "description": "Prestations juridiques et honoraires d'avocats.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "avocat",
+      "juridique",
+      "conseil juridique",
+      "honoraire",
+      "contentieux"
+    ],
+    "label": "Services juridiques et avocats"
+  },
+  "8211": {
+    "description": "Établissements d'enseignement primaire et secondaire.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "ecole",
+      "college",
+      "lycee",
+      "scolarite",
+      "frais de scolarite",
+      "inscription"
+    ],
+    "label": "Écoles primaires et secondaires"
+  },
+  "8220": {
+    "description": "Universités, écoles supérieures et établissements professionnels du supérieur.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "universite",
+      "ecole superieure",
+      "inscription",
+      "frais universitaires",
+      "master",
+      "faculte"
+    ],
+    "label": "Universités et établissements d'enseignement supérieur"
+  },
+  "8241": {
+    "description": "Formations dispensées à distance par correspondance.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "formation a distance",
+      "correspondance",
+      "cours par correspondance"
+    ],
+    "label": "Enseignement par correspondance"
+  },
+  "8244": {
+    "description": "Établissements de formation en commerce, gestion et secrétariat.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "ecole de commerce",
+      "secretariat",
+      "gestion",
+      "formation professionnelle"
+    ],
+    "label": "Écoles de commerce et de secrétariat"
+  },
+  "8249": {
+    "description": "Centres de formation professionnelle et écoles de métiers.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "formation professionnelle",
+      "centre de formation",
+      "metier",
+      "certification",
+      "e-learning",
+      "cours en ligne"
+    ],
+    "label": "Formation professionnelle et écoles techniques"
+  },
+  "8299": {
+    "description": "Activités d'enseignement et services éducatifs ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "cours en ligne",
+      "soutien scolaire",
+      "e-learning",
+      "formation",
+      "tutorat",
+      "langue",
+      "mooc"
+    ],
+    "label": "Écoles et services éducatifs (non classés ailleurs)"
+  },
+  "8351": {
+    "description": "Crèches, garderies et services de garde d'enfants.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "creche",
+      "garderie",
+      "garde d'enfant",
+      "jardin d'enfants"
+    ],
+    "label": "Garde d'enfants"
+  },
+  "8398": {
+    "description": "Associations caritatives et organismes d'action sociale collectant des dons.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "don",
+      "association",
+      "caritatif",
+      "ong",
+      "collecte",
+      "zakat",
+      "solidarite"
+    ],
+    "label": "Organisations caritatives et sociales",
+    "note": "Collecte de dons : vérifier l'enregistrement officiel de l'association.",
+    "risk": "SENSIBLE"
+  },
+  "8641": {
+    "description": "Associations civiques et sociales percevant des cotisations.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "association",
+      "cotisation",
+      "adhesion",
+      "club"
+    ],
+    "label": "Associations civiques, sociales et fraternelles"
+  },
+  "8651": {
+    "description": "Partis et organisations politiques.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "parti politique",
+      "cotisation politique",
+      "don politique"
+    ],
+    "label": "Organisations politiques",
+    "risk": "SENSIBLE"
+  },
+  "8661": {
+    "description": "Organisations religieuses percevant dons et contributions.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "religieux",
+      "don",
+      "mosquee",
+      "association cultuelle"
+    ],
+    "label": "Organisations religieuses",
+    "risk": "SENSIBLE"
+  },
+  "8675": {
+    "description": "Associations et clubs automobiles proposant assistance et services aux adhérents.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "automobile club",
+      "assistance",
+      "adhesion"
+    ],
+    "label": "Automobile-clubs"
+  },
+  "8699": {
+    "description": "Organisations fonctionnant par adhésion et ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "adhesion",
+      "cotisation",
+      "membre",
+      "organisation professionnelle",
+      "syndicat"
+    ],
+    "label": "Organisations à adhésion (non classées ailleurs)"
+  },
+  "8734": {
+    "description": "Laboratoires de tests et d'essais non médicaux.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "laboratoire d'essai",
+      "controle qualite",
+      "test",
+      "certification produit"
+    ],
+    "label": "Laboratoires d'essais (hors médical)"
+  },
+  "8911": {
+    "description": "Prestations d'architecture, d'ingénierie et de topographie.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "architecte",
+      "ingenierie",
+      "bureau d'etude",
+      "geometre",
+      "plan",
+      "maitrise d'oeuvre"
+    ],
+    "label": "Architecture, ingénierie et géomètre"
+  },
+  "8931": {
+    "description": "Prestations de comptabilité, d'audit et de tenue de comptabilité.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "comptable",
+      "expert comptable",
+      "audit",
+      "comptabilite",
+      "bilan",
+      "commissaire aux comptes"
+    ],
+    "label": "Comptabilité, audit et tenue de livres"
+  },
+  "8999": {
+    "description": "Prestations professionnelles ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "service professionnel",
+      "prestation",
+      "freelance",
+      "expertise",
+      "divers"
+    ],
+    "label": "Services professionnels (non classés ailleurs)",
+    "note": "Code de repli : à n'utiliser que si aucun MCC plus précis ne correspond."
+  },
+  "9211": {
+    "description": "Encaissements ordonnés par une juridiction, y compris pensions alimentaires.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "frais de justice",
+      "pension alimentaire",
+      "tribunal"
+    ],
+    "label": "Frais de justice, pensions alimentaires"
+  },
+  "9222": {
+    "description": "Paiement d'amendes.",
+    "ecommerce": "MEDIUM",
+    "keywords": [
+      "amende",
+      "contravention",
+      "penalite"
+    ],
+    "label": "Amendes"
+  },
+  "9223": {
+    "description": "Paiement de cautions et de cautionnements.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "caution",
+      "cautionnement"
+    ],
+    "label": "Cautions et cautionnements judiciaires"
+  },
+  "9311": {
+    "description": "Règlement d'impôts et de taxes aux administrations.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "impot",
+      "taxe",
+      "tresorerie",
+      "fiscalite",
+      "paiement impot"
+    ],
+    "label": "Paiements d'impôts et de taxes"
+  },
+  "9399": {
+    "description": "Services rendus par les administrations et ne relevant d'aucun code plus précis.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "administration",
+      "service public",
+      "e-gov",
+      "timbre fiscal",
+      "document administratif"
+    ],
+    "label": "Services publics administratifs (non classés ailleurs)"
+  },
+  "9402": {
+    "description": "Services postaux opérés par l'administration.",
+    "ecommerce": "HIGH",
+    "keywords": [
+      "poste",
+      "courrier",
+      "timbre",
+      "colis postal"
+    ],
+    "label": "Services postaux (administration uniquement)"
+  },
+  "9405": {
+    "description": "Agences et départements du gouvernement fédéral des États-Unis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "gouvernement",
+      "federal",
+      "etats unis"
+    ],
+    "label": "Administrations fédérales américaines"
+  },
+  "9406": {
+    "description": "Loteries détenues par l'État hors région États-Unis.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "loterie",
+      "jeu d'argent",
+      "promosport"
+    ],
+    "label": "Loteries d'État (hors région États-Unis)",
+    "note": "Jeux d'argent : activité non éligible à l'affiliation ClickToPay.",
+    "risk": "INTERDIT"
+  },
+  "9702": {
+    "description": "Code réservé aux services d'urgence du dispositif GCAS de Visa.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "urgence",
+      "gcas",
+      "visa"
+    ],
+    "label": "Services d'urgence (GCAS – usage Visa)",
+    "note": "Code technique réservé à Visa, non attribuable à un commerçant.",
+    "risk": "INTERDIT"
+  },
+  "9950": {
+    "description": "Opérations d'achat internes à un même groupe.",
+    "ecommerce": "LOW",
+    "keywords": [
+      "intra groupe",
+      "interne",
+      "filiale"
+    ],
+    "label": "Achats intra-groupe",
+    "note": "Code réservé aux flux internes, non attribuable à un e-commerçant.",
+    "risk": "INTERDIT"
+  }
+}

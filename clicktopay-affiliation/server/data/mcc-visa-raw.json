@@ -1,0 +1,4385 @@
+[
+  {
+    "code": "4011",
+    "titleEn": "Railroads",
+    "descriptionEn": "Merchants classified with this MCC are railroads engaged in freight transport operations.",
+    "includedEn": [
+      "Freight – Railroad and Train",
+      "Transportation"
+    ],
+    "similar": [
+      "4112",
+      "4214"
+    ]
+  },
+  {
+    "code": "4111",
+    "titleEn": "Local and Suburban Commuter Passenger Transportation, Including Ferries",
+    "descriptionEn": "Merchants classified with this MCC provide local and suburban mass passenger transportation over regular routes and on regular schedules. Included in this category is railway commuter transportation. Not included in this category are taxicabs, limousines, and bus lines.",
+    "includedEn": [
+      "Commuter Transportation",
+      "Ferries",
+      "Commuter Transportation",
+      "Railways",
+      "Transportation – Commuter",
+      "Local, Suburban Commuter",
+      "Passenger Transportation"
+    ],
+    "similar": [
+      "4112",
+      "4121",
+      "4131",
+      "4789"
+    ]
+  },
+  {
+    "code": "4112",
+    "titleEn": "Passenger Railways",
+    "descriptionEn": "Merchants classified with this MCC are railroads that primarily provide long distance passenger transportation. This may or may not include overnight accommodation on the train during long distance travel.",
+    "includedEn": [
+      "Railways – Passenger",
+      "Trains – Passenger"
+    ],
+    "similar": [
+      "4011",
+      "4789"
+    ]
+  },
+  {
+    "code": "4119",
+    "titleEn": "Ambulance Services",
+    "descriptionEn": "Merchants classified with this MCC provide emergency vehicle transportation with trained personnel. These Merchants may or may not provide emergency medical treatment enroute to a hospital or medical provider.",
+    "includedEn": [
+      "Air Ambulance Services",
+      "Emergency Vehicle",
+      "Services",
+      "Ambulance Services",
+      "Transportation"
+    ],
+    "similar": [
+      "4789",
+      "8099"
+    ]
+  },
+  {
+    "code": "4121",
+    "titleEn": "Taxicabs and Limousines",
+    "descriptionEn": "Merchants classified with this MCC provide transportation services by automobile and do not operate on a regular schedule or established route. This MCC includes ride-share Merchants.",
+    "includedEn": [
+      "Cabs, Taxicabs, Limousines",
+      "Transportation",
+      "Services"
+    ],
+    "similar": [
+      "4111",
+      "4789"
+    ]
+  },
+  {
+    "code": "4131",
+    "titleEn": "Bus Lines",
+    "descriptionEn": "Merchants classified with this MCC provide passenger bus transportation services on a regular schedule over predetermined routes. Not included are charter and tour bus operators.",
+    "includedEn": [
+      "Coach Lines",
+      "Transportation – Bus Lines"
+    ],
+    "similar": [
+      "4722",
+      "4789"
+    ]
+  },
+  {
+    "code": "4214",
+    "titleEn": "Motor Freight Carriers and Trucking – Local and Long Distance, Moving and Storage Companies, and Local Delivery",
+    "descriptionEn": "Services Merchants classified with this MCC provide local or long-distance trucking services and may or may not also provide storage services.",
+    "includedEn": [
+      "Delivery Services – Local",
+      "Freight Carriers, Trucking and Storage",
+      "Local Delivery Service",
+      "Long Distance Trucking",
+      "Services",
+      "Motor Freight Carriers",
+      "Local, Long-Distance",
+      "Trucking",
+      "Moving Companies",
+      "Moving, Storage",
+      "Companies",
+      "Storage, Moving"
+    ],
+    "similar": [
+      "4215",
+      "4225"
+    ]
+  },
+  {
+    "code": "4215",
+    "titleEn": "Courier Services – Air and Ground, and Freight Forwarders",
+    "descriptionEn": "Merchants classified with this MCC deliver individually addressed letters, parcels, and packages, but excludes the Postal Services – Government Only (MCC 9402).",
+    "includedEn": [
+      "Air or Ground Courier",
+      "Services",
+      "Freight Forwarders, Courier",
+      "Services"
+    ],
+    "similar": [
+      "4214",
+      "9402"
+    ]
+  },
+  {
+    "code": "4225",
+    "titleEn": "Public Warehousing and Storage – Farm Products, Refrigerated Goods, Household Goods, and Storage",
+    "descriptionEn": "Merchants classified with this MCC provide storage and warehousing for farm products, refrigerated storage for perishable products, and storage for household goods and furniture.",
+    "includedEn": [
+      "Warehousing, Storage",
+      "Public Warehousing"
+    ],
+    "similar": [
+      "4214"
+    ]
+  },
+  {
+    "code": "4411",
+    "titleEn": "Steamship and Cruise Lines",
+    "descriptionEn": "Merchants classified with this MCC provide passenger transportation on the open seas or inland waters for the purpose of vacation or pleasure. These Merchants typically offer food, entertainment, and cabin accommodations included in the fare and operate pre-defined and advertised routes.",
+    "includedEn": [
+      "Ships – Cruise Lines 4111 – Local and Suburban",
+      "Commuter Passenger Transportation",
+      "Including Ferries"
+    ],
+    "similar": [
+      "4789"
+    ]
+  },
+  {
+    "code": "4457",
+    "titleEn": "Boat Rentals and Leasing",
+    "descriptionEn": "Merchants classified with this MCC primarily provide boat rental and leasing services for fishing boats, non-crew houseboats, sail boats, power boats, jet skis, and yachts.",
+    "includedEn": [
+      "Jet Skis – Rental, Leases",
+      "Powerboats – Rental",
+      "Leases",
+      "Rentals – Boats",
+      "Sailboats – Rentals, Leases",
+      "Yacht Rentals – Non-Crew"
+    ],
+    "similar": [
+      "4468",
+      "7999"
+    ]
+  },
+  {
+    "code": "4468",
+    "titleEn": "Marinas, Marine Service, and Supplies",
+    "descriptionEn": "Merchants classified with this MCC operate marinas and may rent boat slips and store boats. Other services may include boat cleaning, incidental boat repair, and the retail sale of marine supplies. Merchants located at a marina that sell fuel for consumer use in boats that do not have a separate Merchant agreement from the marina are included in this category.",
+    "includedEn": [
+      "Harbors",
+      "Services – Marine, Marina",
+      "Supplies – Marinas, Marine",
+      "Service",
+      "Yacht Harbors"
+    ],
+    "similar": [
+      "4457",
+      "7999"
+    ]
+  },
+  {
+    "code": "4511",
+    "titleEn": "Airlines and Air Carriers (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are airlines and air carriers that do not have their own specific MCC.",
+    "includedEn": [],
+    "similar": [
+      "3000"
+    ]
+  },
+  {
+    "code": "4582",
+    "titleEn": "Airports, Flying Fields, and Airport Terminals",
+    "descriptionEn": "Merchants classified with this MCC operate and maintain airports and flying fields. This includes Merchants that provide aircraft cleaning and janitorial services, aircraft servicing and repair, aircraft storage at airports, and airport hangar rental. Merchants located within the airport terminal that sell food, newspapers, and/or gift or souvenir items must be classified with the appropriate MCC for that business.",
+    "includedEn": [
+      "Flying Fields",
+      "Terminals – Airports"
+    ],
+    "similar": [
+      "4215",
+      "4511",
+      "5812",
+      "5947",
+      "5994"
+    ]
+  },
+  {
+    "code": "4722",
+    "titleEn": "Travel Agencies and Tour Operators",
+    "descriptionEn": "Merchants classified with this MCC provide travel information and booking services. They act as agents on behalf of travelers in booking and ticketing air, land, or sea transportation and/or accommodation. They also arrange and assemble tours for sale through a travel agent or directly to the consumer. Bus charters and tour bus operators are included in this MCC.",
+    "includedEn": [
+      "Charter Buses",
+      "Package Tour Operators",
+      "Tour Buses",
+      "Travel Packages",
+      "Travel Wholesalers"
+    ],
+    "similar": [
+      "4112",
+      "4121",
+      "4131",
+      "4411",
+      "4511",
+      "4789",
+      "5962",
+      "7011",
+      "7512"
+    ]
+  },
+  {
+    "code": "4723",
+    "titleEn": "Package Tour Operators – Germany Only",
+    "descriptionEn": "Merchants classified with this MCC are package tour operators in Germany.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "4784",
+    "titleEn": "Tolls and Bridge Fees",
+    "descriptionEn": "Merchants classified with this MCC collect fees associated with toll roads, highways, and bridges.",
+    "includedEn": [
+      "Bridge, Toll Fees",
+      "Fees – Bridge, Toll"
+    ],
+    "similar": []
+  },
+  {
+    "code": "4789",
+    "titleEn": "Transportation Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide passenger transportation services that are not classified with a more specific MCC. This MCC includes Merchants that provide transportation via.",
+    "includedEn": [
+      "Airport Shuttle",
+      "Transportation",
+      "Miscellaneous Transport"
+    ],
+    "similar": [
+      "4111",
+      "4112",
+      "4121",
+      "4131",
+      "4411",
+      "4722"
+    ]
+  },
+  {
+    "code": "4812",
+    "titleEn": "Telecommunication Equipment and Telephone Sales",
+    "descriptionEn": "Merchants classified with this MCC sell telecommunications equipment such as telephones, fax machines, pagers, mobile phones, and other equipment related to telecommunications.",
+    "includedEn": [
+      "Cellular Telephone",
+      "Equipment",
+      "Telecommunications",
+      "Equipment",
+      "Pagers, Paging Equipment",
+      "Telephone Equipment"
+    ],
+    "similar": [
+      "4814",
+      "5732"
+    ]
+  },
+  {
+    "code": "4814",
+    "titleEn": "Telecommunication Services, including Local and Long-Distance Calls, Credit Card Calls, Calls Through Use of Magnetic-",
+    "descriptionEn": "Stripe-Reading Telephones, and Fax Services Merchants classified with this MCC provide telecommunications services including local and long-distance telephone calls, calls placed using magnetic stripe-reading telephones, and fax services. Merchants that provide periodic (e.g., monthly) billing of telephone calls should be classified with this MCC.",
+    "includedEn": [
+      "Cellular Telephone Service",
+      "Faxing Services",
+      "Local Telecommunication",
+      "Service",
+      "Long Distance",
+      "Telecommunication Service",
+      "Prepaid Calling Cards",
+      "Telecommunication",
+      "Service"
+    ],
+    "similar": [
+      "4812"
+    ]
+  },
+  {
+    "code": "4816",
+    "titleEn": "Computer Network/Information Services",
+    "descriptionEn": "Merchants classified with this MCC provide internet access. This MCC includes all Merchants that provide computer network and information services and internet service providers.",
+    "includedEn": [
+      "Electronic Bulletin Board",
+      "Access",
+      "Information Services – via",
+      "Computer Networks",
+      "Internet Payment",
+      "Facilitators",
+      "Website",
+      "Management/Maintenance",
+      "Internet Service Providers"
+    ],
+    "similar": [
+      "7372"
+    ]
+  },
+  {
+    "code": "4821",
+    "titleEn": "Telegraph Services",
+    "descriptionEn": "Merchants classified with this MCC that provide telegraph and other nonverbal message communications services such as telegrams.",
+    "includedEn": [
+      "Cablegrams",
+      "Cablegrams Services",
+      "Telegraph Services"
+    ],
+    "similar": [
+      "4814"
+    ]
+  },
+  {
+    "code": "4829",
+    "titleEn": "Money Transfer",
+    "descriptionEn": "Merchants classified with this MCC allow customers to transfer funds via an electronic funds transfer / wire transfer / remittance to a named entity (both card-present and card-absent locations including on the premises of the Merchant and third-party agents such as casinos, truck stops, or check-cashing storefronts) or via an original credit transaction (e.g., via Visa Direct or Person to Person [P2P] payments). A Merchant that transfers Liquid and Cryptocurrency Assets such as cryptocurrency must include all required data in the authorization request and clearing record. Bill Payments merchants (who are not eligible and not registered in the CBPS Program) should be assigned with this MCC.",
+    "includedEn": [
+      "Wire Transfer 4821– Telegraph Services"
+    ],
+    "similar": [
+      "6051"
+    ]
+  },
+  {
+    "code": "4899",
+    "titleEn": "Cable, Satellite and Other Pay Television/Radio/Streaming Services",
+    "descriptionEn": "Merchants classified with this MCC provide the connection and ongoing delivery of television/radio/streaming content on a subscription or fee basis.",
+    "includedEn": [
+      "Pay Radio Services",
+      "Pay Television Services",
+      "Cable",
+      "Satellite Services",
+      "Services – Cable and Other",
+      "Pay Television Services",
+      "Services – Pay Radio and",
+      "Satellite Services"
+    ],
+    "similar": []
+  },
+  {
+    "code": "4900",
+    "titleEn": "Utilities – Electric, Gas, Water, and Sanitary",
+    "descriptionEn": "Merchants classified with this MCC provide the ongoing generation, transmission, and/or distribution of electric or gas power or other utility services. This MCC also includes Merchants that provide water supply system services and Merchants primarily engaged in the collection and disposal of refuse.",
+    "includedEn": [
+      "Electric Utilities Services",
+      "Garbage Collectors",
+      "Gas Utilities Services",
+      "Public Utilities",
+      "Sanitary Utilities Services",
+      "Waste Management",
+      "Services",
+      "Water Utilities"
+    ],
+    "similar": [
+      "4814"
+    ]
+  },
+  {
+    "code": "5013",
+    "titleEn": "Motor Vehicle Supplies and New Parts",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of motor vehicle accessories, tools, equipment and new parts, including electric vehicle charging equipment designed for commercial use, testing equipment, service station pumps and other equipment, glass, batteries, and engines.",
+    "includedEn": [
+      "Automobile – Motor Vehicle",
+      "Supplies, New Parts",
+      "Parts – Motor Vehicle",
+      "Supplies, New Parts"
+    ],
+    "similar": [
+      "5532",
+      "5533",
+      "7531",
+      "7538"
+    ]
+  },
+  {
+    "code": "5021",
+    "titleEn": "Office and Commercial Furniture",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale manufacturers and/or distributors of office and commercial furniture.",
+    "includedEn": [
+      "Furniture – Office",
+      "Commercial"
+    ],
+    "similar": [
+      "5047",
+      "5712"
+    ]
+  },
+  {
+    "code": "5039",
+    "titleEn": "Construction Materials (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of construction materials and parts that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Supplies – Construction",
+      "Materials"
+    ],
+    "similar": [
+      "1761",
+      "5072",
+      "5198",
+      "5200",
+      "5211",
+      "5231",
+      "5251",
+      "5713",
+      "7692"
+    ]
+  },
+  {
+    "code": "5044",
+    "titleEn": "Photographic, Photocopy, Microfilm Equipment and Supplies",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of office and photographic equipment such as film, cash registers, photocopy machines, microfilm machines, vaults and safes, typewriters, fax machines, adding machines, and mailing machines.",
+    "includedEn": [
+      "Copy Services",
+      "Photographic, Photocopy",
+      "Microfilm Supplies",
+      "Equipment – Photographic",
+      "Photocopy, Microfilm",
+      "Equipment, Supplies",
+      "Photographic",
+      "Photocopy, Microfilm",
+      "Equipment"
+    ],
+    "similar": [
+      "5021",
+      "5045",
+      "5943",
+      "5946",
+      "7338",
+      "7395"
+    ]
+  },
+  {
+    "code": "5045",
+    "titleEn": "Computers and Computer Peripheral Equipment and Software",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of computer hardware, software and related equipment.",
+    "includedEn": [
+      "Equipment – Computers",
+      "Computer Peripheral",
+      "Equipment",
+      "Computer Hardware",
+      "Computer Software",
+      "Computer Supplies"
+    ],
+    "similar": [
+      "5021",
+      "5732",
+      "5734",
+      "7379"
+    ]
+  },
+  {
+    "code": "5046",
+    "titleEn": "Commercial Equipment (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of commercial.",
+    "includedEn": [
+      "Appliance Wholesaler",
+      "Commercial Cooking"
+    ],
+    "similar": [
+      "5021",
+      "5712",
+      "7394"
+    ]
+  },
+  {
+    "code": "5047",
+    "titleEn": "Medical, Dental, Ophthalmic and Hospital Equipment and Supplies",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of laboratory, surgical, dental, or orthopedic equipment, patient monitoring equipment, wheelchairs, and other medical instruments, industrial safety devices, hospital equipment and hospital furniture, such as beds.",
+    "includedEn": [
+      "Dental Equipment, Supplies",
+      "Medical Equipment",
+      "Ophthalmic, Orthopedic",
+      "Hospital Equipment",
+      "Supplies",
+      "Orthodontia Supplies",
+      "Safety Equipment",
+      "X-Ray Equipment"
+    ],
+    "similar": [
+      "2842",
+      "5021"
+    ]
+  },
+  {
+    "code": "5051",
+    "titleEn": "Metal Service Centers and Offices",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale marketers of semi-finished metal products, excluding precious metals. These Merchants may sell metal piping and tubing, wire screening and bale ties, nails, ingots, aluminum bars, rails and accessories, metal or galvanized sheets, strip metal, iron rods, and wire rope or cable.",
+    "includedEn": [],
+    "similar": [
+      "5094",
+      "5944"
+    ]
+  },
+  {
+    "code": "5065",
+    "titleEn": "Electrical Parts and Equipment",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of electrical parts and communications equipment, such as electronic coils, capacitors, electronic condensers, diodes, semiconductor devices, public address equipment, and electric signs.",
+    "includedEn": [
+      "Communications",
+      "Equipment",
+      "Electrical Parts Equipment and Supplies"
+    ],
+    "similar": [
+      "4812",
+      "5732"
+    ]
+  },
+  {
+    "code": "5072",
+    "titleEn": "Hardware, Equipment and Supplies",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of general hardware and cutlery such as bolts, nuts, rivets, screws, fasteners, hand tools, locks, washers, tacks, staples, nails, hand saws, saw blades, and power hand tools.",
+    "includedEn": [
+      "Hardware, Equipment and",
+      "Supplies",
+      "Hand Tools Supplies"
+    ],
+    "similar": [
+      "5251"
+    ]
+  },
+  {
+    "code": "5074",
+    "titleEn": "Plumbing and Heating Equipment and Supplies",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of hydraulic plumbing and heating equipment and supplies. This.",
+    "includedEn": [
+      "MCC does not include wholesalers of commercial",
+      "Heating Equipment and",
+      "Supplies",
+      "Plumbing Equipment and",
+      "Supplies"
+    ],
+    "similar": [
+      "5046",
+      "5072",
+      "5251",
+      "5722",
+      "7299"
+    ]
+  },
+  {
+    "code": "5085",
+    "titleEn": "Industrial Supplies (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of industrial supplies that are not classified with a more specific MCC. Products for sale may include abrasives, bearings, boxes, cans, crates, cork, gaskets, grommets, hydraulic valves, hoses, pistons, sprockets, barrels, bottles (glass or plastic), industrial fittings, cordage, twine and rope, metals closures, printers’ ink, lapidary equipment, leather belting, mill supplies, pails, rubber goods, textile printers’ supplies, and steel drums.",
+    "includedEn": [
+      "Supplies – Industrial 5072 – Hardware Equipment and",
+      "Supplies"
+    ],
+    "similar": [
+      "5169",
+      "5251"
+    ]
+  },
+  {
+    "code": "5094",
+    "titleEn": "Precious Stones and Metals, Watches and Jewelry",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of jewelry, precious stones and metals. This MCC also includes wholesalers of costume jewelry, watches and watch parts, clocks, silverware, diamonds and gemstones, precious metals, pearls, and trophies.",
+    "includedEn": [
+      "Gemstones, Precious",
+      "Stones, Metals, Watches",
+      "Jewelry",
+      "Jewelry – Fine Watches"
+    ],
+    "similar": [
+      "5944",
+      "7699"
+    ]
+  },
+  {
+    "code": "5099",
+    "titleEn": "Durable Goods (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of durable goods that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Fire Extinguishers",
+      "Firearms, Ammunition",
+      "Gas Lighting Fixtures",
+      "Goods – Durable",
+      "Gravestones",
+      "Luggage (Business to",
+      "Business)",
+      "Monuments",
+      "Musical Instruments",
+      "Rough Timber Products",
+      "Signs"
+    ],
+    "similar": [
+      "5065",
+      "5941",
+      "5999"
+    ]
+  },
+  {
+    "code": "5111",
+    "titleEn": "Stationery, Office Supplies, Printing and Writing Paper",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of stationery and office supplies and printing and writing paper.",
+    "includedEn": [
+      "Business Supplies",
+      "Stationery, Office, Printing",
+      "Writing Supplies",
+      "Paper – Writing, Printing",
+      "Stationery, Office Supplies",
+      "Printing Supplies"
+    ],
+    "similar": [
+      "5021",
+      "5044",
+      "5943",
+      "5978"
+    ]
+  },
+  {
+    "code": "5122",
+    "titleEn": "Drugs, Drug Proprietaries, and Druggist Sundries",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of prescription drugs, proprietary drugs, druggists’ sundries, pharmaceuticals, and biological or related products.",
+    "includedEn": [
+      "Distributors – Drugs",
+      "Druggists’ Sundries",
+      "Pharmaceuticals",
+      "Supplies – Drugs, Drug",
+      "Proprietaries, Druggist",
+      "Sundries"
+    ],
+    "similar": [
+      "5047",
+      "5912"
+    ]
+  },
+  {
+    "code": "5131",
+    "titleEn": "Piece Goods, Notions, and Other Dry Goods",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of piece goods, dry goods, and notions/haberdashery.",
+    "includedEn": [
+      "Fabric Goods",
+      "Hair Accessories",
+      "Notions",
+      "Sewing Accessories",
+      "Supplies – Millinery",
+      "Textiles, Textile Binding"
+    ],
+    "similar": [
+      "5719",
+      "5949"
+    ]
+  },
+  {
+    "code": "5137",
+    "titleEn": "Men’s, Women’s, and Children’s Uniforms and Commercial Clothing",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of commercial work clothing and uniforms. This MCC includes wholesale distributors of graduation caps and gowns, athletic and recreational uniforms, and school uniforms, but not shoes.",
+    "includedEn": [
+      "Children’s Uniforms",
+      "Commercial Clothing",
+      "Men’s, Women’s, Children’s",
+      "Men’s Uniforms",
+      "Professional Uniforms",
+      "Women’s Uniforms"
+    ],
+    "similar": [
+      "5139",
+      "5611",
+      "5621",
+      "5631",
+      "5641",
+      "5651",
+      "5655",
+      "5661",
+      "5681",
+      "5691",
+      "5697",
+      "5699"
+    ]
+  },
+  {
+    "code": "5139",
+    "titleEn": "Commercial Footwear",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of commercial shoes and boots including athletic footwear.",
+    "includedEn": [
+      "Footwear – Commercial",
+      "Shoes, Shoe Accessories",
+      "Commercial"
+    ],
+    "similar": [
+      "5661"
+    ]
+  },
+  {
+    "code": "5169",
+    "titleEn": "Chemicals and Allied Products (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of chemicals and allied products that are not classified with a more specific MCC. Products for sale are typically used for industrial purposes. Examples include industrial acids, ammonia and alcohol, heavy, aromatic and other chemicals, chlorine, compressed and liquefied gases, detergents, fuel and oil additives, resins, salts, turpentine, sealants, rust proofing chemicals, coal tar products, dry ice, dyestuffs, glue, gelatin, and explosives.",
+    "includedEn": [
+      "Detergents",
+      "Supplies – Chemicals",
+      "Allied Products"
+    ],
+    "similar": [
+      "2842",
+      "5999"
+    ]
+  },
+  {
+    "code": "5172",
+    "titleEn": "Petroleum and Petroleum Products",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of petroleum and petroleum products, butane gas, crude oil, fuel oil, gasoline, kerosene, lubricating oils and greases, aircraft fueling services, and naphtha.",
+    "includedEn": [
+      "Fuel Products, Services",
+      "Fueling Services"
+    ],
+    "similar": [
+      "5169",
+      "5983"
+    ]
+  },
+  {
+    "code": "5192",
+    "titleEn": "Books, Periodicals and Newspapers",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of books, periodicals, magazines, journals, and newspapers, including newspaper agencies.",
+    "includedEn": [
+      "Journals",
+      "Magazines",
+      "Newspapers, Newspaper",
+      "Agencies",
+      "Periodicals"
+    ],
+    "similar": [
+      "2741",
+      "5942",
+      "5968",
+      "5994"
+    ]
+  },
+  {
+    "code": "5193",
+    "titleEn": "Florists Supplies, Nursery Stock and Flowers",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of flowers, nursery stock and florists’ supplies, fresh and artificial flowers, and potted plants.",
+    "includedEn": [
+      "Gardening Supplies",
+      "Nursery Stock",
+      "Plants",
+      "Supplies – Florist Supplies",
+      "Nursery Stock, Flowers"
+    ],
+    "similar": [
+      "5261",
+      "5992"
+    ]
+  },
+  {
+    "code": "5198",
+    "titleEn": "Paints, Varnishes and Supplies",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of paints, varnishes, wallpaper, and supplies, including colors and pigments, enamels, lacquers, paint brushes, paint pans, sandpaper, drop cloths, shellac, rollers, and sprayers.",
+    "includedEn": [
+      "Varnishes, Paints, Supplies 5231 – Glass, Paint, and Wallpaper",
+      "Stores"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5199",
+    "titleEn": "Nondurable Goods (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale distributors of nondurable goods that are not classified with a more specific MCC, such as food products, art goods, clothes hangers, foam rubber, ice, crude rubber, sponges, textile bags, burlap, canvas products, leather, and baskets.",
+    "includedEn": [
+      "Goods – Nondurable 5131 – Piece Goods, Notions, and",
+      "Other Dry Goods"
+    ],
+    "similar": [
+      "5948"
+    ]
+  },
+  {
+    "code": "5200",
+    "titleEn": "Home Supply Warehouse Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a wide range of home products such as wallpaper, paint, lumber, garden supplies, electrical equipment and supplies and home decorating items, as well as sinks, cabinets and doors.",
+    "includedEn": [
+      "Warehouse Stores – Home",
+      "Supply"
+    ],
+    "similar": [
+      "5211",
+      "5231",
+      "5251",
+      "5713"
+    ]
+  },
+  {
+    "code": "5211",
+    "titleEn": "Lumber and Building Materials Stores",
+    "descriptionEn": "Merchants classified with this MCC sell one or more of the following products: lumber, unfinished wood products, lighting materials, concrete, sand, gravel, general building or electrical supplies, bricks, fencing, pipe, fiberglass, or molding. This MCC includes building centers that offer their products to contractors rather than to the general public and does not include home supply store chains that are frequented by the general public.",
+    "includedEn": [
+      "Building Materials",
+      "Construction Materials",
+      "Lumber, Building Materials and Supplies – Roofing",
+      "Materials"
+    ],
+    "similar": [
+      "5200",
+      "5231",
+      "5251",
+      "5713",
+      "5718"
+    ]
+  },
+  {
+    "code": "5231",
+    "titleEn": "Glass, Paint, and Wallpaper Stores",
+    "descriptionEn": "Merchants classified with this MCC sell glass, paint and painting supplies, wallpaper and hanging supplies, and other wall covering materials.",
+    "includedEn": [
+      "Paint, Painting Supplies",
+      "Supplies – Glass",
+      "Wallpaper, Wallcovering",
+      "Supplies Store"
+    ],
+    "similar": [
+      "5039",
+      "5200",
+      "5251"
+    ]
+  },
+  {
+    "code": "5251",
+    "titleEn": "Hardware Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a full range of hardware supplies for purchase by the general public.",
+    "includedEn": [
+      "Electrical Supplies",
+      "Hand Tools",
+      "Lighting Fixtures Supplies",
+      "Plumbing Supplies",
+      "Power Tools",
+      "Supplies – Hardware",
+      "Stores"
+    ],
+    "similar": [
+      "5200",
+      "5231",
+      "5713",
+      "5718"
+    ]
+  },
+  {
+    "code": "5261",
+    "titleEn": "Nurseries and Lawn and Garden Supply Stores",
+    "descriptionEn": "Merchants classified with this MCC sell nursery stock, Gardening Supplies 0780 – Landscaping and trees, shrubs, other plants, seeds, bulbs, mulches, soil conditioners, fertilizers, pesticides, garden tools, and other garden supplies.",
+    "includedEn": [
+      "Greenhouses",
+      "Lawn, Garden Supply",
+      "Stores",
+      "Plant Shops – Nurseries Supplies",
+      "Horticultural Services"
+    ],
+    "similar": [
+      "5992"
+    ]
+  },
+  {
+    "code": "5262",
+    "titleEn": "Marketplaces",
+    "descriptionEn": "Entities classified with this MCC are online marketplaces that accept Visa and bring together cardholders and retailers selling a range of goods or services that may otherwise qualify for different MCCs, on a single e-commerce website or mobile application, under a single brand used to identify itself to cardholders. Marketplaces with a single line of goods or services must use the MCC that most accurately describes that line of business. These Marketplaces must meet all Visa qualification requirements and be registered with Visa as a Marketplace.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "5271",
+    "titleEn": "Mobile Home Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used mobile homes and related parts, accessories, and equipment.",
+    "includedEn": [
+      "Dealers – Mobile Home",
+      "Parts, Equipment",
+      "Equipment – Mobile Home",
+      "Parts"
+    ],
+    "similar": [
+      "5561",
+      "5592",
+      "5599"
+    ]
+  },
+  {
+    "code": "5300",
+    "titleEn": "Wholesale Clubs",
+    "descriptionEn": "Merchants classified with this MCC sell a full range of goods (often in bulk) and services in warehouse-style stores. These Merchants may or may not have membership requirements.",
+    "includedEn": [
+      "Club Stores – Wholesale",
+      "Clubs",
+      "Discount Goods",
+      "Wholesale Clubs",
+      "Warehouse Retail",
+      "Wholesale Clubs"
+    ],
+    "similar": [
+      "5200",
+      "5310",
+      "5311",
+      "5331",
+      "5399",
+      "5712",
+      "5719"
+    ]
+  },
+  {
+    "code": "5309",
+    "titleEn": "Duty Free Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of gift and import items that are typically exempt from customs fees, such as liquor, perfume, and jewelry.",
+    "includedEn": [],
+    "similar": [
+      "5921",
+      "5944",
+      "5999"
+    ]
+  },
+  {
+    "code": "5310",
+    "titleEn": "Discount Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a general line of merchandise and offer it at a discounted rate.",
+    "includedEn": [],
+    "similar": [
+      "5300",
+      "5311",
+      "5331",
+      "5399",
+      "5931"
+    ]
+  },
+  {
+    "code": "5311",
+    "titleEn": "Department Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a general line of apparel, home furnishings, furniture, electronics, cosmetics, housewares, and major household appliances. These stores have departments that usually have their own separate check-out counters.",
+    "includedEn": [],
+    "similar": [
+      "5300",
+      "5331",
+      "5399",
+      "5931"
+    ]
+  },
+  {
+    "code": "5331",
+    "titleEn": "Variety Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a limited selection of various products in a lower price range. Generally, these Merchants sell the same type of merchandise and operate in the same manner as a discount store, but on a much smaller scale.",
+    "includedEn": [],
+    "similar": [
+      "5310",
+      "5311",
+      "5399",
+      "5931",
+      "5947"
+    ]
+  },
+  {
+    "code": "5399",
+    "titleEn": "Miscellaneous General Merchandise",
+    "descriptionEn": "Merchants classified with this MCC sell a general line of merchandise. Generally, these Merchants sell the same type of merchandise and operate in the same manner as a department store, but on a much smaller scale.",
+    "includedEn": [
+      "General Merchandise",
+      "Miscellaneous"
+    ],
+    "similar": [
+      "5300",
+      "5310",
+      "5311",
+      "5331",
+      "5931"
+    ]
+  },
+  {
+    "code": "5411",
+    "titleEn": "Grocery Stores and Supermarkets",
+    "descriptionEn": "Merchants classified with this MCC sell a complete, full line of food merchandise for home consumption.",
+    "includedEn": [
+      "Most of the food merchandise is perishable, and perishables* must represent at least 45% of",
+      "Food Stores",
+      "Grocery",
+      "Stores Supermarkets"
+    ],
+    "similar": [
+      "5422",
+      "5451",
+      "5499"
+    ]
+  },
+  {
+    "code": "5422",
+    "titleEn": "Freezer and Locker Meat Provisioners",
+    "descriptionEn": "Merchants classified with this MCC sell fresh, frozen, or cured meats, fish, shellfish, and other seafoods. This MCC also includes bulk retail sellers of meat for freezer storage and home freezer plans.",
+    "includedEn": [
+      "Butcher Shops",
+      "Fish, Seafood Markets",
+      "Frozen Meats",
+      "Meat Markets",
+      "Meat Lockers"
+    ],
+    "similar": [
+      "5411",
+      "5499"
+    ]
+  },
+  {
+    "code": "5441",
+    "titleEn": "Candy, Nut, and Confectionery Stores",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of candy, chocolate, nuts, dried fruits, popcorn and other confections.",
+    "includedEn": [
+      "Chocolate Shops",
+      "Confectionery Shops",
+      "Dried Fruit Shops",
+      "Nut Shops",
+      "Popcorn Stands"
+    ],
+    "similar": [
+      "5451",
+      "5462",
+      "5499"
+    ]
+  },
+  {
+    "code": "5451",
+    "titleEn": "Dairy Products Stores",
+    "descriptionEn": "Merchants classified with this MCC sell packaged butter, cheese, ice cream, milk, and other dairy products.",
+    "includedEn": [
+      "Cheese Shops 5499 – Miscellaneous Food Stores",
+      "Convenience Stores and Specialty",
+      "Markets"
+    ],
+    "similar": [
+      "5814"
+    ]
+  },
+  {
+    "code": "5462",
+    "titleEn": "Bakeries",
+    "descriptionEn": "Merchants classified with this MCC sell (and may make) bakery goods.",
+    "includedEn": [
+      "Bagel Shops",
+      "Cake Shops",
+      "Cookie Stores",
+      "Doughnut Shops",
+      "Pastry Shops",
+      "Pie Shops",
+      "Wedding Cakes"
+    ],
+    "similar": [
+      "5499"
+    ]
+  },
+  {
+    "code": "5499",
+    "titleEn": "Miscellaneous Food Stores – Convenience Stores and Specialty Markets",
+    "descriptionEn": "Merchants classified with this MCC sell specialty foods not classified with a more specific MCC.",
+    "includedEn": [
+      "Convenience Stores",
+      "Delicatessens",
+      "Food Stores – Convenience",
+      "Fruit Markets",
+      "Gourmet Food Stores",
+      "Health Food Stores",
+      "Mini Markets",
+      "Poultry Shops",
+      "Produce Markets",
+      "Specialty Food Markets",
+      "Vegetable Markets",
+      "Vitamin Stores",
+      "Meal Preparation Kits"
+    ],
+    "similar": [
+      "5411",
+      "5422",
+      "5441",
+      "5451",
+      "5462",
+      "5541",
+      "5814"
+    ]
+  },
+  {
+    "code": "5511",
+    "titleEn": "Car and Truck Dealers (New and Used) Sales, Service, Repairs, Parts, and Leasing",
+    "descriptionEn": "Merchants classified with this MCC sell and/or lease new and used automobiles, trucks, pickups, and vans and may also conduct repair work and sell replacement parts and accessories.",
+    "includedEn": [
+      "Automobile/Truck Dealers (New/Used) -Sales",
+      "Service, Repairs, Parts",
+      "Leasing",
+      "Car Dealers (New/Used)",
+      "Motor Vehicle Dealers (New/Used)"
+    ],
+    "similar": [
+      "5521",
+      "5532",
+      "5533",
+      "5561",
+      "5571",
+      "5592",
+      "5598",
+      "5599",
+      "7538"
+    ]
+  },
+  {
+    "code": "5521",
+    "titleEn": "Car and Truck Dealers (Used Only) Sales, Service, Repairs, Parts, and Leasing",
+    "descriptionEn": "Merchants classified with this MCC sell and/or lease only used automobiles, trucks, pickups and vans and may also conduct repair work and sell replacement parts and accessories.",
+    "includedEn": [
+      "Antique Automobiles",
+      "Dealers",
+      "Automobiles/Trucks (Used",
+      "Only) Dealers"
+    ],
+    "similar": [
+      "5511",
+      "5532",
+      "5561",
+      "5571",
+      "5592",
+      "5598",
+      "5599",
+      "7538"
+    ]
+  },
+  {
+    "code": "5532",
+    "titleEn": "Automotive Tire Stores",
+    "descriptionEn": "Merchants classified with this MCC sell automotive and truck tires and related parts and may also conduct tire installation and repair services.",
+    "includedEn": [
+      "Car Tires – New Only",
+      "Repairs – Automotive Tire",
+      "Stores",
+      "Services",
+      "Automotive Tire Stores",
+      "Tire Stores"
+    ],
+    "similar": [
+      "5533",
+      "7534",
+      "7538"
+    ]
+  },
+  {
+    "code": "5533",
+    "titleEn": "Automotive Parts and Accessories Stores",
+    "descriptionEn": "Merchants classified with this MCC sell automobile parts, equipment, and accessories, including electric vehicle charging equipment designed for personal use.",
+    "includedEn": [
+      "Automotive Parts and",
+      "Accessories",
+      "Automobile – Parts",
+      "Accessories Stores",
+      "Car Parts, Accessories",
+      "Stores",
+      "Motor Vehicle Supplies",
+      "Parts",
+      "Supplies – Automotive",
+      "Parts"
+    ],
+    "similar": [
+      "5532",
+      "5732"
+    ]
+  },
+  {
+    "code": "5541",
+    "titleEn": "Service Stations (With or without Ancillary Services)",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of engine fuel These Merchants may or may not also have a convenience store, car wash, or automotive repair shop on the premises, but must sell fuel for consumer use. Excluded from this category code are.",
+    "includedEn": [
+      "Automated Fuel Dispensers, MCC 5542",
+      "Filling Stations",
+      "Automotive Gasoline",
+      "Gas Stations (With or",
+      "Without Ancillary Services)",
+      "Gasoline – Service Stations",
+      "Marina Service Stations",
+      "Petrol – Service Stations",
+      "Truck Stops – Gasoline",
+      "Service"
+    ],
+    "similar": [
+      "5542",
+      "7538"
+    ]
+  },
+  {
+    "code": "5542",
+    "titleEn": "Automated Fuel Dispensers",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of engine fuel through the use of an Automated Fuel.",
+    "includedEn": [
+      "Cardholder-Activated Fuel",
+      "Dispensers"
+    ],
+    "similar": [
+      "5541",
+      "7538"
+    ]
+  },
+  {
+    "code": "5551",
+    "titleEn": "Boat Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used motorboats, sailboats, and other watercraft, marine supplies, and outboard motors.",
+    "includedEn": [
+      "Dealers – Boat",
+      "Motorboat Dealers",
+      "Outboard Motor Dealers",
+      "Powerboat Dealers",
+      "Sailboat Dealers"
+    ],
+    "similar": [
+      "4468"
+    ]
+  },
+  {
+    "code": "5552",
+    "titleEn": "Electric Vehicle Charging",
+    "descriptionEn": "Merchants classified with this MCC sell electricity for the purpose of fueling an automobile.",
+    "includedEn": [],
+    "similar": [
+      "5541",
+      "5542",
+      "7523"
+    ]
+  },
+  {
+    "code": "5561",
+    "titleEn": "Camper, Recreational and Utility Trailer Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used campers, recreational and utility trailers, and related parts and accessories.",
+    "includedEn": [
+      "Accessories – Recreational",
+      "Vehicles",
+      "Camper Dealers",
+      "Dealers – Recreational",
+      "Utility Trailers, Camper",
+      "Dealers",
+      "Parts, Recreational",
+      "Vehicles",
+      "RV, Camper Dealers",
+      "Recreational Vehicle",
+      "Dealers, Parts, Accessories",
+      "Trailers – Utility",
+      "Utility Trailers"
+    ],
+    "similar": [
+      "5571",
+      "5592",
+      "5598",
+      "5599"
+    ]
+  },
+  {
+    "code": "5571",
+    "titleEn": "Motorcycle Shops and Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used motorcycles, motor scooters, mopeds and related parts, equipment, clothing, and accessories.",
+    "includedEn": [
+      "Dealers – Motorcycle",
+      "Moped, Motor Scooters",
+      "Moped Dealers",
+      "Motorcycle Parts",
+      "Accessories and Supplies",
+      "Motor Scooter Dealers",
+      "Parts, Accessories"
+    ],
+    "similar": [
+      "5599"
+    ]
+  },
+  {
+    "code": "5592",
+    "titleEn": "Motor Homes Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used motor homes and related parts and accessories.",
+    "includedEn": [
+      "Dealers – Motor Homes 5271 – Mobile Home Dealers"
+    ],
+    "similar": [
+      "5561",
+      "5599"
+    ]
+  },
+  {
+    "code": "5598",
+    "titleEn": "Snowmobile Dealers",
+    "descriptionEn": "Merchants classified with this MCC sell new and used snowmobiles and related parts and accessories.",
+    "includedEn": [
+      "Dealers – Snowmobiles 5561 – Camper, Recreational and",
+      "Utility Trailer Dealers"
+    ],
+    "similar": [
+      "5599"
+    ]
+  },
+  {
+    "code": "5599",
+    "titleEn": "Miscellaneous Automotive, Aircraft, and Farm Equipment Dealers (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC sell new and used aircraft and/or automotive, farm, and recreational vehicles, parts, equipment and supplies not classified with a more specific MCC.",
+    "includedEn": [
+      "Airplane, Aircraft Dealers",
+      "All-Terrain Vehicle Dealers",
+      "Automotive Dealers",
+      "Miscellaneous",
+      "Dealers – Golf Carts",
+      "Plane Dealers"
+    ],
+    "similar": [
+      "5511",
+      "5521",
+      "5551",
+      "5561",
+      "5571",
+      "5592",
+      "5598"
+    ]
+  },
+  {
+    "code": "5611",
+    "titleEn": "Men’s and Boys’ Clothing and Accessories Stores",
+    "descriptionEn": "Merchants classified with this MCC sell men’s and boys’ ready-to-wear clothing and accessories.",
+    "includedEn": [
+      "Accessories – Men’s, Boys’",
+      "Clothing",
+      "Apparel – Men’s, Boys’",
+      "Clothing",
+      "Boys’ Clothing, Accessories",
+      "Accessory Stores",
+      "Hat Shops",
+      "Men’s Necktie Stores",
+      "Tie Shops"
+    ],
+    "similar": [
+      "5651",
+      "5691"
+    ]
+  },
+  {
+    "code": "5621",
+    "titleEn": "Women’s Ready-To-Wear Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a general line of women’s ready-to-wear and special-event clothing.",
+    "includedEn": [
+      "Apparel – Women’s Ready",
+      "To-Wear Stores",
+      "Bridal Shops",
+      "Clothing – Women’s",
+      "Ready-To-Wear Stores",
+      "Coat Stores – Women’s",
+      "Dress Shops",
+      "Maternity Stores",
+      "Outerwear Stores",
+      "Women’s"
+    ],
+    "similar": [
+      "5631",
+      "5651",
+      "5655",
+      "5681",
+      "5691",
+      "5699"
+    ]
+  },
+  {
+    "code": "5631",
+    "titleEn": "Women’s Accessory and Specialty Shops",
+    "descriptionEn": "Merchants classified with this MCC sell women’s clothing accessories, including handbags, hats, costume jewelry, scarves, belts, hair accessories, lingerie, and hosiery.",
+    "includedEn": [
+      "Accessories – Women’s",
+      "Accessory, Specialty Shops",
+      "Apparel – Women’s",
+      "Accessory, Specialty Shops",
+      "Clothing – Women’s",
+      "Accessory, Specialty Shops",
+      "Costume Jewelry Shops",
+      "Handbag Stores",
+      "Hat Shops – Women’s",
+      "Lingerie Stores"
+    ],
+    "similar": [
+      "5621",
+      "5699"
+    ]
+  },
+  {
+    "code": "5641",
+    "titleEn": "Children’s and Infants’ Wear Stores",
+    "descriptionEn": "Merchants classified with this MCC sell children’s and infants’ clothing and accessories.",
+    "includedEn": [
+      "Apparel – Children’s",
+      "Infants’ Wear",
+      "Baby and Infants Clothing",
+      "Children’s",
+      "Infants’ Wear Stores"
+    ],
+    "similar": [
+      "5651",
+      "5699"
+    ]
+  },
+  {
+    "code": "5651",
+    "titleEn": "Family Clothing Stores",
+    "descriptionEn": "Merchants classified with this MCC sell general lines of men’s, women’s, and children’s clothing and accessories without specializing in sales for a particular gender or age group.",
+    "includedEn": [
+      "Apparel – Family Clothing",
+      "Stores",
+      "Clothing – Family Clothing",
+      "Stores",
+      "Jeans, Denim Clothing",
+      "Stores"
+    ],
+    "similar": [
+      "5611",
+      "5621",
+      "5631",
+      "5641",
+      "5655",
+      "5661",
+      "5681",
+      "5691",
+      "5699"
+    ]
+  },
+  {
+    "code": "5655",
+    "titleEn": "Sports and Riding Apparel Stores",
+    "descriptionEn": "Merchants classified with this MCC sell athletic, sports, and riding apparel and active wear.",
+    "includedEn": [
+      "Active Wear – Sports",
+      "Apparel",
+      "Apparel – Sports, Riding",
+      "Apparel Stores",
+      "Athletic Apparel Stores",
+      "Clothing",
+      "Equestrian Apparel"
+    ],
+    "similar": [
+      "5661",
+      "5699",
+      "5941"
+    ]
+  },
+  {
+    "code": "5661",
+    "titleEn": "Shoe Stores",
+    "descriptionEn": "Merchants classified with this MCC sell men’s, women’s, and/or children’s footwear (including athletic footwear) and accessories.",
+    "includedEn": [
+      "Athletic Shoe Stores",
+      "Boot Shops",
+      "Footwear Stores",
+      "Western Boot Shops"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5681",
+    "titleEn": "Furriers and Fur Shops",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of items made of animal fur, including coats, jackets, hats, and gloves.",
+    "includedEn": [
+      "Apparel – Furriers, Fur",
+      "Shops",
+      "Clothing – Furriers, Fur",
+      "Shops",
+      "Coat Stores – Furriers"
+    ],
+    "similar": [
+      "5621",
+      "5631",
+      "5691",
+      "5699"
+    ]
+  },
+  {
+    "code": "5691",
+    "titleEn": "Men’s and Women’s Clothing Stores",
+    "descriptionEn": "Merchants classified with this MCC sell men’s and women’s clothing and accessories but not infants’ and children’s clothing.",
+    "includedEn": [
+      "Apparel – Men’s Clothing",
+      "Stores",
+      "Clothing – Women’s",
+      "Clothing Stores"
+    ],
+    "similar": [
+      "5611",
+      "5621",
+      "5631",
+      "5641",
+      "5651",
+      "5699"
+    ]
+  },
+  {
+    "code": "5697",
+    "titleEn": "Tailors, Seamstresses, Mending, and Alterations",
+    "descriptionEn": "Merchants classified with this MCC create and sell custom-made clothing and perform alterations, mending, and garment repair or restoration.",
+    "includedEn": [
+      "Alterations",
+      "Apparel – Tailors",
+      "Seamstresses, Mending"
+    ],
+    "similar": [
+      "5949"
+    ]
+  },
+  {
+    "code": "5698",
+    "titleEn": "Wig and Toupee Stores",
+    "descriptionEn": "Merchants classified with this MCC sell permanently attached or temporary toupees, wigs, hair pieces, and hair extensions or provide hair weaving services.",
+    "includedEn": [
+      "Hair Pieces, Extensions",
+      "Hair Replacement – Non",
+      "Surgical",
+      "Toupee Stores"
+    ],
+    "similar": [
+      "5999",
+      "7230",
+      "8099"
+    ]
+  },
+  {
+    "code": "5699",
+    "titleEn": "Miscellaneous Apparel and Accessory Shops",
+    "descriptionEn": "Merchants classified with this MCC sell specialized lines of apparel (excluding fur) and accessories that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Clothing – Formal Wear",
+      "Clothing – Miscellaneous",
+      "Apparel, Accessory Shops",
+      "Swim Wear Shop T-Shirt",
+      "Stores"
+    ],
+    "similar": [
+      "5611",
+      "5621",
+      "5631",
+      "5641",
+      "5651",
+      "5661",
+      "5681",
+      "5691",
+      "5697"
+    ]
+  },
+  {
+    "code": "5712",
+    "titleEn": "Furniture, Home Furnishings, and Equipment Stores, Except Appliances",
+    "descriptionEn": "Merchants classified with this MCC sell home furnishings and a wide variety of finished furniture products and accessories for the home.",
+    "includedEn": [
+      "Bedding, Mattress Stores",
+      "Custom Made Furniture",
+      "Equipment Stores",
+      "Home Furnishings"
+    ],
+    "similar": [
+      "5713",
+      "5714",
+      "5719",
+      "5722",
+      "5732",
+      "7641"
+    ]
+  },
+  {
+    "code": "5713",
+    "titleEn": "Floor Covering Stores",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of floor coverings such as carpet, area rugs, floor tile, linoleum, stone, wood, and brick, and may or may not also perform installation services.",
+    "includedEn": [
+      "Carpet, Rug Stores",
+      "Linoleum Stores",
+      "Rug Stores",
+      "Tile Stores"
+    ],
+    "similar": [
+      "1799",
+      "5712",
+      "5719"
+    ]
+  },
+  {
+    "code": "5714",
+    "titleEn": "Drapery, Window Covering, and Upholstery Stores",
+    "descriptionEn": "Merchants classified with this MCC sell draperies, curtains, venetian blinds, window shades, and upholstery materials.",
+    "includedEn": [
+      "Curtain Stores",
+      "Upholstery Materials Stores",
+      "Window-covering Stores"
+    ],
+    "similar": [
+      "5712",
+      "5719",
+      "7641"
+    ]
+  },
+  {
+    "code": "5718",
+    "titleEn": "Fireplace, Fireplace Screens and Accessories Stores",
+    "descriptionEn": "Merchants classified with this MCC sell pre-made fireplaces, wood stoves, and fireplace parts and accessories.",
+    "includedEn": [
+      "Hearth, Accessories Stores",
+      "Heating – Fireplace",
+      "Accessories Stores",
+      "Stoves – Fireplaces",
+      "Accessories Stores",
+      "Woodburning Stoves",
+      "Accessories Stores"
+    ],
+    "similar": [
+      "1740",
+      "5251",
+      "5719"
+    ]
+  },
+  {
+    "code": "5719",
+    "titleEn": "Miscellaneous Home Furnishing Specialty Stores",
+    "descriptionEn": "Merchants classified with this MCC sell miscellaneous home furnishings such as housewares, cutlery, bedding and linen, lamps and shades, mirrors and pictures, pottery, and ceramic items.",
+    "includedEn": [
+      "Accessories – Home",
+      "Furnishings",
+      "Bed, Bath Shops",
+      "Cookware Stores",
+      "Cutlery – Kitchen",
+      "Home Furnishing",
+      "Specialty Stores",
+      "Miscellaneous",
+      "Housewares Stores",
+      "Kitchenware Stores",
+      "Lamp, Lighting Shops",
+      "Linen Shops",
+      "Pottery Stores"
+    ],
+    "similar": [
+      "5712",
+      "5713",
+      "5714",
+      "5718",
+      "5722",
+      "5932",
+      "5950"
+    ]
+  },
+  {
+    "code": "5722",
+    "titleEn": "Household Appliance Stores",
+    "descriptionEn": "Merchants classified with this MCC sell household appliances such as gas or electric ranges and stoves, ovens, refrigerators, dishwashers, water heaters, washers and dryers, garbage disposals, sewing machines, self-contained air conditioning units, and vacuum cleaners, and may or may not also conduct repair work.",
+    "includedEn": [
+      "Sewing Machine Stores",
+      "Vacuum Cleaner Stores"
+    ],
+    "similar": [
+      "5712",
+      "5719",
+      "7623",
+      "7629",
+      "7699"
+    ]
+  },
+  {
+    "code": "5723",
+    "titleEn": "Guns and Ammunition Shops",
+    "descriptionEn": "Merchants classified with this MCC sell guns and/or ammunition. Merchants whose primary business involves the sale of guns and/or ammunition will use this MCC.",
+    "includedEn": [
+      "This MCC should only be used in those jurisdictions where it is legally required"
+    ],
+    "similar": [
+      "5941",
+      "5999"
+    ]
+  },
+  {
+    "code": "5732",
+    "titleEn": "Electronics Stores",
+    "descriptionEn": "Merchants classified with this MCC sell a wide variety of electronic goods such as televisions, radios, cameras, computers, tablets, and stereo components and may also sell electronic parts and or accessories for the repair, construction or assembly of electronic equipment and/or also conduct repair work.",
+    "includedEn": [
+      "Camcorders (And Other",
+      "Electronics)",
+      "Computer Hardware (And Other Electronics)",
+      "Electronic Parts",
+      "Electronic Repair Shops",
+      "High Fidelity Equipment",
+      "Personal Computers",
+      "Radios",
+      "Stereos, Receivers, CD",
+      "Equipment",
+      "Television Stores",
+      "VCR’s",
+      "Video Cameras (And Other",
+      "Electronics)"
+    ],
+    "similar": [
+      "5722",
+      "5946",
+      "7622",
+      "7629",
+      "7699",
+      "7841"
+    ]
+  },
+  {
+    "code": "5733",
+    "titleEn": "Music Stores – Musical Instruments, Pianos, and Sheet Music",
+    "descriptionEn": "Merchants classified with this MCC sell musical instruments, sheet music, keyboards, instruction books, pianos, guitars and related supplies and equipment and may also offer music instruction.",
+    "includedEn": [
+      "Guitar Stores",
+      "Musical Instruments",
+      "Pianos"
+    ],
+    "similar": [
+      "5732",
+      "5735",
+      "8299"
+    ]
+  },
+  {
+    "code": "5734",
+    "titleEn": "Computer Software Stores",
+    "descriptionEn": "Merchants classified with this MCC sell computer software programs for business and personal use and.",
+    "includedEn": [],
+    "similar": [
+      "5732",
+      "7372",
+      "7379"
+    ]
+  },
+  {
+    "code": "5735",
+    "titleEn": "Record Stores",
+    "descriptionEn": "Merchants classified with this MCC sell records, compact discs (CDs), and cassettes, and may also rent video tapes.",
+    "includedEn": [
+      "CD, Cassette, Record",
+      "Stores",
+      "Compact Disc",
+      "Music Stores – Prerecorded",
+      "Records, CDs, Cassettes",
+      "Used Record/CD Stores"
+    ],
+    "similar": [
+      "5815",
+      "7841"
+    ]
+  },
+  {
+    "code": "5811",
+    "titleEn": "Caterers",
+    "descriptionEn": "Merchants classified with this MCC contract with consumers to prepare and deliver (typically to a specified location) food and drinks for immediate consumption and may also provide clean-up services, tables, serving equipment, decorations, and personnel for on-site serving and cleanup.",
+    "includedEn": [
+      "Food Preparation",
+      "Catering"
+    ],
+    "similar": [
+      "5812"
+    ]
+  },
+  {
+    "code": "5812",
+    "titleEn": "Eating Places and Restaurants",
+    "descriptionEn": "Merchants classified with this MCC prepare food and drinks for immediate consumption, typically on the Merchant’s premises. These Merchants typically provide table service and may include alcoholic beverages on the menu. This MCC includes food delivery for Merchants qualifying for this MCC.",
+    "includedEn": [
+      "Cafes, Restaurants",
+      "Cafeterias",
+      "Diners – Eating",
+      "Establishments",
+      "Soda Fountains"
+    ],
+    "similar": [
+      "5462",
+      "5499",
+      "5813",
+      "5814"
+    ]
+  },
+  {
+    "code": "5813",
+    "titleEn": "Drinking Places (Alcoholic Beverages) – Bars, Taverns, Nightclubs, Cocktail Lounges, and Discotheques",
+    "descriptionEn": "Merchants classified with this MCC sell alcoholic beverages such as wine, beer, mixed drinks, and other liquors and beverages for consumption on the premises.",
+    "includedEn": [
+      "Drinking Establishments",
+      "Beer Parlors",
+      "Breweries, Bars",
+      "Comedy Clubs",
+      "Lounges",
+      "Micro-breweries",
+      "Pubs",
+      "Saloons",
+      "Tap Rooms",
+      "Wine Bars"
+    ],
+    "similar": [
+      "5812"
+    ]
+  },
+  {
+    "code": "5814",
+    "titleEn": "Fast Food Restaurants",
+    "descriptionEn": "Merchants classified with this MCC sell prepared food and beverages for consumption either on the.",
+    "includedEn": [
+      "Quick Service Restaurants",
+      "Vending Machines – Food"
+    ],
+    "similar": [
+      "5499",
+      "5812"
+    ]
+  },
+  {
+    "code": "5815",
+    "titleEn": "Digital Goods Media – Books, Movies, Digital artwork/images, Music",
+    "descriptionEn": "Merchants classified with this MCC sell books, movies, digital artwork/images or music that is delivered in electronic format.",
+    "includedEn": [
+      "Merchants offering online streaming of digital media content on a subscription basis should use MCC 4899"
+    ],
+    "similar": [
+      "4899",
+      "5192",
+      "5735",
+      "5818",
+      "7832"
+    ]
+  },
+  {
+    "code": "5816",
+    "titleEn": "Digital Goods – Games",
+    "descriptionEn": "Merchants classified with this MCC sell games (including games of skill but excluding games of chance) that are delivered in electronic format, including in-app purchases in games.",
+    "includedEn": [
+      "Fantasy Sports (in jurisdictions where they not considered gambling)"
+    ],
+    "similar": [
+      "7800",
+      "7801",
+      "7802",
+      "7993",
+      "7994",
+      "7995"
+    ]
+  },
+  {
+    "code": "5817",
+    "titleEn": "Digital Goods – Applications (Excludes Games)",
+    "descriptionEn": "Merchants classified with this MCC sell applications or software (excludes games) that are delivered in electronic format.",
+    "includedEn": [],
+    "similar": [
+      "5045",
+      "5734",
+      "5816"
+    ]
+  },
+  {
+    "code": "5818",
+    "titleEn": "Digital Goods – Large Digital Goods Merchant",
+    "descriptionEn": "All regions (excluding Europe): Merchants classified with this MCC are large-volume Merchants that sell digital goods (goods delivered via electronic format) with a minimum threshold of 25 million transactions annually. Europe region only: Merchants classified with this MCC are digital goods Merchants that are categorized as PCI DSS Level 1, as they process over 6 million Visa transactions annually.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "5912",
+    "titleEn": "Drug Stores and Pharmacies",
+    "descriptionEn": "Merchants classified with this MCC sell prescription and proprietary drugs.",
+    "includedEn": [
+      "Medicine – Prescription",
+      "Pharmacies",
+      "Pharmacies",
+      "Prescription Medication",
+      "Pet Pharmacies"
+    ],
+    "similar": [
+      "5122",
+      "5499"
+    ]
+  },
+  {
+    "code": "5921",
+    "titleEn": "Package Stores – Beer, Wine, and Liquor",
+    "descriptionEn": "Merchants classified with this MCC sell packaged alcoholic beverages such as beer, wine, and liquor for consumption off the premises and may also sell a limited variety of food and snack items, newspapers and magazines, and a limited selection of toiletries and over-the-counter medicines.",
+    "includedEn": [
+      "Alcohol – Liquor Stores 5499 – Miscellaneous Food Stores",
+      "Convenience Stores and Specialty",
+      "Markets"
+    ],
+    "similar": [
+      "5813"
+    ]
+  },
+  {
+    "code": "5931",
+    "titleEn": "Used Merchandise and Secondhand Stores",
+    "descriptionEn": "Merchants classified with this MCC sell used merchandise or secondhand goods such as accessories, shoes and clothing, furniture, books, bicycles, musical instruments, sewing machines, electronic equipment, appliances, and other household items. Typically, the items for sale have been donated or are on consignment.",
+    "includedEn": [
+      "Consignment Shops",
+      "Secondhand Stores",
+      "Thrift Stores",
+      "Vintage Clothing"
+    ],
+    "similar": [
+      "5932",
+      "5933"
+    ]
+  },
+  {
+    "code": "5932",
+    "titleEn": "Antique Shops – Sales, Repairs, and Restoration Services",
+    "descriptionEn": "Merchants classified with this MCC sell antiques such as furniture, jewelry, cameras and photographic equipment, tools, artwork, books, appliances and other household items. This MCC does not include retail sellers of antique automobiles.",
+    "includedEn": [
+      "Services – Antique",
+      "Restoration"
+    ],
+    "similar": [
+      "5521",
+      "7641"
+    ]
+  },
+  {
+    "code": "5933",
+    "titleEn": "Pawn Shops",
+    "descriptionEn": "Merchants classified with this MCC lend money in exchange for personal property left with the Merchants as security.",
+    "includedEn": [],
+    "similar": [
+      "5931",
+      "5932"
+    ]
+  },
+  {
+    "code": "5935",
+    "titleEn": "Wrecking and Salvage Yards",
+    "descriptionEn": "Merchants classified with this MCC provide wrecking and salvaging services.",
+    "includedEn": [
+      "Junk Yards 7549 – Towing Services"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5937",
+    "titleEn": "Antique Reproductions",
+    "descriptionEn": "Merchants classified with this MCC sell antique reproductions or facsimiles of clothing, furniture, rugs, paintings and artwork, mirrors, glassware, jewelry, and other household and personal items and may also provide antique photograph reproduction and restoration services.",
+    "includedEn": [],
+    "similar": [
+      "5932"
+    ]
+  },
+  {
+    "code": "5940",
+    "titleEn": "Bicycle Shops – Sales and Service",
+    "descriptionEn": "Merchants classified with this MCC sell bicycles, bicycle parts, and accessories (including a limited variety of related sporting apparel) and may also conduct repair work.",
+    "includedEn": [
+      "Mountain Bikes",
+      "Service – Bicycles"
+    ],
+    "similar": [
+      "5941",
+      "7699",
+      "7999"
+    ]
+  },
+  {
+    "code": "5941",
+    "titleEn": "Sporting Goods Stores",
+    "descriptionEn": "Merchants classified with this MCC sell sporting goods, sports equipment, camping supplies, and related parts and accessories, and may also rent or repair equipment.",
+    "includedEn": [
+      "Backpacking Equipment",
+      "Bait, Tackle Stores",
+      "Billiard Tables – Sales",
+      "Camping Equipment",
+      "Cutlery – Sporting Knives",
+      "Exercise Equipment",
+      "Fishing – Equipment, Bait",
+      "Tackle",
+      "Golf Equipment",
+      "Hiking Equipment",
+      "Hunting Equipment",
+      "Supplies including Firearms and Ammunition",
+      "In-Line Skates Shops",
+      "Pool Tables – Sales",
+      "Rollerblade Shops",
+      "Scuba, Skin Diving",
+      "Equipment"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5942",
+    "titleEn": "Book Stores",
+    "descriptionEn": "Merchants classified with this MCC sell new and/or used books, journals, magazines, textbooks, maps and atlases, audio books, and calendars.",
+    "includedEn": [
+      "Paperbacks – Book Stores",
+      "Textbooks"
+    ],
+    "similar": [
+      "5943"
+    ]
+  },
+  {
+    "code": "5943",
+    "titleEn": "Stationery Stores, Office and School Supply Stores",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of paper goods used in offices and schools, office and school supplies and small office equipment and furniture.",
+    "includedEn": [
+      "Office Supply Stores",
+      "School Supply Store"
+    ],
+    "similar": [
+      "5732",
+      "5734",
+      "5978",
+      "7394"
+    ]
+  },
+  {
+    "code": "5944",
+    "titleEn": "Jewelry Stores, Watches, Clocks, and Silverware Stores",
+    "descriptionEn": "Merchants classified with this MCC sell fine jewelry, watches, clocks, and sterling silver and silver-plated flatware and accessories, and may also repair fine jewelry.",
+    "includedEn": [
+      "Clock Shop",
+      "Diamond Stores",
+      "Gems, Precious Metals",
+      "Jewelry",
+      "Jewelry – Fine",
+      "Silversmiths",
+      "Silverware Stores",
+      "Watch Shops"
+    ],
+    "similar": [
+      "5631",
+      "5719",
+      "5932",
+      "5933",
+      "5947",
+      "5950",
+      "5972",
+      "7699"
+    ]
+  },
+  {
+    "code": "5945",
+    "titleEn": "Hobby, Toy, and Game Shops",
+    "descriptionEn": "Merchants classified with this MCC sell toys and games and may also sell a limited selection of do-it-yourself crafts or hobby kits.",
+    "includedEn": [
+      "Games Stores",
+      "Hobby Shops",
+      "Toy Stores",
+      "Toy, Game Shops"
+    ],
+    "similar": [
+      "5970"
+    ]
+  },
+  {
+    "code": "5946",
+    "titleEn": "Camera and Photographic Supply Stores",
+    "descriptionEn": "Merchants classified with this MCC sell cameras, films, video equipment, printers, and other photographic equipment and supplies, and may provide photo/video processing services.",
+    "includedEn": [
+      "Camcorders",
+      "Photographic Equipment",
+      "Supply Stores",
+      "Photography Supply Stores",
+      "Video Cameras",
+      "Photographic Equipment"
+    ],
+    "similar": [
+      "5732",
+      "7395"
+    ]
+  },
+  {
+    "code": "5947",
+    "titleEn": "Gift, Card, Novelty and Souvenir Shops",
+    "descriptionEn": "Merchants classified with this MCC sell gifts and novelty items, greeting cards, balloons, souvenirs, holiday decorations, stationery, wrapping paper and bows, photo albums, and a limited selection of office supplies.",
+    "includedEn": [
+      "Memorabilia, Souvenir",
+      "Shops",
+      "Novelty Shops"
+    ],
+    "similar": [
+      "5943"
+    ]
+  },
+  {
+    "code": "5948",
+    "titleEn": "Luggage and Leather Goods Stores",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of luggage, trunks, briefcases, leather backpacks, wallets, purses, gloves, and other leather goods, and may also sell a limited selection of leather apparel.",
+    "includedEn": [],
+    "similar": [
+      "5999"
+    ]
+  },
+  {
+    "code": "5949",
+    "titleEn": "Sewing, Needlework, Fabric and Piece Goods Stores",
+    "descriptionEn": "Merchants classified with this MCC are retail sellers of fabric, patterns, yarn and other needlework/sewing supplies, and may offer sewing classes or instruction.",
+    "includedEn": [
+      "Fabric Stores",
+      "Knitting Shops",
+      "Needlework Shops",
+      "Supplies – Sewing, Fabric",
+      "Notions, Needlework, Piece",
+      "Goods",
+      "Yarn Shops"
+    ],
+    "similar": [
+      "5970",
+      "8299"
+    ]
+  },
+  {
+    "code": "5950",
+    "titleEn": "Glassware/Crystal Stores",
+    "descriptionEn": "Merchants classified with this MCC sell glassware, china and crystal tableware, and glass, china or crystal gift items.",
+    "includedEn": [
+      "China, Crystal Stores",
+      "Crystal Stores",
+      "Cut Glass"
+    ],
+    "similar": [
+      "5719"
+    ]
+  },
+  {
+    "code": "5960",
+    "titleEn": "Direct Marketing – Insurance Services",
+    "descriptionEn": "Merchants classified with this MCC sell insurance via direct mail, billing statement stuffers, and magazine or television ads, all of which include either a toll-free telephone number or an address to which prospective customers may respond.",
+    "includedEn": [
+      "Automobile Insurance",
+      "Sales (Direct Marketing)",
+      "Insurance Services – Direct",
+      "Marketing",
+      "Services – Insurance",
+      "Direct Marketing"
+    ],
+    "similar": [
+      "6300"
+    ]
+  },
+  {
+    "code": "5962",
+    "titleEn": "Direct Marketing – Travel-Related Arrangement Services",
+    "descriptionEn": "Merchants classified with this MCC sell travel-related services (including discount travel clubs or.",
+    "includedEn": [
+      "Services – Direct Marketing",
+      "Travel-Related"
+    ],
+    "similar": [
+      "4722",
+      "4789"
+    ]
+  },
+  {
+    "code": "5963",
+    "titleEn": "Door-To-Door Sales",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of products by means of house-to-house visits.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "5964",
+    "titleEn": "Direct Marketing – Catalog Merchant",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of goods via catalogs and offer no means by which customers may purchase products in a face-to-face manner.",
+    "includedEn": [],
+    "similar": [
+      "5965"
+    ]
+  },
+  {
+    "code": "5965",
+    "titleEn": "Direct Marketing – Combination Catalog and Retail Merchant",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of goods via catalog and one or more retail outlets. MCC 5965 is used for goods sold via catalog, while the MCC relevant to what is sold in the retail outlets is used for goods sold in the retail outlets.",
+    "includedEn": [],
+    "similar": [
+      "5964"
+    ]
+  },
+  {
+    "code": "5966",
+    "titleEn": "Direct Marketing – Outbound Telemarketing Merchant",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of products using outbound telemarketing methods, where the Merchant initiates contact with prospective buyers via telephone or mailing (other than a catalog) that instructs the cardholder to contact the Merchant. This MCC excludes charitable organizations that conduct outbound telemarketing.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "5967",
+    "titleEn": "Adult Content and Services",
+    "descriptionEn": "Merchants classified with this MCC sell adult content and services that customers access via telephone or fax or over the internet.",
+    "includedEn": [
+      "Adult Content and services including, but not limited to, website subscriptions, video streaming and audio-text",
+      "Digital Adult Content",
+      "Merchants"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5968",
+    "titleEn": "Direct Marketing – Continuity/Subscription Merchant",
+    "descriptionEn": "Merchants classified with this MCC sell subscription products for delivery (such as book clubs, collectibles, magazines/newspapers cosmetics, food, clothing, “nutraceuticals”) via “direct” mail, email. apps, or salespeople. Merchants not participating in direct marketing activities that happen to offer recurring purchase transactions should use the MCC that best describes their business instead. For example, Merchants providing the ongoing delivery of television/radio/streaming content on a subscription basis must use MCC 4899 Qualified Merchants that “directly” sell subscriptions for digital goods or content may use MCC 5815, 5816, 5817, or 5818.",
+    "includedEn": [
+      "Magazine Subscription (Direct Mail Only)",
+      "Direct Mail Merchants"
+    ],
+    "similar": [
+      "4900",
+      "5499",
+      "5621",
+      "5969",
+      "5977",
+      "6300",
+      "7997"
+    ]
+  },
+  {
+    "code": "5969",
+    "titleEn": "Direct Marketing – Other Direct Marketers (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC sell products or services through a variety of direct response methods that include an order form or an address and/or telephone number the customer may use to place an order by mail, telephone, or fax and that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Classified Ads",
+      "Newspaper (Via Direct",
+      "Marketing)",
+      "Ticket Agencies – Direct",
+      "Marketing"
+    ],
+    "similar": [
+      "7922"
+    ]
+  },
+  {
+    "code": "5970",
+    "titleEn": "Artists’ Supply and Craft Shops",
+    "descriptionEn": "Merchants classified with this MCC sell art and craft materials, equipment and supplies used to create other items.",
+    "includedEn": [
+      "Supplies – Art, Crafts 5945 – Hobby, Toy, and Game Shops"
+    ],
+    "similar": [
+      "5949"
+    ]
+  },
+  {
+    "code": "5971",
+    "titleEn": "Art Dealers and Galleries",
+    "descriptionEn": "Merchants classified with this MCC sell artwork such as paintings, photographs, or sculpture.",
+    "includedEn": [],
+    "similar": [
+      "5970",
+      "7333"
+    ]
+  },
+  {
+    "code": "5972",
+    "titleEn": "Stamp and Coin Stores",
+    "descriptionEn": "Merchants classified with this MCC sell postage stamps and coins, and related accessories for the purpose of stamp collecting, coin collecting or investment.",
+    "includedEn": [
+      "Numismatic Supplies",
+      "Philatelic Supplies",
+      "Stamp Collecting"
+    ],
+    "similar": [
+      "7399",
+      "9402"
+    ]
+  },
+  {
+    "code": "5973",
+    "titleEn": "Religious Goods Stores",
+    "descriptionEn": "Merchants classified with this MCC sell religious goods such as figurines, cards, devotion supplies, pictures, books, and decorative items.",
+    "includedEn": [],
+    "similar": [
+      "5942"
+    ]
+  },
+  {
+    "code": "5975",
+    "titleEn": "Hearing Aids – Sales, Service, and Supply",
+    "descriptionEn": "Merchants classified with this MCC sell hearing aids and related supplies and may also conduct repair work.",
+    "includedEn": [
+      "Repairs – Hearing Aids",
+      "Sales, Service, Supply",
+      "Stores",
+      "Service – Hearing Aids",
+      "Supplies"
+    ],
+    "similar": [
+      "7699"
+    ]
+  },
+  {
+    "code": "5976",
+    "titleEn": "Orthopedic Goods – Prosthetic Devices",
+    "descriptionEn": "Merchants classified with this MCC sell a variety of prosthetic devices and orthopedic goods and accessories and may also conduct repair work.",
+    "includedEn": [
+      "Orthotics, Prosthetic",
+      "Devices"
+    ],
+    "similar": [
+      "7699"
+    ]
+  },
+  {
+    "code": "5977",
+    "titleEn": "Cosmetic Stores",
+    "descriptionEn": "Merchants classified with this MCC sell cosmetics.",
+    "includedEn": [
+      "Make-Up Stores 5999 – Miscellaneous and Specialty",
+      "Retail Stores"
+    ],
+    "similar": [
+      "7230"
+    ]
+  },
+  {
+    "code": "5978",
+    "titleEn": "Typewriter Stores – Sales, Rentals, and Service",
+    "descriptionEn": "Merchants classified with this MCC sell, rent, or lease typewriters may also sell a limited selection of office supplies and equipment and may also conduct repair work.",
+    "includedEn": [],
+    "similar": [
+      "5943",
+      "5999",
+      "7699"
+    ]
+  },
+  {
+    "code": "5983",
+    "titleEn": "Fuel Dealers – Fuel Oil, Wood, Coal, and Liquefied Petroleum",
+    "descriptionEn": "Merchants classified with this MCC sell fuel oil, wood, coal, liquefied petroleum, aviation fuel, heating oil or gas propane for consumer use, and may also sell fuel for consumer use in automobiles.",
+    "includedEn": [
+      "Aviation Fuel",
+      "Coal Dealers",
+      "Dealers – Fuel Dealers",
+      "Fuel Oil, Wood, Coal",
+      "Liquefied Petroleum",
+      "Home Heating Fuel Dealers"
+    ],
+    "similar": [
+      "5541",
+      "5542"
+    ]
+  },
+  {
+    "code": "5992",
+    "titleEn": "Florists",
+    "descriptionEn": "Merchants classified with this MCC sell cut flowers, flower arrangements, and potted plants, and may also sell novelty items.",
+    "includedEn": [
+      "Balloon Bouquets",
+      "Flower Shops",
+      "Plant Store"
+    ],
+    "similar": [
+      "5261"
+    ]
+  },
+  {
+    "code": "5993",
+    "titleEn": "Cigar Stores and Stands",
+    "descriptionEn": "Merchants classified with this MCC sell tobacco, cigarettes, electronic cigarettes, cigars, pipes, and smokers’ supplies.",
+    "includedEn": [
+      "Pipe Shops",
+      "Smoke Shops",
+      "Tobacco Shops"
+    ],
+    "similar": [
+      "5999"
+    ]
+  },
+  {
+    "code": "5994",
+    "titleEn": "News Dealers and Newsstands",
+    "descriptionEn": "Merchants classified with this MCC sell newspapers, magazines, journals, and other periodicals.",
+    "includedEn": [
+      "Dealers – Newspapers",
+      "Magazines (Newsstands)",
+      "Newspapers",
+      "Periodicals (Newsstands)"
+    ],
+    "similar": [
+      "5942",
+      "5999"
+    ]
+  },
+  {
+    "code": "5995",
+    "titleEn": "Pet Shops, Pet Foods and Supplies Stores",
+    "descriptionEn": "Merchants classified with this MCC sell domestic pets, pet food, and pet supplies.",
+    "includedEn": [
+      "Animals 5999 – Miscellaneous and Specialty",
+      "Retail Stores"
+    ],
+    "similar": []
+  },
+  {
+    "code": "5996",
+    "titleEn": "Swimming Pools – Sales and Service",
+    "descriptionEn": "Merchants classified with this MCC sell home swimming pools, spas, hot tubs, whirlpool baths, and supplies, and may also provide installation and/or repair services.",
+    "includedEn": [
+      "Hot Tubs, Spas – Sales",
+      "Service, Supplies",
+      "Services – Hot Tubs, Spas",
+      "Sales, Service, Supplies",
+      "Services – Swimming",
+      "Pools, Sales, Service",
+      "Supplies",
+      "Supplies – Hot Tubs, Spas",
+      "Supplies – Swimming Pools"
+    ],
+    "similar": [
+      "1799",
+      "7699"
+    ]
+  },
+  {
+    "code": "5997",
+    "titleEn": "Electric Razor Stores – Sales and Service",
+    "descriptionEn": "Merchants classified with this MCC sell electric razors and may also provide repair services.",
+    "includedEn": [],
+    "similar": [
+      "5999",
+      "7699"
+    ]
+  },
+  {
+    "code": "5998",
+    "titleEn": "Tent and Awning Shops",
+    "descriptionEn": "Merchants classified with this MCC sell tents and awnings for home or business use and may also provide repair services.",
+    "includedEn": [
+      "Awnings – Residential",
+      "Commercial"
+    ],
+    "similar": [
+      "5941",
+      "5999",
+      "7699"
+    ]
+  },
+  {
+    "code": "5999",
+    "titleEn": "Miscellaneous and Specialty Retail Shops",
+    "descriptionEn": "Merchants classified with this MCC sell unique or specialized products that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Atlas, Map Stores",
+      "Beauty Supply Stores",
+      "Bottled and Distilled Water",
+      "Dealers",
+      "Collectibles, Memorabilia",
+      "Stores",
+      "Sports and Hobby",
+      "Dealers – Ice",
+      "Firearms, Ammunition",
+      "Stores",
+      "Fireworks Stores",
+      "Frame Shops",
+      "Photograph, Poster",
+      "Gravestones, Monuments",
+      "Sales, Installation",
+      "Headstones, Monuments",
+      "Ice Dealers",
+      "Magic Shops",
+      "Map, Atlas Stores",
+      "Monuments",
+      "Party Supply Stores",
+      "Picture Frames, Framing",
+      "Shops",
+      "Specialty Retail Stores",
+      "Miscellaneous",
+      "Sunglasses Stores",
+      "Tombstones – Sales",
+      "Installation",
+      "Trophy Sales"
+    ],
+    "similar": [
+      "4468",
+      "5099",
+      "5499",
+      "5719",
+      "5732",
+      "5940",
+      "5941",
+      "5948",
+      "5993",
+      "5995",
+      "5998",
+      "7230",
+      "7395",
+      "7699",
+      "7841",
+      "7999"
+    ]
+  },
+  {
+    "code": "6010",
+    "titleEn": "Financial Institutions – Manual Cash Disbursements",
+    "descriptionEn": "This MCC must be used for face-to-face cash disbursements.",
+    "includedEn": [
+      "Banks – Financial",
+      "Institutions – Manual",
+      "Cash Disbursements",
+      "Cash – Banks, Credit",
+      "Unions, Financial"
+    ],
+    "similar": [
+      "6011",
+      "6012",
+      "6051"
+    ]
+  },
+  {
+    "code": "6011",
+    "titleEn": "Financial Institutions – Automated Cash Disbursements",
+    "descriptionEn": "This MCC must be used only for cash disbursements where cardholders receive cash through Automated Teller Machines (ATMs) owned, leased, controlled, or sponsored by banks, savings and loans, thrifts, and credit unions.",
+    "includedEn": [
+      "ATM Cash Disbursements",
+      "Cash - ATM"
+    ],
+    "similar": [
+      "6010",
+      "6051"
+    ]
+  },
+  {
+    "code": "6012",
+    "titleEn": "Financial Institutions – Merchandise, Services, and Debt Repayment",
+    "descriptionEn": "This MCC must be used by Financial Institutions for the purchase of merchandise or services or the repayment of loans & debts. “Financial Institution” includes banks, savings and loans, thrifts, and credit unions . For example: the purchase of checks, other financial products, or promotional merchandise, deposits, the funding of an account (which must be processed as Account Funding Transaction), the purchase or reload of a stored value card , the purchase of foreign currency, Liquid and Cryptocurrency Assets (for example: cryptocurrency), money orders (a negotiable paper-based remittance – not a Money Transfer), travelers cheques, and loan fees or financial counseling service fees. This MCC must also be used for the repayment of a debt, loan, or credit card balance by a cardholder to the financial institution. A Financial Institution that sells Liquid and Cryptocurrency Assets such as cryptocurrency must include all required data in the authorization request and clearing record.",
+    "includedEn": [
+      "Account Funding",
+      "Financial Institution",
+      "Banks – Financial",
+      "Institutions –Merchandise",
+      "Services",
+      "Credit Unions – Financial",
+      "Institutions – Merchandise",
+      "Services",
+      "Deposits – Financial",
+      "Institutions",
+      "Merchandise, Services",
+      "Financial Institutions",
+      "Mortgage Companies",
+      "Financial Institutions",
+      "Purchase of Foreign currency Liquid and",
+      "Cryptocurrency Assets (for example, cryptocurrency), money orders (Not Money",
+      "Transfer) and Travelers",
+      "Cheques – Financial",
+      "Institution",
+      "Loan Payments",
+      "Financial Institution",
+      "Savings and Loans"
+    ],
+    "similar": [
+      "6010",
+      "6011",
+      "6211"
+    ]
+  },
+  {
+    "code": "6051",
+    "titleEn": "Non-Financial Institutions – Foreign Currency, Liquid and Cryptocurrency Assets (for example: Cryptocurrency), Money",
+    "descriptionEn": "Orders (Not Money Transfer), Account Funding (not Stored Value Load), Travelers Cheques, and Debt Repayment This MCC must be used for the funding of an account (excluding prepaid card loads), the purchase of foreign currency, Liquid and Cryptocurrency Assets (for example: cryptocurrency), money orders, or travelers’ cheques that occurs at non-Financial Institutions such as currency exchanges or money order (a negotiable paper-based remittance – not a Money Transfer) Merchants. This MCC must also be used for the repayment of a loan or debt if the entity that holds the debt is not a financial institution. A Merchant that sells Liquid and Cryptocurrency Assets such as cryptocurrency must include all required data in the authorization request and clearing record. All other transactions at the same Merchant location must use the appropriate MCC for those transactions.",
+    "includedEn": [
+      "Account Funding – (Non-Financial Institutions)",
+      "Currency –Liquid and",
+      "Cryptocurrency Assets",
+      "Cryptocurrency)",
+      "Currency – Foreign (Non",
+      "Financial Institutions)",
+      "Exchange – Foreign",
+      "Currency (Non-Financial",
+      "Institutions)",
+      "Foreign Currency (Non",
+      "Financial Institutions)",
+      "Lease Payments",
+      "Loan Payments",
+      "Money – Foreign Currency (Non-Financial Institutions)",
+      "Money Orders – Not Money",
+      "Transfer (Non-Financial",
+      "Institutions)",
+      "Mortgage Companies – (Non-Financial Institutions)",
+      "Services – Money Order",
+      "Traveler’s Cheques",
+      "Foreign Exchange (Non",
+      "Financial Institutions)",
+      "Traveler’s Cheques (Financial Institutions)",
+      "Traveler’s Cheques (Non-Financial Institutions)"
+    ],
+    "similar": [
+      "6010",
+      "6012"
+    ]
+  },
+  {
+    "code": "6211",
+    "titleEn": "Security Brokers/Dealers",
+    "descriptionEn": "Merchants classified with this MCC are licensed, in all jurisdictions they sell into to buy, sell and broker securities, stocks, bonds, commodities, and mutual funds.",
+    "includedEn": [
+      "Bond Dealers",
+      "Brokers – Securities",
+      "Mutual Funds, Stocks",
+      "Commodities, Bonds",
+      "Commodity Dealers",
+      "Dealers – Securities",
+      "Mutual Funds, Stocks",
+      "Commodities, Bonds"
+    ],
+    "similar": [
+      "6010",
+      "6012"
+    ]
+  },
+  {
+    "code": "6300",
+    "titleEn": "Insurance Sales, Underwriting, and Premiums",
+    "descriptionEn": "Merchants classified with this MCC sell personal or business insurance policies such as automobile, life, health, hospital, medical, and dental insurance, homeowners’ and renters’ insurance, real estate title insurance, pet health insurance and flood, fire, or earthquake insurance.",
+    "includedEn": [
+      "Automobile Insurance",
+      "Sales (Non-Direct",
+      "Marketing)",
+      "Health Insurance – Sales",
+      "Homeowners Insurance",
+      "Sales",
+      "Life Insurance – Sales",
+      "Medical Insurance – Sales",
+      "Product Warranties"
+    ],
+    "similar": [
+      "5960"
+    ]
+  },
+  {
+    "code": "6513",
+    "titleEn": "Real Estate Agents and Managers",
+    "descriptionEn": "This MCC must be used for the payment of management fees, rental commissions, rental payments, and other payments at real estate agents, brokers, and managers engaged in the rental and management of residential and commercial properties. This MCC should also be used for payments of deposits for real estate purchases. Short term rentals (of less than one month) must be included in MCC 7011 Lodging – Hotels, Motels, Resorts, Central Reservation Services (Not Elsewhere Classified) or, if appropriate, the Merchant’s MCC. This MCC does not include mortgage loan payments and real estate purchases. These transactions must be identified with a more appropriate MCC such as MCC 6012 Financial Institutions – Merchandise and Services; MCC 1520 General Contractors; MCC 8111 Legal Services and Attorneys.",
+    "includedEn": [
+      "Apartment Rentals",
+      "Commercial Property",
+      "Rentals",
+      "Homeowner/Condo",
+      "Association Fees/Dues",
+      "Housing Rentals",
+      "Property Rentals",
+      "Real Estate Agents",
+      "Brokers, Managers",
+      "Rentals",
+      "Rental Services",
+      "Residential and",
+      "Commercial Properties",
+      "Residential Rentals",
+      "Service – Residential and",
+      "Commercial Properties",
+      "Rentals"
+    ],
+    "similar": [
+      "6012",
+      "7011",
+      "7012",
+      "8999"
+    ]
+  },
+  {
+    "code": "6540",
+    "titleEn": "Non-Financial Institutions – Stored Value Card Purchase/Load",
+    "descriptionEn": "This MCC must be used by Merchants whose primary business is the sale of and/or any subsequent reloads of stored value cards/accounts (including Visa Prepaid Cards) occurring at non-financial institutions. This MCC is not applicable for use with Staged Digital Wallet Operators (SDWO).",
+    "includedEn": [
+      "Account Funding – (Non",
+      "Financial Institutions)",
+      "Stored Value Card/Load (Non-Financial Institutions)",
+      "Stored Value Wallet/Load (Non-Financial Institutions)"
+    ],
+    "similar": [
+      "6012"
+    ]
+  },
+  {
+    "code": "7011",
+    "titleEn": "Lodging – Hotels, Motels, Resorts, Central Reservation Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are lodging establishments or central reservation services that do not have their own specific MCC. MCC 7011 may include bed and breakfast establishments, resorts, cabins, cottages, hostels, short-term property rentals less than 30 days in length, and local inns.",
+    "includedEn": [
+      "Bed & Breakfast",
+      "Establishments",
+      "Central Reservation",
+      "Services",
+      "Hotels (Not Listed in",
+      "T&E Section)",
+      "Inns (Not Listed in",
+      "T&E Section)",
+      "Lodging Establishments (Not Listed in T&E",
+      "Section)",
+      "Motels (Not Listed in",
+      "T&E Section)",
+      "Resorts (Not Listed in",
+      "T&E Section)",
+      "Services – Central",
+      "Reservation, Lodging"
+    ],
+    "similar": [
+      "6513"
+    ]
+  },
+  {
+    "code": "7012",
+    "titleEn": "Timeshares",
+    "descriptionEn": "Merchants classified with this MCC sell, lease, and rent timeshares and arrange timeshare condominium exchanges.",
+    "includedEn": [],
+    "similar": [
+      "7011"
+    ]
+  },
+  {
+    "code": "7032",
+    "titleEn": "Sporting and Recreational Camps",
+    "descriptionEn": "Merchants classified with this MCC operate children’s camps, recreational camps, and sporting camps.",
+    "includedEn": [
+      "Boys’ Camps",
+      "Sporting, Recreational",
+      "Camps",
+      "Children’s Camps",
+      "Girls’ Camps",
+      "Nudist Camps",
+      "Dude Ranches"
+    ],
+    "similar": [
+      "7033",
+      "7999"
+    ]
+  },
+  {
+    "code": "7033",
+    "titleEn": "Trailer Parks and Campgrounds",
+    "descriptionEn": "Merchants classified with this MCC provide overnight or short-term camp sites for recreational vehicles, trailers, campers, or tents.",
+    "includedEn": [],
+    "similar": [
+      "7032",
+      "7999"
+    ]
+  },
+  {
+    "code": "7210",
+    "titleEn": "Laundry, Cleaning, and Garment Services",
+    "descriptionEn": "Merchants classified with this MCC operate steam or other types of laundry or laundry services.",
+    "includedEn": [
+      "Diaper Services",
+      "Garment Services",
+      "Services – Laundry",
+      "Cleaning, Garment",
+      "Services"
+    ],
+    "similar": [
+      "7211",
+      "7216"
+    ]
+  },
+  {
+    "code": "7211",
+    "titleEn": "Laundries – Family and Commercial",
+    "descriptionEn": "Merchants classified with this MCC provide coin-operated or similar self-service washers and dryers for general consumer use and may also offer laundry services.",
+    "includedEn": [
+      "Laundromats 7210 – Laundry, Cleaning, and",
+      "Garment Services"
+    ],
+    "similar": [
+      "7216"
+    ]
+  },
+  {
+    "code": "7216",
+    "titleEn": "Dry Cleaners",
+    "descriptionEn": "Merchants classified with this MCC perform dry cleaning services for individuals or businesses and may offer limited alteration services.",
+    "includedEn": [
+      "Services – Dry Cleaning 7210 – Laundry, Cleaning, and",
+      "Garment Services"
+    ],
+    "similar": [
+      "7211"
+    ]
+  },
+  {
+    "code": "7217",
+    "titleEn": "Carpet and Upholstery Cleaning",
+    "descriptionEn": "Merchants classified with this MCC clean carpets, drapes, and upholstery.",
+    "includedEn": [
+      "Drapery Cleaning 7641 – Furniture – Reupholstery",
+      "Repair, and Refinishing"
+    ],
+    "similar": []
+  },
+  {
+    "code": "7221",
+    "titleEn": "Photographic Studios",
+    "descriptionEn": "Merchants classified with this MCC perform still or video portrait photography for the general public.",
+    "includedEn": [
+      "Photographers – Wedding",
+      "Portrait Studios",
+      "Wedding Photographers"
+    ],
+    "similar": [
+      "7395"
+    ]
+  },
+  {
+    "code": "7230",
+    "titleEn": "Beauty and Barber Shops",
+    "descriptionEn": "Merchants classified with this MCC provide personal hair care services such as hair cutting, styling, and coloring, and may also perform manicures and pedicures and sell a limited selection of hair care products.",
+    "includedEn": [
+      "Beauty Salons",
+      "Nail Salons",
+      "Hair Cutting",
+      "Hair Styling Salon",
+      "Hairdressers",
+      "Make-up Studios",
+      "Manicurists"
+    ],
+    "similar": [
+      "7298",
+      "7299"
+    ]
+  },
+  {
+    "code": "7251",
+    "titleEn": "Shoe Repair Shops, Shoeshine Parlors, and Hat Cleaning Shops",
+    "descriptionEn": "Merchants classified with this MCC repair footwear and provide shoe and hat cleaning and maintenance services.",
+    "includedEn": [
+      "Hat Cleaning Shops",
+      "Shoeshine Shops, Stands",
+      "Shoe Repair Shops"
+    ],
+    "similar": [
+      "7299",
+      "7699"
+    ]
+  },
+  {
+    "code": "7261",
+    "titleEn": "Funeral Services and Crematories",
+    "descriptionEn": "Merchants classified with this MCC are mortuaries, crematories, and funeral homes that provide burial preparation services, conduct funerals, and provide cremation services.",
+    "includedEn": [
+      "Mortuaries",
+      "Morticians",
+      "Undertakers"
+    ],
+    "similar": [
+      "7299"
+    ]
+  },
+  {
+    "code": "7273",
+    "titleEn": "Dating Services",
+    "descriptionEn": "Merchants classified with this MCC provide dating and escort services, including online services.",
+    "includedEn": [
+      "Escort Services",
+      "Services – Dating, Escort",
+      "Online Dating Services"
+    ],
+    "similar": [
+      "7299"
+    ]
+  },
+  {
+    "code": "7276",
+    "titleEn": "Tax Preparation Services",
+    "descriptionEn": "Merchants classified with this MCC provide income tax return preparation services but do not provide auditing, accounting, or bookkeeping services.",
+    "includedEn": [
+      "Services – Tax Preparation 8931 – Accounting, Auditing, and",
+      "Bookkeeping Services"
+    ],
+    "similar": [
+      "8999"
+    ]
+  },
+  {
+    "code": "7277",
+    "titleEn": "Counseling Services – Debt, Marriage, and Personal",
+    "descriptionEn": "Merchants classified with this MCC provide a variety of personal counseling services, such as debt and financial counseling, marriage counseling, family counseling, and alcohol and drug abuse counseling.",
+    "includedEn": [
+      "Alcohol, Drug Abuse",
+      "Counseling",
+      "Credit Counseling",
+      "Debt Counseling",
+      "Family Counseling",
+      "Financial Counseling",
+      "Service",
+      "Marriage Counseling",
+      "Personal Counseling"
+    ],
+    "similar": [
+      "7322",
+      "8111",
+      "8999"
+    ]
+  },
+  {
+    "code": "7278",
+    "titleEn": "Buying and Shopping Services and Clubs",
+    "descriptionEn": "Merchants classified with this MCC act as an intermediary to facilitate buying and shopping for individuals or businesses on a fee basis.",
+    "includedEn": [
+      "Personal Shopper Services – Buying/Shopping",
+      "Services, Clubs",
+      "Shopping Services"
+    ],
+    "similar": [
+      "7299",
+      "7399"
+    ]
+  },
+  {
+    "code": "7296",
+    "titleEn": "Clothing Rental – Costumes, Uniforms, Formal Wear",
+    "descriptionEn": "Merchants classified with this MCC rent costumes, uniforms, formal wear, and other types of apparel and related accessories.",
+    "includedEn": [
+      "Apparel – Clothing Rental",
+      "Costumes, Formal Wear",
+      "Uniforms",
+      "Costume Rental",
+      "Formal Wear Rental",
+      "Rentals – Clothing",
+      "Costumes, Formal Wear",
+      "Uniforms",
+      "Rentals – Costume",
+      "Rentals – Tuxedo, Formal",
+      "Wear"
+    ],
+    "similar": [
+      "5137",
+      "7299"
+    ]
+  },
+  {
+    "code": "7297",
+    "titleEn": "Massage Parlors",
+    "descriptionEn": "Merchants classified with this MCC specialize in providing therapeutic massage services and may also provide other personal services such as spa.",
+    "includedEn": [],
+    "similar": [
+      "7298",
+      "7299"
+    ]
+  },
+  {
+    "code": "7298",
+    "titleEn": "Health and Beauty Spas",
+    "descriptionEn": "Merchants classified with this MCC provide a variety of personal or therapeutic services such as facials, massages, mud baths, herbal wraps, tanning treatments, whirlpools, steam baths, hair and makeup styling, and instructional classes.",
+    "includedEn": [
+      "Tanning Salons 7011 – Lodging – Hotel, Motels",
+      "Resorts, Central Reservation",
+      "Services (Not Elsewhere Classified)"
+    ],
+    "similar": [
+      "7297",
+      "7299"
+    ]
+  },
+  {
+    "code": "7299",
+    "titleEn": "Miscellaneous Personal Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide personal services that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Animal Boarding Services",
+      "Stables, Kennels etc",
+      "Animal Breeders",
+      "Animal Grooming Services",
+      "Animal Training",
+      "Apartment Rental Services",
+      "Body Piercing, Tattoo",
+      "Parlors",
+      "Breeders – Animals",
+      "Dog Training",
+      "Services – Stand-Alone",
+      "Tipping/Gratuities",
+      "Other Services",
+      "Miscellaneous",
+      "Services – Water Filtration",
+      "Purification",
+      "Softening Treatments",
+      "Taxidermists",
+      "Wedding Chapels /",
+      "Planning"
+    ],
+    "similar": [
+      "7230",
+      "7251",
+      "7261",
+      "7273",
+      "7276",
+      "7277",
+      "7278",
+      "7296",
+      "7297",
+      "7298"
+    ]
+  },
+  {
+    "code": "7311",
+    "titleEn": "Advertising Services",
+    "descriptionEn": "Merchants classified with this MCC prepare advertising (writing copy, artwork, graphics, and other creative work) and place such advertising and/or samples in periodicals, newspapers, radio and television, on the internet, in the sky, or other advertising media for clients on a contract or fee basis.",
+    "includedEn": [
+      "Ad Agencies",
+      "Agencies – Advertising",
+      "Classified Ads",
+      "Newspaper"
+    ],
+    "similar": [
+      "8999"
+    ]
+  },
+  {
+    "code": "7321",
+    "titleEn": "Consumer Credit Reporting Agencies",
+    "descriptionEn": "Merchants classified with this MCC provide consumer credit reporting services such as credit investigation, credit clearinghouses, and other related services.",
+    "includedEn": [
+      "For Merchants primarily engaged in collecting debts in"
+    ],
+    "similar": [
+      "7322",
+      "7399"
+    ]
+  },
+  {
+    "code": "7322",
+    "titleEn": "Collection Agencies",
+    "descriptionEn": "Merchants classified with the MCC collect payments of overdue receivables under contract or collect overdue receivables that they have purchased from a third party.",
+    "includedEn": [],
+    "similar": [
+      "6012",
+      "6051",
+      "7321"
+    ]
+  },
+  {
+    "code": "7333",
+    "titleEn": "Commercial Photography, Art, and Graphics",
+    "descriptionEn": "Merchants classified with this MCC provide commercial art or graphic design services for advertising agencies, publishers, and other businesses.",
+    "includedEn": [
+      "Commercial Artists",
+      "Film Production",
+      "Graphics – Commercial",
+      "Silk Screening"
+    ],
+    "similar": [
+      "7221",
+      "8999"
+    ]
+  },
+  {
+    "code": "7338",
+    "titleEn": "Quick Copy, Reproduction, and Blueprinting Services",
+    "descriptionEn": "Merchants classified with this MCC reproduce and bind text, drawings, plans, maps, or other copy, by blueprinting, photocopying, or other methods of duplication.",
+    "includedEn": [
+      "Photocopying Services",
+      "Reproduction Services",
+      "Services – Quick Copy"
+    ],
+    "similar": [
+      "5943",
+      "7395"
+    ]
+  },
+  {
+    "code": "7339",
+    "titleEn": "Stenographic and Secretarial Support",
+    "descriptionEn": "Merchants classified with this MCC provide a range of stenographic and secretarial services such as word processing, typing, editing, letter writing, proofreading, resume writing, and court reporting services.",
+    "includedEn": [
+      "Word Processing Services 7361 – Employment Agencies and",
+      "Temporary Help Services"
+    ],
+    "similar": [
+      "7399"
+    ]
+  },
+  {
+    "code": "7342",
+    "titleEn": "Exterminating and Disinfecting Services",
+    "descriptionEn": "Merchants classified with this MCC provide pest control, extermination, fumigation, and disinfection services.",
+    "includedEn": [
+      "Exterminators",
+      "Pest Control"
+    ],
+    "similar": [
+      "7349"
+    ]
+  },
+  {
+    "code": "7349",
+    "titleEn": "Cleaning, Maintenance, and Janitorial Services",
+    "descriptionEn": "Merchants classified with this MCC provide cleaning and maintenance services.",
+    "includedEn": [
+      "House Cleaning Services",
+      "Housekeeping Services",
+      "Maintenance Services"
+    ],
+    "similar": [
+      "7342"
+    ]
+  },
+  {
+    "code": "7361",
+    "titleEn": "Employment Agencies and Temporary Help Services",
+    "descriptionEn": "Merchants classified with this MCC provide employment services for those seeking employees or employment.",
+    "includedEn": [
+      "Temporary Employment",
+      "Agencies"
+    ],
+    "similar": [
+      "7399"
+    ]
+  },
+  {
+    "code": "7372",
+    "titleEn": "Computer Programming, Data Processing, and Integrated Systems Design Services",
+    "descriptionEn": "Merchants classified with this MCC provide computer programming services, systems design, website design, data entry, and data processing services.",
+    "includedEn": [
+      "Computer Software Design",
+      "Computer Systems Design"
+    ],
+    "similar": [
+      "5734",
+      "7379",
+      "7399",
+      "8999"
+    ]
+  },
+  {
+    "code": "7375",
+    "titleEn": "Information Retrieval Services",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale provisioners of online or database information retrieval services.",
+    "includedEn": [],
+    "similar": [
+      "7321",
+      "7392",
+      "7399"
+    ]
+  },
+  {
+    "code": "7379",
+    "titleEn": "Computer Maintenance, Repair and Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide computer-related services such as computer consulting, database development, computer maintenance and repair, conversion services, and computer requirements analysis.",
+    "includedEn": [],
+    "similar": [
+      "5045",
+      "5732",
+      "5734",
+      "7372",
+      "7629"
+    ]
+  },
+  {
+    "code": "7392",
+    "titleEn": "Management, Consulting, and Public Relations Services",
+    "descriptionEn": "Merchants classified with this MCC perform a variety of activities for private, nonprofit, and public organizations, such as strategic and organizational planning, financial planning and budgeting, developing marketing objectives, information systems planning, development of human resource policies, and public relations services.",
+    "includedEn": [
+      "Consultants – Public",
+      "Relations",
+      "Consulting, Management",
+      "Services",
+      "Management Consultants",
+      "Marketing Consultants",
+      "Public Relations Services"
+    ],
+    "similar": [
+      "7399",
+      "8999"
+    ]
+  },
+  {
+    "code": "7393",
+    "titleEn": "Detective Agencies, Protective Services, and Security Services, including Armored Cars, and Guard Dogs",
+    "descriptionEn": "Merchants classified with this MCC provide security devices/systems and services such as security guard,.",
+    "includedEn": [
+      "Alarm Systems, Services",
+      "Armored Cars"
+    ],
+    "similar": [
+      "7399",
+      "8111",
+      "8999"
+    ]
+  },
+  {
+    "code": "7394",
+    "titleEn": "Equipment, Tool, Furniture, and Appliance Rental and Leasing",
+    "descriptionEn": "Merchants classified with this MCC rent and lease equipment, tools, furniture, appliances, and office equipment, excluding typewriters.",
+    "includedEn": [
+      "Appliance Rental",
+      "Furniture Rental",
+      "Leasing Services",
+      "Equipment",
+      "Rentals – Equipment",
+      "Rentals – Tools",
+      "Services – Equipment",
+      "Rental, Leasing"
+    ],
+    "similar": [
+      "4457",
+      "5978",
+      "7296",
+      "7513",
+      "7519",
+      "7841"
+    ]
+  },
+  {
+    "code": "7395",
+    "titleEn": "Photofinishing Laboratories and Photo Developing",
+    "descriptionEn": "Merchants classified with this MCC develop film, make photographic prints and enlargements, provide custom services, and may also sell a limited selection of photographic supplies and accessories.",
+    "includedEn": [
+      "Film Developing 5044 – Photographic, Photocopy",
+      "Microfilm Equipment and Supplies"
+    ],
+    "similar": [
+      "5946",
+      "7221",
+      "7333"
+    ]
+  },
+  {
+    "code": "7399",
+    "titleEn": "Business Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide business services that are not typically considered to be “professions” and are not classified with a more specific MCC.",
+    "includedEn": [
+      "Answering Services",
+      "Telephone",
+      "Conference Management",
+      "Services",
+      "Convention Bureaus",
+      "Cosmetics Distributors",
+      "Event Planning and",
+      "Management",
+      "Keys – Locksmith"
+    ],
+    "similar": [
+      "4215",
+      "7299",
+      "7311",
+      "7338",
+      "7393",
+      "7999"
+    ]
+  },
+  {
+    "code": "7512",
+    "titleEn": "Automobile Rental Agency",
+    "descriptionEn": "Merchants classified with this MCC are car rental agencies that do not have designated unique MCCs.",
+    "includedEn": [
+      "This also includes car-sharing schemes (known as “car-clubs” in the UK)",
+      "Car Rentals 7513 – Truck and Utility Trailer",
+      "Rentals"
+    ],
+    "similar": [
+      "7519"
+    ]
+  },
+  {
+    "code": "7513",
+    "titleEn": "Truck and Utility Trailer Rentals",
+    "descriptionEn": "Merchants classified with this MCC provide short-term rental or long-term leasing of trucks, vans, or utility trailers.",
+    "includedEn": [
+      "Leasing Services – Trucks",
+      "Utility Trailers"
+    ],
+    "similar": [
+      "7394",
+      "7512",
+      "7519"
+    ]
+  },
+  {
+    "code": "7519",
+    "titleEn": "Motor Home and Recreational Vehicle Rentals",
+    "descriptionEn": "Merchants classified with this MCC rent motor homes, RVs, campers, tent trailers, and other recreational vehicles on daily, short-term, or extended-term basis.",
+    "includedEn": [],
+    "similar": [
+      "4457",
+      "7513",
+      "7999"
+    ]
+  },
+  {
+    "code": "7523",
+    "titleEn": "Parking Lots, Parking Meters and Garages",
+    "descriptionEn": "Merchants classified with this MCC provide temporary parking services for all modes of transportation, usually on an hourly, daily, or monthly contract or fee basis.",
+    "includedEn": [
+      "Parking Garages"
+    ],
+    "similar": []
+  },
+  {
+    "code": "7531",
+    "titleEn": "Automotive Body Repair Shops",
+    "descriptionEn": "Merchants classified with this MCC perform automotive body repair work and may paint automobiles in conjunction with body repair work.",
+    "includedEn": [
+      "Car Body Repair Shops",
+      "Auto Body Shops"
+    ],
+    "similar": [
+      "7534",
+      "7535",
+      "7538"
+    ]
+  },
+  {
+    "code": "7534",
+    "titleEn": "Tire Retreading and Repair Shops",
+    "descriptionEn": "Merchants classified with this MCC sell, install, repair, or retread old tires.",
+    "includedEn": [
+      "Car Tires – Retreads",
+      "Repairs – Tire Retreading",
+      "Repair Shops"
+    ],
+    "similar": [
+      "5532",
+      "7531",
+      "7535",
+      "7538"
+    ]
+  },
+  {
+    "code": "7535",
+    "titleEn": "Automotive Paint Shops",
+    "descriptionEn": "Merchants classified with this MCC paint, refinish, and restore automobiles.",
+    "includedEn": [
+      "Car Paint Shops 7531 – Automotive Body Repair",
+      "Shops"
+    ],
+    "similar": [
+      "7538"
+    ]
+  },
+  {
+    "code": "7538",
+    "titleEn": "Automotive Service Shops (Non-Dealer)",
+    "descriptionEn": "Merchants classified with this MCC conduct automotive repairs and general or specific services.",
+    "includedEn": [
+      "Automotive Glass",
+      "Repair/Replacement",
+      "Car Service Shops",
+      "Lube Stations – Quick Stop",
+      "Muffler Shops",
+      "Oil Changers – Lube",
+      "Stations",
+      "Repairs – Automotive",
+      "Service Shops",
+      "Tune-Up Shops",
+      "Automotive",
+      "Wheel Alignment",
+      "Balancing, Repair Service",
+      "Automotive"
+    ],
+    "similar": [
+      "5541",
+      "7531",
+      "7534",
+      "7535",
+      "7542",
+      "7549"
+    ]
+  },
+  {
+    "code": "7542",
+    "titleEn": "Car Washes",
+    "descriptionEn": "Merchants classified with this MCC wash, wax, and polish automobiles or provide self-service facilities.",
+    "includedEn": [
+      "Auto Detailing",
+      "Automotive Cleaning",
+      "Waxing",
+      "Cleaning, Polishing",
+      "Automotive"
+    ],
+    "similar": [
+      "5541",
+      "7538"
+    ]
+  },
+  {
+    "code": "7549",
+    "titleEn": "Towing Services",
+    "descriptionEn": "Merchants classified with this MCC provide vehicle towing services.",
+    "includedEn": [],
+    "similar": [
+      "5935"
+    ]
+  },
+  {
+    "code": "7622",
+    "titleEn": "Electronics Repair Shops",
+    "descriptionEn": "Merchants classified with this MCC repair electronics (excluding appliances) such as radios, televisions, stereo equipment, and computers.",
+    "includedEn": [
+      "Radio, Television, Stereo",
+      "Electronics Repair Shops",
+      "Repairs – Radio",
+      "Services – Television",
+      "Radio, Stereo, Electronics"
+    ],
+    "similar": [
+      "7629",
+      "7699"
+    ]
+  },
+  {
+    "code": "7623",
+    "titleEn": "Air Conditioning and Refrigeration Repair Shops",
+    "descriptionEn": "Merchants classified with this MCC service and repair household and commercial air conditioning and refrigeration systems.",
+    "includedEn": [
+      "Refrigeration Repair Shops",
+      "Repairs – Air Conditioning",
+      "Refrigeration Repair Shops"
+    ],
+    "similar": [
+      "7629",
+      "7699"
+    ]
+  },
+  {
+    "code": "7629",
+    "titleEn": "Electrical and Small Appliance Repair Shops",
+    "descriptionEn": "Merchants classified with this MCC service and repair household and commercial electrical components, small appliances (such as microwaves, toaster ovens, and toasters), and electrical office machines, excluding typewriters.",
+    "includedEn": [
+      "Repairs – Office Machines 5978 – Typewriter Stores – Sales",
+      "Rentals, and Service"
+    ],
+    "similar": [
+      "7622",
+      "7623",
+      "7699"
+    ]
+  },
+  {
+    "code": "7631",
+    "titleEn": "Watch, Clock and Jewelry Repair",
+    "descriptionEn": "Merchants classified with this MCC clean and repair all types of watches, clocks, and fine jewelry.",
+    "includedEn": [],
+    "similar": [
+      "5944"
+    ]
+  },
+  {
+    "code": "7641",
+    "titleEn": "Furniture – Reupholstery, Repair, and Refinishing",
+    "descriptionEn": "Merchants classified with this MCC reupholster, repair, refinish, and restore furniture.",
+    "includedEn": [
+      "Furniture Repair",
+      "Reupholstery",
+      "Refinishing – Furniture",
+      "Repair, Reupholstery"
+    ],
+    "similar": [
+      "5712"
+    ]
+  },
+  {
+    "code": "7692",
+    "titleEn": "Welding Services",
+    "descriptionEn": "Merchants classified with this MCC perform welding services and repair.",
+    "includedEn": [
+      "Services – Welding Repair 1799 – Special Trade Contractors (Not Elsewhere Classified)"
+    ],
+    "similar": []
+  },
+  {
+    "code": "7699",
+    "titleEn": "Miscellaneous Repair Shops and Related Services",
+    "descriptionEn": "Merchants classified with this MCC provide service and repair work and are not classified with a more specific MCC.",
+    "includedEn": [
+      "Chimney Cleaning Service",
+      "Furnace Cleaning Service",
+      "Machine Shops",
+      "Services – Large Appliance",
+      "Repair",
+      "Services – Bicycle Repair",
+      "Services – Orthopedic",
+      "Device Repair"
+    ],
+    "similar": [
+      "7531",
+      "7534",
+      "7538",
+      "7622",
+      "7623",
+      "7629",
+      "7631",
+      "7641",
+      "7692"
+    ]
+  },
+  {
+    "code": "7800",
+    "titleEn": "Government-Owned Lotteries (US Region only)",
+    "descriptionEn": "Merchants classified with this MCC are government-owned lotteries in the US Region that are registered with Visa to sell lottery tickets.",
+    "includedEn": [],
+    "similar": [
+      "7801"
+    ]
+  },
+  {
+    "code": "7801",
+    "titleEn": "Government Licensed On-Line Casinos (On-Line Gambling) (US Region only)",
+    "descriptionEn": "Merchants classified with this MCC are licensed by a US government entity (and/or sanctioned and regulated by applicable legislation) and registered with Visa to sell virtual gambling chips or offer online gambling.",
+    "includedEn": [],
+    "similar": [
+      "7800"
+    ]
+  },
+  {
+    "code": "7802",
+    "titleEn": "Government-Licensed Horse/Dog Racing (US Region only)",
+    "descriptionEn": "Merchants classified with this MCC are licensed by a US government entity (and/or sanctioned and regulated by applicable legislation) and registered with Visa to sell on-or off-track wagers at horse-or dog-racing facilities.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "7829",
+    "titleEn": "Motion Picture and Video Tape Production and Distribution",
+    "descriptionEn": "Merchants classified with this MCC are business-to-business or wholesale producers and distributors of educational and industrial films and videos for exhibition and sale.",
+    "includedEn": [
+      "Distributor – Motion Picture",
+      "Video Tape Production",
+      "Distribution",
+      "Educational, Training Film"
+    ],
+    "similar": [
+      "7399",
+      "7841",
+      "8999"
+    ]
+  },
+  {
+    "code": "7832",
+    "titleEn": "Motion Picture Theaters",
+    "descriptionEn": "Merchants classified with this MCC operate movie theaters and sell tickets and refreshments or sell movie tickets online.",
+    "includedEn": [
+      "Cinemas",
+      "Entertainment – Movie",
+      "Theaters",
+      "Films – Movie Theaters"
+    ],
+    "similar": [
+      "7841",
+      "7922"
+    ]
+  },
+  {
+    "code": "7841",
+    "titleEn": "DVD/Video Tape Rental Stores",
+    "descriptionEn": "Merchants classified with this MCC rent DVDs/video tapes for personal use and may sell a limited selection of used videos/DVDs and refreshments.",
+    "includedEn": [
+      "Rentals – DVD/Video Tape",
+      "Stores"
+    ],
+    "similar": [
+      "7829"
+    ]
+  },
+  {
+    "code": "7911",
+    "titleEn": "Dance Halls, Studios and Schools",
+    "descriptionEn": "Merchants classified with this MCC operate dance studios, schools, and public dance halls or ballrooms.",
+    "includedEn": [
+      "Ballet Schools",
+      "Ballroom Dance Instruction",
+      "Dance Schools",
+      "Schools – Ballroom Dance",
+      "Instruction",
+      "Studios – Dance"
+    ],
+    "similar": [
+      "7922",
+      "7999"
+    ]
+  },
+  {
+    "code": "7922",
+    "titleEn": "Ticket Agencies and Theatrical Producers (Except Motion Pictures)",
+    "descriptionEn": "Merchants classified with this MCC operate live theatrical productions (such as road companies and summer theater groups) and services associated with theatrical productions and concerts (such as casting agencies, booking agencies, scenery, lighting, and other equipment services, and theatrical ticket agencies).",
+    "includedEn": [
+      "Agencies – Ticket",
+      "Theatrical Producers",
+      "Performing Arts Companies – Theatrical",
+      "Producers – Theatrical",
+      "Production Agencies",
+      "Theatrical",
+      "Ticket Agencies"
+    ],
+    "similar": [
+      "7832",
+      "7911",
+      "7929"
+    ]
+  },
+  {
+    "code": "7929",
+    "titleEn": "Bands, Orchestras, and Miscellaneous Entertainers (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide entertainment other than theatrical productions (such as musicians, bands, orchestras, and other types of entertainers such as comedians and magicians).",
+    "includedEn": [
+      "DJs",
+      "Dance Bands",
+      "Magicians",
+      "Music Bands",
+      "Musicians"
+    ],
+    "similar": []
+  },
+  {
+    "code": "7932",
+    "titleEn": "Billiard and Pool Establishments",
+    "descriptionEn": "Merchants classified with this MCC operate establishments that rent the use of pool or billiard tables and other games for entertainment.",
+    "includedEn": [
+      "Billiard Parlors",
+      "Snooker Parlors"
+    ],
+    "similar": [
+      "7999"
+    ]
+  },
+  {
+    "code": "7933",
+    "titleEn": "Bowling Alleys",
+    "descriptionEn": "Merchants classified with this MCC operate bowling alleys for entertainment.",
+    "includedEn": [],
+    "similar": [
+      "5812",
+      "5813",
+      "7999"
+    ]
+  },
+  {
+    "code": "7941",
+    "titleEn": "Commercial Sports, Professional Sports Clubs, Athletic Fields, and Sports Promoters",
+    "descriptionEn": "Merchants classified with this MCC operate and promote semi-professional and professional athletic clubs (such as baseball, basketball, football, hockey, soccer), promote amateur and professional athletic events, manage individual athletes, and manage sports arenas and stadiums.",
+    "includedEn": [
+      "Arenas – Sports",
+      "Athletic Fields",
+      "Automotive Race Tracks – non-participatory",
+      "Clubs – Professional Sports",
+      "Professional Sports Clubs",
+      "Promoters – Sporting",
+      "Events",
+      "Race Tracks – Entrance",
+      "Fee, Non-Betting",
+      "Transactions",
+      "Sports Promoters",
+      "Stadiums"
+    ],
+    "similar": [
+      "7999"
+    ]
+  },
+  {
+    "code": "7991",
+    "titleEn": "Tourist Attractions and Exhibits",
+    "descriptionEn": "Merchants classified with this MCC operate a variety of tourist attractions and exhibits for entertainment, such as botanical gardens, craft shows, museums, and wineries.",
+    "includedEn": [
+      "Arboretums",
+      "Art Museums",
+      "Botanical Gardens",
+      "Exhibits",
+      "Expositions",
+      "Museums",
+      "Wineries"
+    ],
+    "similar": [
+      "5971",
+      "7996",
+      "7998",
+      "7999"
+    ]
+  },
+  {
+    "code": "7992",
+    "titleEn": "Public Golf Courses",
+    "descriptionEn": "Merchants classified with this MCC operate public golf courses.",
+    "includedEn": [],
+    "similar": [
+      "7997"
+    ]
+  },
+  {
+    "code": "7993",
+    "titleEn": "Video Amusement Game Supplies",
+    "descriptionEn": "Merchants classified with this MCC sell coin-operated amusement machines such as video game machines,.",
+    "includedEn": [],
+    "similar": [
+      "7994"
+    ]
+  },
+  {
+    "code": "7994",
+    "titleEn": "Video Game Arcades/Establishments",
+    "descriptionEn": "Merchants classified with this MCC operate arcades, amusement machines (such as video game machines, jukeboxes, pinball machines, mechanical games, instant photograph booths, and similar types of amusement equipment) and indoor playgrounds.",
+    "includedEn": [
+      "Social casinos not offering any prizes of monetary value"
+    ],
+    "similar": [
+      "7993",
+      "7995",
+      "7999"
+    ]
+  },
+  {
+    "code": "7995",
+    "titleEn": "Betting, including Lottery Tickets, Casino Gaming Chips, Off-Track Betting, Wagers at Race Tracks and games of chance to",
+    "descriptionEn": "win prizes of monetary value Merchants classified with this MCC operate games of chance to win prizes of monetary value or betting establishments. Merchants that are unable to distinguish a betting transaction from other transactions must identify all transactions with MCC 7995.",
+    "includedEn": [
+      "Betting – Casino Gaming",
+      "Chips",
+      "Betting – Lottery Tickets",
+      "Betting – Off-Track",
+      "Betting – Wagers",
+      "Bingo Parlors",
+      "Raffle Tickets",
+      "Unlicensed Foreign",
+      "Exchange Trading or Binary",
+      "Options",
+      "Sweepstakes"
+    ],
+    "similar": [
+      "7800",
+      "7801",
+      "7802"
+    ]
+  },
+  {
+    "code": "7996",
+    "titleEn": "Amusement Parks, Circuses, Carnivals, and Fortune Tellers",
+    "descriptionEn": "Merchants classified with this MCC operate circuses, carnivals, and amusement and theme parks that offer mechanical rides, snacks and food stands, games, animal exhibits, and entertainment, as well as fortune-telling, astrology, mystic, and tarot card-reading services.",
+    "includedEn": [
+      "County Fairs",
+      "Fairs",
+      "Mystics",
+      "Tarot Readings",
+      "State Fairs"
+    ],
+    "similar": [
+      "7991",
+      "7999"
+    ]
+  },
+  {
+    "code": "7997",
+    "titleEn": "Membership Clubs (Sports, Recreation, Athletic), Country Clubs, and Private Golf Courses",
+    "descriptionEn": "Merchants classified with this MCC operate sports and recreation facilities that require membership such as exercise, athletic and health clubs, country clubs, private golf courses, boating and yacht clubs, swimming clubs, tennis clubs, bowling leagues, riding clubs, shooting and gun clubs, and racquetball clubs, and may also provide spa services.",
+    "includedEn": [
+      "Athletic Clubs – Physical",
+      "Fitness",
+      "Boating Clubs",
+      "Clubs – Boating",
+      "Clubs – Gun",
+      "Clubs – Racquetball",
+      "Clubs – Sailing"
+    ],
+    "similar": [
+      "7297",
+      "7298",
+      "7992"
+    ]
+  },
+  {
+    "code": "7998",
+    "titleEn": "Aquariums, Seaquariums, Dolphinariums, and Zoos",
+    "descriptionEn": "Merchants classified with this MCC operate zoos or sea life parks for entertainment and education for the general public.",
+    "includedEn": [
+      "Sea Life Parks 7991 – Tourist Attractions and",
+      "Exhibits"
+    ],
+    "similar": []
+  },
+  {
+    "code": "7999",
+    "titleEn": "Recreation Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide a wide variety of recreation and entertainment services that require active physical participation and that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Aircraft Rentals",
+      "Ballooning",
+      "Batting Cages",
+      "Bicycle Rentals including electric scooters",
+      "Fishing/Hunting Licenses",
+      "Games Instruction",
+      "Golf – Driving Ranges",
+      "Horseback Riding",
+      "Instruction – Games",
+      "Miniature Golf",
+      "Motorcycle Rentals",
+      "Parachuting",
+      "Public Swimming Pools",
+      "Recreational Services",
+      "Aircraft Rentals",
+      "Recreational Services",
+      "Driving Ranges",
+      "Recreational Services",
+      "Miniature Golf",
+      "Recreational Services – Ski",
+      "Slopes",
+      "Recreational Services",
+      "Sport, Games Instruction",
+      "Resorts – Miscellaneous",
+      "Resorts – Ski",
+      "Roller Skating Rinks",
+      "Shooting Ranges",
+      "Sky Diving"
+    ],
+    "similar": [
+      "4457",
+      "7032",
+      "7033",
+      "7298",
+      "7519",
+      "7932",
+      "7933",
+      "7941",
+      "7991",
+      "7992",
+      "7994",
+      "7996",
+      "7997",
+      "7998"
+    ]
+  },
+  {
+    "code": "8011",
+    "titleEn": "Doctors and Physicians (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are licensed physicians engaged in a practice of general or specialized medicine and surgery that is not classified with a more specific MCC.",
+    "includedEn": [
+      "Cosmetic Surgeons",
+      "Dermatologists",
+      "Gynecologists",
+      "Medical Professionals",
+      "Doctors",
+      "Neurologists",
+      "Obstetricians",
+      "Orthopedists",
+      "Pediatricians",
+      "Physicians",
+      "Plastic Surgeons",
+      "Psychiatrists",
+      "Radiologists",
+      "Surgeons"
+    ],
+    "similar": [
+      "8021",
+      "8031",
+      "8041",
+      "8042",
+      "8043",
+      "8049"
+    ]
+  },
+  {
+    "code": "8021",
+    "titleEn": "Dentists and Orthodontists",
+    "descriptionEn": "Merchants classified with this MCC are licensed physicians that practice general or specialized dentistry such as dental surgery.",
+    "includedEn": [],
+    "similar": [
+      "8011",
+      "8099"
+    ]
+  },
+  {
+    "code": "8031",
+    "titleEn": "Osteopaths",
+    "descriptionEn": "Merchants classified with this MCC provide therapy involving the non-surgical manipulation and adjustment of bone structures.",
+    "includedEn": [],
+    "similar": [
+      "8011",
+      "8041",
+      "8099"
+    ]
+  },
+  {
+    "code": "8041",
+    "titleEn": "Chiropractors",
+    "descriptionEn": "Merchants classified with this MCC provide therapy in which the spinal column and limbs are manipulated or adjusted.",
+    "includedEn": [],
+    "similar": [
+      "8011",
+      "8031"
+    ]
+  },
+  {
+    "code": "8042",
+    "titleEn": "Optometrists and Ophthalmologists",
+    "descriptionEn": "Merchants classified with this MCC are licensed physicians that examine and treat eye defects with corrective eyeglasses or contacts or surgical techniques, treat eye diseases, and may fill contact or eyeglass prescriptions and sell eyeglass frames.",
+    "includedEn": [
+      "Eye Doctors 8011 – Doctors and Physicians (Not",
+      "Elsewhere Classified)"
+    ],
+    "similar": [
+      "8043",
+      "8099"
+    ]
+  },
+  {
+    "code": "8043",
+    "titleEn": "Opticians, Optical Goods, and Eyeglasses",
+    "descriptionEn": "Merchants classified with this MCC perform eye examinations, write prescriptions, make and sell eyeglasses, and sell other optical goods.",
+    "includedEn": [
+      "Eyeglass Stores 8011 – Doctors and Physicians (Not Elsewhere Classified)"
+    ],
+    "similar": [
+      "8042",
+      "8099"
+    ]
+  },
+  {
+    "code": "8049",
+    "titleEn": "Podiatrists and Chiropodists",
+    "descriptionEn": "Merchants classified with this MCC are licensed physicians specializing in diagnosing and treating foot ailments.",
+    "includedEn": [
+      "Doctors – Chiropodists",
+      "Podiatrists",
+      "Foot Doctors",
+      "Medical Professionals",
+      "Podiatrists"
+    ],
+    "similar": [
+      "8011",
+      "8099"
+    ]
+  },
+  {
+    "code": "8050",
+    "titleEn": "Nursing, Home Healthcare and Personal Care Facilities",
+    "descriptionEn": "Merchants classified with this MCC provide inpatient nursing or health-related personal care services and operate convalescent/nursing homes, hospice facilities, offer care in home/residential environment and other long-term care facilities that generally do not offer surgery.",
+    "includedEn": [
+      "Convalescent Homes",
+      "Elder Housing",
+      "Hospice Facilities",
+      "Nursing Homes",
+      "Rest Homes",
+      "Elder Care",
+      "Skilled and Unskilled Home",
+      "Care"
+    ],
+    "similar": [
+      "8062"
+    ]
+  },
+  {
+    "code": "8062",
+    "titleEn": "Hospitals",
+    "descriptionEn": "Merchants classified with this MCC are hospitals that provide diagnostic services, extensive medical treatment, surgery, continuous nursing services, mental and psychiatric care, and other hospital services.",
+    "includedEn": [],
+    "similar": [
+      "0742",
+      "8050"
+    ]
+  },
+  {
+    "code": "8071",
+    "titleEn": "Medical and Dental Laboratories",
+    "descriptionEn": "Merchants classified with this MCC provide medical and dental laboratory services.",
+    "includedEn": [],
+    "similar": [
+      "8011",
+      "8021"
+    ]
+  },
+  {
+    "code": "8099",
+    "titleEn": "Medical Services and Health Practitioners (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are medical professionals that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Blood Banks",
+      "Chemical Dependency",
+      "Treatment Centers",
+      "Fertility Clinics",
+      "Hair Replacements",
+      "Surgical",
+      "Health Practitioners"
+    ],
+    "similar": [
+      "8011",
+      "8021",
+      "8031",
+      "8041",
+      "8042",
+      "8043",
+      "8049",
+      "8050",
+      "8062",
+      "8071"
+    ]
+  },
+  {
+    "code": "8111",
+    "titleEn": "Legal Services and Attorneys",
+    "descriptionEn": "Merchants classified with this MCC are headed by members of the bar and provide legal advice and services.",
+    "includedEn": [
+      "Attorneys",
+      "Law Offices",
+      "Lawyers"
+    ],
+    "similar": [
+      "7277"
+    ]
+  },
+  {
+    "code": "8211",
+    "titleEn": "Elementary and Secondary Schools",
+    "descriptionEn": "Merchants classified with this MCC are elementary and secondary schools that provide academic instruction.",
+    "includedEn": [
+      "Grade Schools",
+      "Grammar Schools",
+      "High Schools",
+      "Middle Schools",
+      "Schools – Kindergartens"
+    ],
+    "similar": [
+      "8220",
+      "8241",
+      "8244",
+      "8249",
+      "8299",
+      "8351"
+    ]
+  },
+  {
+    "code": "8220",
+    "titleEn": "Colleges, Universities, Professional Schools, and Junior Colleges",
+    "descriptionEn": "Merchants classified with this MCC are community and junior colleges, universities, theological seminaries and professional schools (such as dental, law, engineering, medical) that provide academic courses and grant academic degrees.",
+    "includedEn": [
+      "Community Colleges",
+      "Graduate Schools"
+    ],
+    "similar": [
+      "8211",
+      "8241",
+      "8244",
+      "8249",
+      "8299"
+    ]
+  },
+  {
+    "code": "8241",
+    "titleEn": "Correspondence Schools",
+    "descriptionEn": "Merchants classified with this MCC are correspondence schools that offer educational and instruction through the mail/internet by sending lessons and examinations to the student.",
+    "includedEn": [],
+    "similar": [
+      "8299"
+    ]
+  },
+  {
+    "code": "8244",
+    "titleEn": "Business and Secretarial Schools",
+    "descriptionEn": "Merchants classified with this MCC are business and secretarial schools that offer general business training such as office procedures, word processing, stenographic, and other clerical skills.",
+    "includedEn": [
+      "Computer Training 8249 – Vocational and Trade Schools"
+    ],
+    "similar": [
+      "8299"
+    ]
+  },
+  {
+    "code": "8249",
+    "titleEn": "Vocational and Trade Schools",
+    "descriptionEn": "Merchants classified with this MCC offer training and instruction in specialized professions such as welding, mechanics, carpentry, real estate, and truck driving.",
+    "includedEn": [
+      "Technical Institutes 8244 – Business and Secretarial",
+      "Schools"
+    ],
+    "similar": [
+      "8241",
+      "8299"
+    ]
+  },
+  {
+    "code": "8299",
+    "titleEn": "Schools and Educational Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC offer educational courses and services that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Art Schools",
+      "Automobile Driving",
+      "Instruction",
+      "Aviation Instruction",
+      "Cooking Schools",
+      "Culinary Instruction",
+      "Driver Education Class",
+      "School",
+      "Flying Instruction School",
+      "Job Training Services",
+      "Karate Schools",
+      "Modeling Schools",
+      "Schools – Art",
+      "Schools – Automobile",
+      "Driving Instruction",
+      "Services – Schools",
+      "Educational Services",
+      "Traffic School"
+    ],
+    "similar": [
+      "7911",
+      "8211",
+      "8220",
+      "8241",
+      "8244",
+      "8249"
+    ]
+  },
+  {
+    "code": "8351",
+    "titleEn": "Child Care Services",
+    "descriptionEn": "Merchants classified with this MCC provide care for infants or children.",
+    "includedEn": [
+      "Babysitting Services",
+      "Children – Day Care",
+      "Services",
+      "Nannies",
+      "Nursery Schools",
+      "Preschool Centers"
+    ],
+    "similar": [
+      "8299"
+    ]
+  },
+  {
+    "code": "8398",
+    "titleEn": "Charitable Social Service Organizations",
+    "descriptionEn": "Merchants classified with this MCC are non-political fund-raising organizations engaged in soliciting charitable donations/contributions on behalf of organizations engaged in social welfare services, or social service organizations engaged in social welfare services. This MCC also includes crowd funding Merchants that accept donations on behalf of individuals raising money for various causes without receiving any perceived or actual financial benefit for doing so.",
+    "includedEn": [
+      "Fund-Raising Organizations – Non-Political",
+      "Organizations – Non",
+      "Political",
+      "Public Radio, Television",
+      "Crowd Funding Merchants"
+    ],
+    "similar": [
+      "5931",
+      "8641",
+      "8651",
+      "8661",
+      "8675",
+      "8699"
+    ]
+  },
+  {
+    "code": "8641",
+    "titleEn": "Civic, Social, and Fraternal Associations",
+    "descriptionEn": "Merchants classified with this MCC are associations engaged in civic, social, or fraternal activities.",
+    "includedEn": [
+      "Alumni/Alumnae",
+      "Associations",
+      "Associations – Civic, Social",
+      "Fraternal Associations",
+      "Chambers of Commerce",
+      "Fraternal Associations",
+      "Fund-Raising – Political",
+      "Police Athletic Leagues (PAL)",
+      "Social Associations, Clubs",
+      "Veterans’ Organizations"
+    ],
+    "similar": [
+      "8398",
+      "8651",
+      "8661",
+      "8675",
+      "8699"
+    ]
+  },
+  {
+    "code": "8651",
+    "titleEn": "Political Organizations",
+    "descriptionEn": "Merchants classified with this MCC are membership organizations that promote the interests of or raise funds for a national, state, or local political party or candidate.",
+    "includedEn": [
+      "Political Fundraising 8398 – Charitable Social Service",
+      "Organizations"
+    ],
+    "similar": [
+      "8641",
+      "8661",
+      "8675",
+      "8699"
+    ]
+  },
+  {
+    "code": "8661",
+    "titleEn": "Religious Organizations",
+    "descriptionEn": "Merchants classified with this MCC are religious organizations that provide worship services, religious training or study, or religious activities.",
+    "includedEn": [
+      "Chapels",
+      "Churches",
+      "Mosques",
+      "Synagogues",
+      "Temples"
+    ],
+    "similar": [
+      "8398",
+      "8641",
+      "8699"
+    ]
+  },
+  {
+    "code": "8675",
+    "titleEn": "Automobile Associations",
+    "descriptionEn": "Merchants classified with this MCC are automobile associations and clubs that provide a variety of travel-related services to its members.",
+    "includedEn": [
+      "Automobile Club 8699 – Membership Organizations (Not Elsewhere Classified)"
+    ],
+    "similar": []
+  },
+  {
+    "code": "8699",
+    "titleEn": "Membership Organizations (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are organizations or associations that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Art Clubs",
+      "Historical Clubs",
+      "Labor Unions",
+      "Organizations",
+      "Membership Organizations",
+      "Poetry Clubs",
+      "Professional Organizations",
+      "Tenant Associations",
+      "Condominium Associations",
+      "HOAs",
+      "Unions – Labor"
+    ],
+    "similar": [
+      "7997",
+      "8398",
+      "8641",
+      "8651",
+      "8661",
+      "8675"
+    ]
+  },
+  {
+    "code": "8734",
+    "titleEn": "Testing Laboratories (Non-Medical Testing)",
+    "descriptionEn": "Merchants classified with this MCC provide testing services (such as automobile testing, calibration and certification, food testing, forensic testing, product and pollution testing, and industrial X-ray inspection services).",
+    "includedEn": [
+      "Food Testing Services",
+      "Forensic Laboratories",
+      "Pollution Testing",
+      "Product Testing",
+      "Laboratories",
+      "Veterinary Testing",
+      "Laboratories"
+    ],
+    "similar": [
+      "8071"
+    ]
+  },
+  {
+    "code": "8911",
+    "titleEn": "Architectural, Engineering, and Surveying Services",
+    "descriptionEn": "Merchants classified with this MCC provide professional architectural, home and building design, boat design, and engineering, land, water, and aerial surveying services.",
+    "includedEn": [],
+    "similar": [
+      "1520",
+      "1799",
+      "8999"
+    ]
+  },
+  {
+    "code": "8931",
+    "titleEn": "Accounting, Auditing, and Bookkeeping Services",
+    "descriptionEn": "Merchants classified with this MCC provide accounting, bookkeeping, billing and payroll services, and other related auditing services, and may also provide income tax preparation services.",
+    "includedEn": [],
+    "similar": [
+      "7276",
+      "8111",
+      "8999"
+    ]
+  },
+  {
+    "code": "8999",
+    "titleEn": "Professional Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC provide professional services that are not classified with a more specific MCC.",
+    "includedEn": [
+      "Appraisers",
+      "Auction Houses",
+      "Brokers – Mortgage, Loan",
+      "Court Stenographer",
+      "Financial Planners",
+      "Graphic Designers",
+      "Guest Speakers, Lecturers",
+      "Lecturers"
+    ],
+    "similar": [
+      "6211",
+      "6300",
+      "7012",
+      "7276",
+      "7277",
+      "7311",
+      "7321",
+      "7361",
+      "7392",
+      "7393",
+      "8111",
+      "8911",
+      "8931"
+    ]
+  },
+  {
+    "code": "9211",
+    "titleEn": "Court Costs, Including Alimony and Child Support",
+    "descriptionEn": "Merchants classified with this MCC are local, state, and federal courts of law that administer and process court fees, alimony, and child support payments.",
+    "includedEn": [],
+    "similar": [
+      "9222",
+      "9399"
+    ]
+  },
+  {
+    "code": "9222",
+    "titleEn": "Fines",
+    "descriptionEn": "Merchants classified with this MCC are government entities that administer and process local, state, and federal fines and penalties, motor vehicle violations, and community-or property-assessed fines.",
+    "includedEn": [
+      "Community Assessed",
+      "Penalties",
+      "Motor Vehicle Violations"
+    ],
+    "similar": [
+      "9211",
+      "9399"
+    ]
+  },
+  {
+    "code": "9223",
+    "titleEn": "Bail and Bond Payments",
+    "descriptionEn": "Merchants classified with this MCC post bail to the court system as security for the appearance of the arraigned individual.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "9311",
+    "titleEn": "Tax Payments",
+    "descriptionEn": "Merchants classified with this MCC are local, state, and federal entities that engage in financial administration and taxation including collection of taxes and penalties and custody and disbursement of funds.",
+    "includedEn": [
+      "Customs Bureaus 9399 – Government Services (Not",
+      "Elsewhere Classified)"
+    ],
+    "similar": []
+  },
+  {
+    "code": "9399",
+    "titleEn": "Government Services (Not Elsewhere Classified)",
+    "descriptionEn": "Merchants classified with this MCC are government entities that provide general support services to government and communities are not classified with a more specific MCC.",
+    "includedEn": [
+      "DMV",
+      "Department of Motor",
+      "Vehicles",
+      "Fire Departments",
+      "Libraries",
+      "Parks and Recreation",
+      "Police Departments"
+    ],
+    "similar": [
+      "4784",
+      "7523",
+      "7992"
+    ]
+  },
+  {
+    "code": "9402",
+    "titleEn": "Postal Services – Government Only",
+    "descriptionEn": "Merchants classified with this MCC are government postal offices that provide a variety of services such as accepting and processing packages and mail for delivery and selling postage stamps.",
+    "includedEn": [],
+    "similar": [
+      "7399",
+      "9399"
+    ]
+  },
+  {
+    "code": "9405",
+    "titleEn": "U.S. Federal Government Agencies or Departments",
+    "descriptionEn": "Merchants classified with this MCC process U.S. federal government transactions using an acquiring BIN associated with the Intra-Government Transfers (IGOTS) program.",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "9406",
+    "titleEn": "Government-Owned Lotteries (Non-U.S. region)",
+    "descriptionEn": "Merchants classified with this MCC are government-owned lotteries that sell lottery tickets.",
+    "includedEn": [],
+    "similar": [
+      "7800",
+      "7995"
+    ]
+  },
+  {
+    "code": "9702",
+    "titleEn": "Emergency Services (GCAS) (Visa use only)",
+    "descriptionEn": "This MCC is used only by Visa to enable members and processors to identify emergency transactions from the Global Customer Assistance Services (GCAS).",
+    "includedEn": [],
+    "similar": []
+  },
+  {
+    "code": "9950",
+    "titleEn": "Intra-Company Purchases",
+    "descriptionEn": "Merchants classified with this MCC process purchasing card transactions representing internal unit-to-unit transfers of goods and services.",
+    "includedEn": [],
+    "similar": []
+  }
+]

@@ -1,0 +1,301 @@
+import test, { after, before, beforeEach, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import request from 'supertest';
+import { CREDENTIALS, DEMANDE_VALIDE, app, pool, resetDatabase } from './helpers.js';
+
+const tokens = {};
+
+const login = async (key) => {
+  const res = await request(app).post('/api/auth/login').send(CREDENTIALS[key]).expect(200);
+  return res.body.token;
+};
+
+const asAgent = () => ({ Authorization: `Bearer ${tokens.agent}` });
+const asBanquier = () => ({ Authorization: `Bearer ${tokens.banquier}` });
+
+/** Crée une demande au statut BROUILLON et renvoie son corps. */
+const creerDemande = async (overrides = {}) => {
+  const res = await request(app)
+    .post('/api/requests')
+    .set(asAgent())
+    .send({ ...DEMANDE_VALIDE, ...overrides })
+    .expect(201);
+  return res.body;
+};
+
+describe("Demandes d'affiliation", () => {
+  before(async () => {
+    await resetDatabase();
+    tokens.agent = await login('agent');
+    tokens.banquier = await login('banquier');
+    tokens.agentAutreBanque = await login('agentAutreBanque');
+  });
+
+  beforeEach(async () => {
+    await pool.query('TRUNCATE affiliation_requests RESTART IDENTITY CASCADE');
+  });
+
+  test('un agent saisit une demande et obtient une référence', async () => {
+    const demande = await creerDemande();
+    assert.match(demande.reference, /^AFF-\d{4}-\d{5}$/);
+    assert.equal(demande.status, 'BROUILLON');
+    assert.equal(demande.siteName, DEMANDE_VALIDE.siteName);
+    assert.equal(demande.createdByName, 'Salma Ben Ali');
+  });
+
+  test('les champs obligatoires sont contrôlés champ par champ', async () => {
+    const res = await request(app)
+      .post('/api/requests')
+      .set(asAgent())
+      .send({ ...DEMANDE_VALIDE, siteUrl: 'pas-une-url', contactEmail: 'invalide', rne: '' })
+      .expect(400);
+
+    const champs = res.body.details.map((d) => d.champ);
+    assert.ok(champs.includes('siteUrl'));
+    assert.ok(champs.includes('contactEmail'));
+    assert.ok(champs.includes('rne'));
+  });
+
+  test("un descriptif d'activité trop court est refusé : il alimente la suggestion", async () => {
+    const res = await request(app)
+      .post('/api/requests')
+      .set(asAgent())
+      .send({ ...DEMANDE_VALIDE, activityDescription: 'cosmetiques' })
+      .expect(400);
+    assert.ok(res.body.details.some((d) => d.champ === 'activityDescription'));
+  });
+
+  test("un MCC non éligible ne peut pas être proposé", async () => {
+    const res = await request(app)
+      .post('/api/requests')
+      .set(asAgent())
+      .send({ ...DEMANDE_VALIDE, proposedVisaMcc: '7995' })
+      .expect(400);
+    assert.match(res.body.error, /7995/);
+    assert.match(res.body.error, /pas éligible/);
+  });
+
+  test('un banquier ne saisit pas de demande', async () => {
+    await request(app).post('/api/requests').set(asBanquier()).send(DEMANDE_VALIDE).expect(403);
+  });
+
+  test('une demande est modifiable tant qu’elle est au brouillon', async () => {
+    const demande = await creerDemande();
+    const res = await request(app)
+      .put(`/api/requests/${demande.id}`)
+      .set(asAgent())
+      .send({ siteName: 'Beldi Cosmetics Pro', proposedVisaMcc: '5999' })
+      .expect(200);
+    assert.equal(res.body.siteName, 'Beldi Cosmetics Pro');
+    assert.equal(res.body.proposedVisaMcc, '5999');
+  });
+
+  test('la soumission exige un MCC Visa et un MCC Mastercard', async () => {
+    const demande = await creerDemande({ proposedMastercardMcc: null });
+    const res = await request(app)
+      .post(`/api/requests/${demande.id}/submit`)
+      .set(asAgent())
+      .expect(400);
+    assert.match(res.body.error, /Mastercard/);
+  });
+
+  test('la soumission fige les propositions du moteur pour le banquier', async () => {
+    const demande = await creerDemande();
+    const soumise = await request(app)
+      .post(`/api/requests/${demande.id}/submit`)
+      .set(asAgent())
+      .expect(200);
+    assert.equal(soumise.body.status, 'SOUMISE');
+    assert.ok(soumise.body.submittedAt);
+
+    const snapshot = await request(app)
+      .get(`/api/requests/${demande.id}/suggestions`)
+      .set(asBanquier())
+      .expect(200);
+
+    assert.ok(snapshot.body.VISA.length > 0);
+    assert.ok(snapshot.body.MASTERCARD.length > 0);
+    assert.equal(snapshot.body.VISA[0].code, '5977');
+    assert.ok(snapshot.body.VISA[0].description.length > 10);
+  });
+
+  test('une demande soumise n’est plus modifiable par l’agent', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+    const res = await request(app)
+      .put(`/api/requests/${demande.id}`)
+      .set(asAgent())
+      .send({ siteName: 'Nouveau nom' })
+      .expect(409);
+    assert.match(res.body.error, /SOUMISE/);
+  });
+
+  test('le banquier valide en conservant les MCC proposés', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    const res = await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'VALIDEE' })
+      .expect(200);
+
+    assert.equal(res.body.status, 'VALIDEE');
+    assert.equal(res.body.finalVisaMcc, '5977');
+    assert.equal(res.body.finalMastercardMcc, '5977');
+    assert.equal(res.body.decidedByName, 'Karim Trabelsi');
+  });
+
+  test('le banquier peut substituer un autre MCC, réseau par réseau', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    const res = await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({
+        decision: 'VALIDEE',
+        visaMcc: '5999',
+        mastercardMcc: '5977',
+        comment: 'Assortiment plus large que la seule parfumerie',
+      })
+      .expect(200);
+
+    assert.equal(res.body.finalVisaMcc, '5999');
+    assert.equal(res.body.finalMastercardMcc, '5977');
+    assert.equal(res.body.proposedVisaMcc, '5977', 'la proposition initiale reste tracée');
+
+    const events = await request(app)
+      .get(`/api/requests/${demande.id}/events`)
+      .set(asBanquier())
+      .expect(200);
+    assert.ok(events.body.some((e) => e.type === 'VALIDATION_AVEC_MODIFICATION'));
+  });
+
+  test('le banquier ne peut pas retenir un MCC interdit', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'VALIDEE', visaMcc: '5967' })
+      .expect(400);
+  });
+
+  test('un rejet ou une demande de complément exige un commentaire', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'REJETEE' })
+      .expect(400);
+
+    const res = await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'COMPLEMENT_REQUIS', comment: 'RNE illisible, merci de le corriger' })
+      .expect(200);
+    assert.equal(res.body.status, 'COMPLEMENT_REQUIS');
+  });
+
+  test('une demande renvoyée pour complément redevient modifiable puis re-soumissible', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'COMPLEMENT_REQUIS', comment: 'RNE illisible' })
+      .expect(200);
+
+    await request(app)
+      .put(`/api/requests/${demande.id}`)
+      .set(asAgent())
+      .send({ rne: '7654321XYZ' })
+      .expect(200);
+
+    const res = await request(app)
+      .post(`/api/requests/${demande.id}/submit`)
+      .set(asAgent())
+      .expect(200);
+    assert.equal(res.body.status, 'SOUMISE');
+  });
+
+  test('un agent ne peut pas arbitrer une demande', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asAgent())
+      .send({ decision: 'VALIDEE' })
+      .expect(403);
+  });
+
+  test('seule une demande soumise peut être arbitrée', async () => {
+    const demande = await creerDemande();
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'VALIDEE' })
+      .expect(409);
+  });
+
+  test('une demande reste invisible pour une autre banque', async () => {
+    const demande = await creerDemande();
+    await request(app)
+      .get(`/api/requests/${demande.id}`)
+      .set({ Authorization: `Bearer ${tokens.agentAutreBanque}` })
+      .expect(403);
+
+    const liste = await request(app)
+      .get('/api/requests')
+      .set({ Authorization: `Bearer ${tokens.agentAutreBanque}` })
+      .expect(200);
+    assert.equal(liste.body.count, 0);
+  });
+
+  test('la liste se filtre par statut et par recherche', async () => {
+    await creerDemande();
+    const autre = await creerDemande({ siteName: 'Dar Artisanat', companyName: 'DAR SARL' });
+    await request(app).post(`/api/requests/${autre.id}/submit`).set(asAgent()).expect(200);
+
+    const soumises = await request(app).get('/api/requests?status=SOUMISE').set(asBanquier()).expect(200);
+    assert.equal(soumises.body.count, 1);
+    assert.equal(soumises.body.items[0].siteName, 'Dar Artisanat');
+
+    const recherche = await request(app).get('/api/requests?search=Beldi').set(asAgent()).expect(200);
+    assert.equal(recherche.body.count, 1);
+  });
+
+  test('le tableau de bord compte les demandes par statut', async () => {
+    const demande = await creerDemande();
+    await creerDemande({ siteName: 'Autre site' });
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    const res = await request(app).get('/api/requests/stats').set(asBanquier()).expect(200);
+    assert.equal(res.body.BROUILLON, 1);
+    assert.equal(res.body.SOUMISE, 1);
+    assert.equal(res.body.TOTAL, 2);
+  });
+
+  test('le journal retrace chaque étape de manière nominative', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+    await request(app)
+      .post(`/api/requests/${demande.id}/decision`)
+      .set(asBanquier())
+      .send({ decision: 'VALIDEE' })
+      .expect(200);
+
+    const res = await request(app).get(`/api/requests/${demande.id}/events`).set(asAgent()).expect(200);
+    assert.deepEqual(
+      res.body.map((e) => e.type),
+      ['CREATION', 'SOUMISSION', 'VALIDATION']
+    );
+    assert.equal(res.body[0].userName, 'Salma Ben Ali');
+    assert.equal(res.body[2].userRole, 'BANQUIER');
+  });
+
+  after(async () => pool.end());
+});
