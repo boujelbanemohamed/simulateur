@@ -1927,4 +1927,155 @@ Légende :
 | ERGONOMIE | 12 | 0 | 0 | 12 |
 | **Total** | **147** | **46** | **38** | **63** |
 
+### 3.12 Répartition par criticité et par niveau
+
+| Domaine | Cas | BLOQUANT | MAJEUR | MINEUR | BACK | FRONT | LES DEUX |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| AUTH | 17 | 8 | 6 | 3 | 13 | 0 | 4 |
+| HABILITATION | 10 | 4 | 3 | 3 | 3 | 2 | 5 |
+| DEMANDE | 14 | 2 | 8 | 4 | 4 | 8 | 2 |
+| WORKFLOW | 15 | 9 | 6 | 0 | 5 | 0 | 10 |
+| MCC | 15 | 4 | 8 | 3 | 8 | 1 | 6 |
+| ADMIN | 22 | 7 | 12 | 3 | 8 | 0 | 14 |
+| IMPORT | 16 | 7 | 9 | 0 | 8 | 0 | 8 |
+| INDEXATION | 10 | 3 | 6 | 1 | 7 | 0 | 3 |
+| ROBUSTESSE | 16 | 1 | 12 | 3 | 14 | 0 | 2 |
+| ERGONOMIE | 12 | 0 | 11 | 1 | 0 | 12 | 0 |
+| **Total** | **147** | **45** | **81** | **21** | **70** | **23** | **54** |
+
+### 3.13 Les cinq cas à exécuter en priorité
+
+| Rang | Cas | Pourquoi |
+| --- | --- | --- |
+| 1 | **CAS-AUTH-11** — changement obligatoire imposé par le serveur | Seule barrière entre un mot de passe provisoire connu de l'administrateur et l'ensemble des données clients ; couverte partiellement et jamais côté écran. |
+| 2 | **CAS-HAB-04** — cloisonnement inter-banques | Une fuite ici expose les données commerciales et le RNE des clients d'une banque concurrente ; les routes `events`, `suggestions` et `PUT` ne sont pas couvertes. |
+| 3 | **CAS-MCC-07** — refus API d'un MCC interdit sur les trois points d'entrée | Un code interdit accepté engage la banque sur une activité non éligible ; le chemin `PUT /api/requests/:id` n'est couvert par aucun test. |
+| 4 | **CAS-WF-13** — deux décisions simultanées | Une demande portant deux décisions contradictoires est irrattrapable en audit ; garde-fou porté par une seule clause `WHERE`. |
+| 5 | **CAS-AUTH-15** — limitation de débit sur la route réelle | Le seul test existant exerce le composant isolé, jamais `/api/auth/login` : la protection anti-force brute n'est en réalité pas vérifiée de bout en bout. |
+
 ---
+
+## 4. Jeux de données
+
+> **Condition de reproductibilité** : ces résultats ont été relevés sur le référentiel d'amorçage intact (279 codes, `npm run db:seed`, aucun code modifié ni désactivé) avec `SUGGESTION_LIMIT = 6`. Tout cas ayant modifié le référentiel (CAS-MCC-08, CAS-ADM-15, CAS-INDEX-*, CAS-IMPORT-09…) doit être suivi d'une remise à zéro avant de rejouer un cas de la section MCC.
+
+### 4.1 Corps de demande commun
+
+Toutes les demandes partent de ce socle ; chaque jeu ne redéfinit que les champs de la §4.2.
+
+```json
+{
+  "siteName": "<voir 4.2>",
+  "siteUrl": "<voir 4.2>",
+  "siteLanguages": "Français, arabe",
+  "companyName": "<voir 4.2>",
+  "legalForm": "SARL",
+  "rne": "<voir 4.2>",
+  "taxId": "1234567/A/M/000",
+  "companyCreatedOn": "2021-03-15",
+  "shareCapital": 50000,
+  "contactFirstName": "Amine",
+  "contactLastName": "Zouari",
+  "contactEmail": "contact@exemple.tn",
+  "contactPhone": "+216 71 123 456",
+  "addressLine1": "12 rue de Marseille",
+  "city": "Tunis",
+  "postalCode": "1001",
+  "governorate": "Tunis",
+  "country": "Tunisie",
+  "activitySector": "<voir 4.2>",
+  "activityDescription": "<voir 4.2>",
+  "deliveryMode": "<voir 4.2>",
+  "hasSubscription": false,
+  "isMarketplace": false,
+  "sellsAbroad": false,
+  "currency": "TND",
+  "proposedVisaMcc": "<MCC attendu>",
+  "proposedMastercardMcc": "<MCC attendu>",
+  "proposedJustification": "Code retenu au vu de l'activité déclarée."
+}
+```
+
+### 4.2 Les dix jeux
+
+| Jeu | Société / RNE / site | Secteur, livraison, drapeaux | Description d'activité (à copier telle quelle, **sans accents**) |
+| --- | --- | --- | --- |
+| **JD-01** | `BELDI SARL` · RNE `1234567ABC` · `https://beldi-cosmetics.tn` | `BEAUTE_COSMETIQUE` · `PHYSIQUE` | `Vente en ligne de cosmetiques naturels, huiles essentielles et savons artisanaux fabriques en Tunisie` |
+| **JD-02** | `TAAM EXPRESS SUARL` · RNE `2234567BCD` · `https://taam-express.tn` | `RESTAURATION` · `PHYSIQUE` | `Plateforme de commande et de livraison de repas prepares par des restaurants partenaires a Tunis` |
+| **JD-03** | `LIBRAIRIE EL KITAB SA` · RNE `3234567CDE` · `https://elkitab.tn` | `LIVRES_CULTURE` · `PHYSIQUE` | `Librairie en ligne proposant des livres neufs et d occasion, romans, bandes dessinees et manuels scolaires` |
+| **JD-04** | `SOFTGEST SARL` · RNE `4234567DEF` · `https://softgest.tn` | `INFORMATIQUE_LOGICIEL` · `NUMERIQUE` · `hasSubscription: true` | `Editeur de logiciels de gestion vendus en telechargement avec abonnement mensuel pour les PME` |
+| **JD-05** | `DAR MODA SARL` · RNE `5234567EFG` · `https://darmoda.tn` | `MODE_HABILLEMENT` · `PHYSIQUE` | `Boutique en ligne de vetements pour femmes : robes, chemisiers, pantalons et accessoires de mode` |
+| **JD-06** | `SOUK ONLINE SA` · RNE `6234567FGH` · `https://souk-online.tn` | `MARKETPLACE` · `PHYSIQUE` · `isMarketplace: true` | `Place de marche generaliste regroupant des vendeurs tiers tunisiens vendant vetements, high tech et maison` |
+| **JD-07** | `PARAPHARM PLUS SARL` · RNE `7234567GHI` · `https://parapharm-plus.tn` | `SANTE` · `PHYSIQUE` | `Parapharmacie en ligne : complements alimentaires, produits d hygiene et materiel medical leger` |
+| **JD-08** | `MOBILIS VERT SUARL` · RNE `8234567HIJ` · `https://mobilis-vert.tn` | `AUTOMOBILE` · `PHYSIQUE` | `Vente de trottinettes electriques, velos a assistance electrique et pieces detachees pour la mobilite urbaine` |
+| **JD-09** | `ATELIER DU TEMPS SUARL` · RNE `9234567IJK` · `https://atelier-du-temps.tn` | *(aucun secteur)* · `SERVICE` | `Atelier de reparation de montres mecaniques anciennes et remplacement de bracelets sur mesure` |
+| **JD-10** | `TEST NEUTRE SARL` · RNE `1034567JKL` · `https://test-neutre.tn` | *(aucun secteur)* · `PHYSIQUE` | `zzzz qqqq wwww xxxx yyyy kkkk jjjj hhhh gggg ffff` |
+
+### 4.3 Résultats attendus du moteur (`POST /api/mcc/suggest`, `limit = 6`)
+
+| Jeu | Rang 1 | Les 6 codes, dans l'ordre | Scores correspondants |
+| --- | --- | --- | --- |
+| JD-01 | **5977** Cosmétiques et parfumerie | `5977, 7230, 7298, 5912, 5999, 5960` | `74, 66, 63, 57, 50, 31` |
+| JD-01 *sans secteur* | **5977** | `5977, 5999, 5960, 5962, 5964, 5965` | `54, 50, 31, 31, 31, 31` |
+| JD-02 | **5812** Restaurants | `5812, 5814, 5811, 4214, 5992, 5818` | `82, 80, 73, 60, 51, 48` |
+| JD-03 | **5942** Librairies | `5942, 5815, 5994, 5521, 5931, 5733` | `75, 74, 66, 65, 63, 61` |
+| JD-04 | **5734** Magasins de logiciels | `5734, 5817, 4816, 7372, 4899, 5815` | `78, 75, 73, 73, 67, 61` |
+| JD-05 | **5691** Magasins de vêtements homme et femme | `5691, 5651, 5621, 5611, 5641, 5631` | `78, 73, 73, 72, 72, 70` |
+| JD-06 | **5262** Places de marché | `5262, 5732, 5200, 5719, 5691, 5712` | `90, 67, 65, 65, 58, 58` |
+| JD-07 | **5047** Matériel médical, dentaire, ophtalmique et hospitalier (gros) | `5047, 8011, 8099, 5912, 5499, 7394` | `85, 75, 71, 69, 63, 61` |
+| JD-08 | **5013** Fournitures et pièces détachées automobiles (gros) | `5013, 5533, 5532, 5511, 5065, 5571` | `81, 76, 63, 62, 60, 60` |
+| JD-09 | **5697** Retouches et couture sur mesure | `5697, 7699, 7622, 7631, 7629, 7538` | `68, 63, 62, 62, 56, 55` |
+| JD-10 | *(aucune correspondance)* | `5960, 5962, 5964, 5965, 5968, 5969` | `31, 31, 31, 31, 31, 31` — `matchedTerms` vides, **pas** de repli sur `5999` (divergence D4) |
+
+Un écart sur l'un de ces tableaux, sur un référentiel intact, est un **défaut de non-régression du moteur**, pas un aléa.
+
+### 4.4 Codes MCC de référence pour les cas d'interdiction et de vigilance
+
+| Usage | Code | Libellé | Niveau |
+| --- | --- | --- | --- |
+| Interdit « métier » | `7995` | Paris, loteries et jeux de hasard | INTERDIT |
+| Interdit « contenus » | `5967` | Contenus et services pour adultes | INTERDIT |
+| Interdit « crypto » | `6051` | Institutions non financières – devises, actifs liquides et crypto-actifs | INTERDIT |
+| Interdit « technique » | `9950` | Achats intra-groupe | INTERDIT |
+| Sensible | `5912` | Pharmacies et parapharmacies | SENSIBLE |
+| Sensible | `5960` | Vente à distance – services d'assurance | SENSIBLE |
+| Standard, à désactiver en recette | `5942` | Librairies | STANDARD |
+| Code de repli | `5999` | Commerces de détail spécialisés divers | STANDARD |
+
+Liste complète des 12 codes INTERDIT du référentiel d'amorçage : `5723, 5967, 6010, 6011, 6051, 7800, 7801, 7802, 7995, 9406, 9702, 9950`.
+
+### 4.5 Codes à créer pour les cas d'indexation et d'import
+
+| Code | Libellé | Description | Mots-clés | Secteur | Utilisé par |
+| --- | --- | --- | --- | --- | --- |
+| `9101` | `Bornes de recharge pour véhicules électriques` | `Exploitation de bornes de recharge et abonnements associés.` | *(aucun)* | *(aucun)* | CAS-INDEX-01/02/06/08 |
+| `9102` | `Conciergerie numérique` | `Plateformes de conciergerie du quotidien.` | *(aucun)* | *(aucun)* | CAS-IMPORT-13 (code « muet ») |
+| `9103` | `Ateliers de réparation de drones` | `Réparation de drones civils.` | `drone`, `reparation drone` | *(aucun)* | CAS-IMPORT-13 |
+| `9104` | `Cours de cuisine en ligne` | `Ateliers culinaires à distance.` | *(aucun)* | `EDUCATION_FORMATION` | CAS-IMPORT-13 |
+| `9105` | `Trottinettes électriques` | `Vente et entretien de trottinettes électriques.` | *(aucun, puis `patinette`)* | `AUTOMOBILE` | CAS-INDEX-03/04 |
+| `9201` | `Code de recette import` | `Code ajouté par le fichier d'import de recette.` | *(aucun)* | *(aucun)* | CAS-IMPORT-08/09 |
+
+Les mots-clés dérivés attendus pour `9101` (`GET /api/admin/mcc/9101` → `keywordsAuto`) sont :
+`bornes recharge`, `recharge vehicules`, `vehicules electriques`, `bornes`, `borne`, `recharge`, `recharges`, `vehicules`, `vehicule`, `electriques`, `electrique`, `exploitation`, `exploitations`, `abonnements`, `abonnement`, `associes`, `associe` (plus les dérivés du libellé anglais s'il est renseigné), soit **au plus 30 entrées**.
+
+### 4.6 Comptes à créer pour les cas d'habilitation et d'administration
+
+| Identifiant | Rôle | Banque | Mot de passe initial | Utilisé par |
+| --- | --- | --- | --- | --- |
+| `recette1@banque.tn` | AGENT | BQ001 | `Recette#2026` | CAS-ADM-01/02/03, CAS-AUTH-11/12 |
+| `recette2@banque.tn` | AGENT | BQ001 | `Recette#2026` | CAS-HAB-06 (second agent de la même banque) |
+| `recette-bq@banque.tn` | AGENT | BQ003 | `Recette#2026` | CAS-AUTH-07 (banque désactivée) |
+| `admin2@clicktopay.tn` | ADMIN | BQ001 | `Recette#2026` | CAS-ADM-08/09/10 |
+| `admin3@clicktopay.tn` | ADMIN | BQ001 | `Recette#2026` | CAS-ADM-10 (rétrogradation croisée) |
+
+Banques à créer : `BQ003 — Banque de Recette Habilitation`, `BQ009 — Banque de Recette` (CAS-ADM-12).
+
+---
+
+## 5. Conduite de la campagne
+
+1. **Ordre conseillé** : AUTH → HABILITATION → DEMANDE → WORKFLOW → MCC → INDEXATION → IMPORT → ADMIN → ROBUSTESSE → ERGONOMIE. Les domaines MCC et INDEXATION passent **avant** ADMIN et IMPORT, qui modifient le référentiel.
+2. **Remise à zéro** : après tout cas marqué comme modifiant le référentiel ou la population de comptes, rejouer `npm run db:seed` (ou `resetDatabase()`), puis revérifier `GET /api/mcc` → `total = 279` avant d'enchaîner sur un cas de la section 4.3.
+3. **Cas destructifs à isoler** : CAS-ADM-08/09/10 (population d'administrateurs), CAS-AUTH-07 (banque désactivée), CAS-IMPORT-10 (désactivation en masse), CAS-ROB-12 (arrêt de la base).
+4. **Remontée** : pour chaque cas, consigner `identifiant | OK/KO | preuve` (code HTTP et corps, ou capture d'écran nommée `CAS-XXX-NN.png`). Un cas « partiellement OK » est un **KO**.
+5. **Divergences** : les cas D1 à D7 ne sont pas des échecs de la plateforme mais des écarts entre le README et le code. Les consigner dans une rubrique distincte à destination de l'agent 7.
