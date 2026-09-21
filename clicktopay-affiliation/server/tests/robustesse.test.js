@@ -440,3 +440,126 @@ describe('Import Excel et CSV du référentiel', () => {
 // Déclaré en toute fin de fichier : placé plus haut, ce hook fermait le pool
 // avant les suites suivantes, qui restaient alors en attente indéfiniment.
 after(async () => pool.end());
+
+describe('Défauts relevés par la revue de code', () => {
+  let admin;
+  let agent;
+
+  before(async () => {
+    await resetDatabase();
+    const jeton = async (cle) =>
+      (await request(app).post('/api/auth/login').send(CREDENTIALS[cle]).expect(200)).body.token;
+    admin = { Authorization: `Bearer ${await jeton('admin')}` };
+    agent = { Authorization: `Bearer ${await jeton('agent')}` };
+  });
+
+  test('la configuration refuse de démarrer en production sans secret (C-01)', async () => {
+    const { execFile } = await import('node:child_process');
+    const { promisify } = await import('node:util');
+
+    const lancer = (env) =>
+      promisify(execFile)('node', ['-e', "import('./src/config.js').then(() => process.exit(0))"], {
+        cwd: process.cwd(),
+        env: { PATH: process.env.PATH, ...env },
+      });
+
+    // En développement, les replis restent autorisés.
+    await lancer({ NODE_ENV: 'development' });
+
+    // En production, l'absence de secret doit être fatale.
+    await assert.rejects(
+      () => lancer({ NODE_ENV: 'production' }),
+      (err) => {
+        assert.match(err.stderr, /obligatoire en production/);
+        return true;
+      },
+      'démarrer en production sans JWT_SECRET doit échouer'
+    );
+  });
+
+  test("un échec de rechargement du référentiel ne fige pas l'application (C-12)", async () => {
+    const catalogue = await import('../src/services/mccCatalog.js');
+    const pool = (await import('../src/db/pool.js')).pool;
+
+    // On force l'échec du rechargement en rendant la requête impossible.
+    const requeteOriginale = pool.query.bind(pool);
+    pool.query = async () => {
+      throw new Error('panne simulée de la base');
+    };
+    await assert.rejects(() => catalogue.rechargerCatalogue({ diffuser: false }));
+    pool.query = requeteOriginale;
+
+    // Après la panne, l'application doit se rétablir d'elle-même.
+    await catalogue.assurerCatalogueCharge();
+    await request(app).get('/api/mcc?limit=1').set(agent).expect(200);
+    await request(app).post('/api/auth/login').send(CREDENTIALS.agent).expect(200);
+  });
+
+  test('le contrôle de santé reflète l’état du référentiel (C-12)', async () => {
+    const res = await request(app).get('/api/health').expect(200);
+    assert.equal(res.body.status, 'ok');
+    assert.equal(res.body.referentiel, 'charge');
+  });
+
+  test('aucune modification n’atterrit sur une demande déjà soumise (C-02)', async () => {
+    // L'état final seul ne prouve rien : si la modification s'applique avant la
+    // soumission, le résultat est légitime. Ce qui trahit le défaut, c'est
+    // l'ordre des événements — une MODIFICATION journalisée après la SOUMISSION.
+    for (let essai = 0; essai < 6; essai += 1) {
+      const demande = (await request(app).post('/api/requests').set(agent)
+        .send({ ...DEMANDE_VALIDE, siteName: `Course ${essai}` }).expect(201)).body;
+
+      await Promise.all([
+        request(app).post(`/api/requests/${demande.id}/submit`).set(agent),
+        request(app).put(`/api/requests/${demande.id}`).set(agent)
+          .send({ siteName: `Modifié pendant la course ${essai}` }),
+      ]);
+
+      const evenements = (await request(app).get(`/api/requests/${demande.id}/events`)
+        .set(agent).expect(200)).body.map((e) => e.type);
+
+      const soumission = evenements.indexOf('SOUMISSION');
+      if (soumission === -1) continue; // la soumission a perdu la course
+      const modificationTardive = evenements
+        .slice(soumission + 1)
+        .includes('MODIFICATION');
+      assert.equal(modificationTardive, false,
+        `essai ${essai} : une modification a été écrite après la soumission (${evenements.join(' > ')})`);
+    }
+  });
+
+  test('modifier un MCC ne le relègue pas en fin de secteur (C-14)', async () => {
+    const secteurs = async () =>
+      (await request(app).get('/api/mcc/secteurs').set(agent).expect(200)).body
+        .find((s) => s.key === 'MODE_HABILLEMENT').mccs;
+
+    const avant = await secteurs();
+    const premier = avant[0];
+    assert.equal(premier, '5651', 'le code de tête du secteur mode');
+
+    // Une modification quelconque, en renvoyant le même rattachement.
+    await request(app).put(`/api/admin/mcc/${premier}`).set(admin)
+      .send({ note: 'Note ajoutée par la recette', sectors: ['MODE_HABILLEMENT'] })
+      .expect(200);
+
+    const apres = await secteurs();
+    assert.deepEqual(apres, avant, 'l’ordre du secteur est préservé');
+  });
+
+  test('un nouveau rattachement prend la fin de file, sans bousculer les autres (C-14)', async () => {
+    const secteurs = async () =>
+      (await request(app).get('/api/mcc/secteurs').set(agent).expect(200)).body
+        .find((s) => s.key === 'ANIMALERIE').mccs;
+
+    const avant = await secteurs();
+    await request(app).put('/api/admin/mcc/5995').set(admin)
+      .send({ sectors: ['ANIMALERIE', 'MODE_HABILLEMENT'] }).expect(200);
+
+    const apres = await secteurs();
+    assert.deepEqual(apres, avant, 'le secteur d’origine est inchangé');
+
+    const mode = (await request(app).get('/api/mcc/secteurs').set(agent).expect(200)).body
+      .find((s) => s.key === 'MODE_HABILLEMENT').mccs;
+    assert.equal(mode[mode.length - 1], '5995', 'le nouveau rattachement arrive en fin de file');
+  });
+});

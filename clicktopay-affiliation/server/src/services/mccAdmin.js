@@ -19,8 +19,27 @@ async function ecrireSecteurs(client, code, secteurs) {
   const inconnus = secteurs.filter((s) => !connus.includes(s));
   if (inconnus.length > 0) throw badRequest(`Secteur inconnu : ${inconnus.join(', ')}`);
 
-  await client.query('DELETE FROM mcc_sectors WHERE mcc_code = $1', [code]);
-  for (const [rang, secteur] of secteurs.entries()) {
+  // Le rang traduit la priorité du code DANS son secteur, et le moteur s'en sert
+  // pour départager les codes (jusqu'à 36 points d'écart). On ne touche donc
+  // qu'aux rattachements qui changent réellement : un DELETE suivi d'un INSERT
+  // global reléguerait le code en fin de secteur à chaque simple modification de
+  // son libellé. Un nouveau rattachement, lui, prend la fin de file.
+  const { rows } = await client.query(
+    'SELECT sector_key FROM mcc_sectors WHERE mcc_code = $1',
+    [code]
+  );
+  const actuels = rows.map((r) => r.sector_key);
+  const aRetirer = actuels.filter((s) => !secteurs.includes(s));
+  const aAjouter = secteurs.filter((s) => !actuels.includes(s));
+
+  if (aRetirer.length > 0) {
+    await client.query(
+      'DELETE FROM mcc_sectors WHERE mcc_code = $1 AND sector_key = ANY($2::varchar[])',
+      [code, aRetirer]
+    );
+  }
+
+  for (const secteur of aAjouter) {
     // Le type de $1 est posé explicitement : sans cast, PostgreSQL déduit
     // « text » pour la valeur insérée et « varchar » pour la comparaison, et
     // refuse la requête (« inconsistent types deduced for parameter $1 »).
@@ -173,7 +192,7 @@ export async function getMccHistory(code) {
   const { rows } = await query(
     `SELECT h.*, (u.first_name || ' ' || u.last_name) AS user_name
        FROM mcc_code_history h LEFT JOIN users u ON u.id = h.user_id
-      WHERE h.code = $1 ORDER BY h.created_at DESC, h.id DESC`,
+      WHERE h.code = $1 ORDER BY h.id DESC`,
     [code]
   );
   return rows.map((r) => ({

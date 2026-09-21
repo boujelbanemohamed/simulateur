@@ -150,10 +150,17 @@ export async function updateRequest({ id, payload, user }) {
 
   values.push(id);
   return withTransaction(async (client) => {
-    await client.query(
-      `UPDATE affiliation_requests SET ${sets.join(', ')}, updated_at = now() WHERE id = $${values.length}`,
+    // `assertEditable` a lu le statut hors transaction : entre cette lecture et
+    // l'écriture, la demande a pu être soumise. C'était le dernier chemin
+    // d'écriture sans garde dans sa clause WHERE.
+    const { rowCount } = await client.query(
+      `UPDATE affiliation_requests SET ${sets.join(', ')}, updated_at = now()
+        WHERE id = $${values.length} AND status IN ('BROUILLON', 'COMPLEMENT_REQUIS')`,
       values
     );
+    if (rowCount === 0) {
+      throw conflict('Cette demande vient de changer de statut et n’est plus modifiable.');
+    }
     await logEvent(client, {
       requestId: id,
       userId: user.id,
@@ -376,7 +383,7 @@ export async function getEvents(id, user) {
        FROM request_events e
        LEFT JOIN users u ON u.id = e.user_id
       WHERE e.request_id = $1
-      ORDER BY e.created_at, e.id`,
+      ORDER BY e.id`,
     [id]
   );
   return rows.map((r) => ({

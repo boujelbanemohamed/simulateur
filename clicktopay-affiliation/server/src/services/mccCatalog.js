@@ -132,8 +132,16 @@ export function assurerCatalogueCharge() {
 
 /** À appeler après toute écriture sur mcc_codes : recharge et prévient les autres instances. */
 export async function rechargerCatalogue({ diffuser = true } = {}) {
-  chargement = chargerCatalogue();
-  const resultat = await chargement;
+  // Même précaution que dans assurerCatalogueCharge : sans ce `catch`, un échec
+  // passager de la base laisse une promesse rejetée dans `chargement`, que le
+  // `??=` ne remplacera jamais. Toutes les routes, connexion comprise,
+  // répondraient alors 500 jusqu'au redémarrage du processus.
+  const tentative = chargerCatalogue().catch((err) => {
+    chargement = null;
+    throw err;
+  });
+  chargement = tentative;
+  const resultat = await tentative;
   if (diffuser) {
     // Best effort : une notification perdue ne doit pas faire échouer l'écriture,
     // qui est déjà validée à ce stade.
@@ -145,6 +153,9 @@ export async function rechargerCatalogue({ diffuser = true } = {}) {
   }
   return resultat;
 }
+
+/** Le catalogue est-il chargé et exploitable ? Sert au contrôle de santé. */
+export const catalogueEstCharge = () => cache.items.length > 0;
 
 /**
  * Ouvre une connexion dédiée qui écoute les modifications du référentiel.

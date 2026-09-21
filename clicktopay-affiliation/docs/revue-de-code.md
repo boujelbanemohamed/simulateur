@@ -235,7 +235,7 @@ défend, mais il faudrait au moins tracer l'empreinte des champs financiers).
 
 ### C-07 — MAJEUR — `authenticate` s'exécute deux fois par requête : deux allers-retours base inutiles
 
-**Fichiers** : `server/src/app.js:31` ; `server/src/routes/requests.js:5`, `server/src/routes/mcc.js:11`,
+**Fichiers** : `server/src/app.js:31` ; `server/src/routes/requests.js:23`, `server/src/routes/mcc.js:11`,
 `server/src/routes/admin.js:34`
 
 ```js
@@ -323,7 +323,7 @@ retransforme l'erreur.
 
 ### C-10 — MINEUR — `requireRole` laisse ADMIN franchir toutes les séparations de fonction
 
-**Fichier** : `server/src/middleware/auth.js:70-74`
+**Fichier** : `server/src/middleware/auth.js:71-75`
 
 ```js
 export const requireRole = (...roles) => (req, res, next) => {
@@ -365,7 +365,7 @@ tentatives — `loginLimiter.reset(req)` le fait déjà en cas de succès, mais 
 
 ### C-12 — CRITIQUE — Une erreur passagère de base fige l'API entière en erreur 500 jusqu'au redémarrage
 
-**Fichier** : `server/src/services/mccCatalog.js:125-147` (et `server/src/app.js:22-25`)
+**Fichier** : `server/src/services/mccCatalog.js:125-147` (et `server/src/app.js:23-26`)
 
 ```js
 export function assurerCatalogueCharge() {
@@ -386,7 +386,7 @@ export async function rechargerCatalogue({ diffuser = true } = {}) {
 **Problème** : `assurerCatalogueCharge` prend soin de remettre `chargement` à `null` en cas d'échec,
 et le commentaire dit pourquoi. `rechargerCatalogue` écrase cette variable par une promesse **nue**.
 Si `chargerCatalogue()` échoue (coupure réseau, `ECONNRESET`, redémarrage PostgreSQL, saturation du
-pool), `chargement` conserve définitivement une promesse rejetée. Or `app.js:22-25` appelle
+pool), `chargement` conserve définitivement une promesse rejetée. Or `app.js:23-26` appelle
 `assurerCatalogueCharge()` **à chaque requête** ; `chargement ??= ...` ne remplace pas une promesse
 rejetée (elle n'est ni `null` ni `undefined`). Toutes les routes — y compris `/api/auth/login` —
 répondent alors 500, indéfiniment, jusqu'au redémarrage du processus. Le cache ne se répare jamais
@@ -426,7 +426,7 @@ client.on('error', (err) => {
 ```
 
 **Problème** : `ecoute` est remis à `null` mais personne ne rappelle `ecouterModifications()` —
-la fonction n'est invoquée qu'une fois, au démarrage (`index.js:8`). Après la première coupure de
+la fonction n'est invoquée qu'une fois, au démarrage (`index.js:10`). Après la première coupure de
 la connexion dédiée (redémarrage de la base, coupure d'un pare-feu applicatif, `idle timeout` d'un
 proxy type PgBouncer), l'instance cesse définitivement d'écouter, sans qu'aucun symptôme visible
 n'apparaisse.
@@ -617,7 +617,7 @@ tableau PostgreSQL et fait échouer la comparaison.
 
 ### C-20 — MINEUR — Le seed réactive les comptes et réinitialise leurs mots de passe, sans trace ni péremption des jetons
 
-**Fichier** : `server/src/db/seed.js:89-104`
+**Fichier** : `server/src/db/seed.js:91-102`
 
 ```sql
 INSERT INTO users (...) VALUES (...)
@@ -644,7 +644,7 @@ classique, d'autant que le script est idempotent par ailleurs et donc réputé s
 
 **Correction** : conditionner les comptes de démonstration à `NODE_ENV !== 'production'`, ne jamais
 forcer `active = TRUE` sur un conflit, et propager `password_changed_at = now()` si le mot de passe
-est réécrit. Le commentaire « à supprimer avant toute mise en production » (ligne 17) ne suffit pas :
+est réécrit. Le commentaire « à supprimer avant toute mise en production » (ligne 18) ne suffit pas :
 c'est au code de l'empêcher.
 
 ### C-21 — MINEUR (performance) — L'import du référentiel est quadratique et insère ligne à ligne
@@ -765,3 +765,114 @@ justement rester homogène. Enfin, `services/mccImportFile.js:2` importe `normal
 **Correction** : un seul module `journal.js` exposant `tracerDemande()` et `tracerAdministration()`
 avec une forme de `payload` contractuelle (`{ avant, apres }`), un utilitaire partagé
 `construireSet(champs, payload)`, et l'import de `normalize` depuis `texte.js`.
+
+---
+
+## 3. Axes examinés sans rien trouver
+
+Ces points ont été cherchés spécifiquement et sont **propres**. Ils ne sont pas listés pour meubler :
+plusieurs d'entre eux sont mieux traités ici que dans la moyenne des applications comparables.
+
+**Injection SQL — rien.** Toutes les requêtes passent par des paramètres `$n`. Les seuls fragments
+de SQL construits par concaténation sont des **noms de colonnes** issus de tables de correspondance
+figées dans le code (`FIELDS` dans `requests.js:7-43`, `CHAMPS_UTILISATEUR` dans `admin.js:104-111`,
+`CHAMPS` dans `mccAdmin.js:37-49`) : aucune valeur venue de l'utilisateur n'atteint la chaîne SQL.
+Le canal `NOTIFY`/`LISTEN` est une constante (`mccCatalog.js:29`). Les `ILIKE '%…%'` acceptent les
+jokers `%` et `_` de l'utilisateur, ce qui n'est pas une injection mais une recherche plus large
+qu'annoncée — sans conséquence de sécurité.
+
+**Cloisonnement entre banques — rien à redire, hors C-16.** Le filtre `bank_id` est systématique et
+posé au plus près de la donnée : `getRequest` (`requests.js:183-185`), `listRequests`
+(`requests.js:193-196`), `getStats` (`requests.js:396-399`). Les lectures dérivées
+(`getEvents`, `getSuggestionsSnapshot`) commencent par `await getRequest(...)` : le contrôle d'accès
+n'est jamais contourné par une route secondaire, ce qui est la faute habituelle.
+
+**Droits figés dans le jeton — traité, et bien.** `authenticate` (`middleware/auth.js:29-61`) relit
+rôle, banque, activité du compte et de la banque à chaque requête plutôt que de les déduire de la
+charge signée ; l'invalidation par `password_changed_at` coupe réellement les sessions ouvertes.
+C'est la bonne conception (sous réserve de C-08 sur la comparaison d'horloges), et elle est couverte
+par des tests dédiés (`robustesse.test.js`, « Cycle de vie des jetons »).
+
+**Données sensibles journalisées — rien.** Aucun mot de passe, empreinte, jeton ni RIB n'est écrit
+dans un journal ou renvoyé par une réponse. `errorHandler` (`middleware/errors.js:23-30`) ne
+journalise que les 5xx et ne renvoie jamais le détail interne au client. La réponse de connexion
+projette explicitement les champs et laisse `password_hash` de côté (`routes/auth.js:50-63`).
+
+**Promesses non gérées, `await` manquants — rien trouvé côté serveur.** Tous les gestionnaires
+asynchrones passent par `asyncRoute`. Les gestionnaires synchrones qui lèvent
+(`routes/mcc.js:27-31`, `routes/admin.js:133-137`) sont rattrapés par Express 4. Le seul `catch`
+sans variable (`middleware/auth.js:36`) relance immédiatement un 401. Les deux `catch` silencieux
+du client web (`RequestFormPage.jsx:71`, `:146`) sont délibérés et commentés, et le cas qui comptait
+vraiment — l'échec de suggestion — a justement été sorti du silence (`:127-131`).
+
+**Coercition de types et valeurs hostiles — remarquable.** `zodHelpers.js` traite les pièges réels :
+`"false"` qui vaut `true` avec `z.coerce.boolean()`, le `2026-02-30` que seul PostgreSQL rejetterait,
+l'octet NUL qui casse l'encodage, le dépassement de `NUMERIC(14,3)`. Chacun est couvert par un test
+nommé dans `robustesse.test.js`. C'est le point le plus solide du code.
+
+**Concurrence — couverte à trois endroits sur quatre.** `submitRequest`, `decideRequest`,
+`createMcc` et l'invariant « au moins un administrateur » ont chacun leur garde *et* leur test
+(`robustesse.test.js`, « Concurrence »). Le quatrième chemin d'écriture, `updateRequest`, n'a ni
+l'un ni l'autre — c'est précisément C-02.
+
+**XSS côté web — rien.** Aucun `dangerouslySetInnerHTML`, aucun `innerHTML`, aucune injection de
+HTML : tout passe par le rendu React. La double soumission du formulaire est traitée
+(boutons désactivés pendant l'enregistrement, `RequestFormPage.jsx:437` et `:448`, et navigation
+vers l'URL du brouillon dès la première sauvegarde).
+
+---
+
+## 4. Synthèse et appréciation
+
+### Récapitulatif par gravité
+
+| Gravité | Constats |
+|---|---|
+| **CRITIQUE** | C-01 (secret JWT en dur, jamais exigé), C-12 (cache du référentiel définitivement empoisonné par une erreur passagère) |
+| **MAJEUR** | C-02 (TOCTOU sur la modification de demande), C-03 (photographie des suggestions vidée), C-04 (`ROLLBACK` masquant l'erreur), C-05 (changement de mot de passe non tracé), C-06 (journal sans les valeurs), C-07 (double authentification), C-08 (comparaison de deux horloges), C-13 (écoute non rétablie), C-14 (rang de secteur écrasé), C-15 (réactivation impossible à l'import), C-16 (unicité e-mail non portée par la base), C-17 (repli 5999 non défensif) |
+| **MINEUR** | C-09 (erreurs multer en 500), C-10 (ADMIN au-dessus des séparations de fonction), C-11 (blocage de compte tiers), C-18 (index de recherche exposé par l'API), C-19 (paramètre répété → 500), C-20 (seed qui réactive les comptes), C-21 (import quadratique), C-22 (rechargement complet des banques), C-23 (tri non indexé), C-24 (journal non paginable), C-25 (jeton en `localStorage`), C-26 (conventions divergentes) |
+
+### Appréciation
+
+Le code est **au-dessus de la moyenne**, et visiblement écrit par quelqu'un qui a déjà vu casser ce
+genre d'application. Les indices sont nombreux : la relecture des droits en base à chaque requête
+plutôt que dans le jeton, les gardes de statut portées par l'`UPDATE` lui-même avec le commentaire
+qui explique le scénario concurrent, le verrou consultatif pour l'invariant « un administrateur
+restant » (et le raisonnement, juste, sur l'interblocage qu'un `FOR UPDATE` aurait produit), les
+helpers zod qui traitent les coercitions vicieuses, la distinction simulation/application sur
+l'import du référentiel. Les commentaires expliquent presque toujours *pourquoi*, rarement *quoi* —
+c'est la bonne proportion.
+
+Les vrais problèmes sont ailleurs que dans la logique métier : ils sont dans **ce qui entoure** le
+chemin nominal. La configuration qui prétend valider sans valider (C-01). Le cache du référentiel,
+qui est à la fois le socle du contrôle réglementaire et le composant le moins défendu du système :
+il ne se répare pas après une erreur (C-12), il cesse de se synchroniser après une coupure (C-13),
+et les codes qu'il a perdus font disparaître des données d'audit (C-03) ou cassent la soumission
+(C-17). Et une constante : **les invariants sont portés par le code applicatif, pas par la base** —
+unicité d'e-mail insensible à la casse (C-16), cohérence des statuts sur la modification (C-02).
+Dans une application bancaire, ce qui n'est pas contraint en base finit par être violé.
+
+La traçabilité, enfin, est bonne en couverture mais faible en contenu : chaque action métier laisse
+bien une ligne — sauf le changement de mot de passe (C-05) — mais cette ligne ne dit souvent pas
+*ce qui a changé* (C-06), et le journal n'est pas consultable au-delà de 500 entrées (C-24). Une
+piste d'audit qui énumère des noms de champs sans leurs valeurs ne permet pas de répondre à la
+question que pose toujours un contrôle interne : « qui a donné ce droit, et quand ? ».
+
+### Les trois chantiers que je traiterais en premier
+
+1. **Verrouiller la configuration et les invariants en base** (C-01, C-16). Une demi-journée.
+   Refuser le démarrage en production sans `JWT_SECRET` explicite, et poser
+   `UNIQUE INDEX ON users (lower(email))`. Ce sont les deux corrections au meilleur rapport
+   risque écarté / effort de tout le rapport.
+2. **Rendre le référentiel MCC réellement résilient** (C-12, C-13, C-17, C-15, C-03). Deux à trois
+   jours. Filet sur `rechargerCatalogue`, reconnexion de l'écoute avec rechargement au retour,
+   repli défensif, réactivation à l'import, et lectures d'historique qui ne dépendent plus du
+   catalogue vivant. C'est le composant dont une défaillance est à la fois la plus probable et la
+   moins visible.
+3. **Fermer la dernière fenêtre de concurrence et compléter la piste d'audit** (C-02, C-05, C-06).
+   Deux jours. Porter la garde de statut dans l'`UPDATE` de `updateRequest` avec le test de
+   concurrence qui manque à côté des trois autres, tracer le changement de mot de passe, et
+   journaliser `{ avant, apres }` sur les modifications de compte.
+
+Les autres constats sont de la dette ordinaire : à traiter au fil de l'eau, sans urgence — à
+l'exception de C-04 et C-09, qui coûtent surtout du temps de diagnostic le jour d'un incident.

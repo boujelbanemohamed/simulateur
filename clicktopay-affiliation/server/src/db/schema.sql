@@ -221,3 +221,10 @@ CREATE TABLE IF NOT EXISTS mcc_sectors (
 );
 
 CREATE INDEX IF NOT EXISTS idx_mcc_sectors_code ON mcc_sectors(mcc_code);
+
+-- `now()` renvoie l'heure de DÉBUT de transaction : deux écritures concurrentes
+-- peuvent donc être horodatées dans l'ordre inverse de leur exécution réelle.
+-- Sur une piste d'audit réglementaire, l'ordre doit être celui des faits.
+ALTER TABLE request_events   ALTER COLUMN created_at SET DEFAULT clock_timestamp();
+ALTER TABLE mcc_code_history ALTER COLUMN created_at SET DEFAULT clock_timestamp();
+ALTER TABLE admin_events     ALTER COLUMN created_at SET DEFAULT clock_timestamp();

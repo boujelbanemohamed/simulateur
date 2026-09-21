@@ -887,3 +887,836 @@ Résultat attendu : (3) `5942` a disparu des deux listes et le rang 1 est occup�
 Acceptation : effet immédiat, sans redémarrage.
 
 ---
+
+### 2.6 ADMIN — comptes, banques, référentiel, historique, journal
+
+---
+
+**CAS-ADM-01 — Création d'un compte**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Étapes : `POST /api/admin/users` `{"email":"recette1@banque.tn","firstName":"Test","lastName":"Recette","role":"AGENT","bankId":<BQ001>,"password":"Recette#2026"}`.
+Résultat attendu : HTTP **201** ; corps contenant `id`, `role":"AGENT"`, `bankCode":"BQ001"`, `active":true`, **`mustChangePassword":true`**. En base, `password_hash` commence par `$2` (bcrypt) et ne contient jamais le mot de passe en clair. Un `admin_events` est créé avec `entity='USER'`, `action='CREATION'`, `payload.email` et `payload.role`.
+Acceptation : 201, `mustChangePassword` vrai, journal alimenté.
+
+---
+
+**CAS-ADM-02 — Le compte créé doit changer son mot de passe à la première connexion**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : compte de CAS-ADM-01.
+Étapes :
+1. `POST /api/auth/login` avec `recette1@banque.tn` / `Recette#2026`.
+2. Avec le jeton obtenu : `GET /api/requests`.
+3. `POST /api/auth/password` `{"currentPassword":"Recette#2026","newPassword":"Recette#2027"}`.
+4. Avec le **nouveau** jeton : `GET /api/requests`.
+Résultat attendu : (1) 200, `user.mustChangePassword = true` · (2) HTTP 403 `Vous devez définir un nouveau mot de passe avant d’utiliser la plateforme.` · (3) 200 · (4) **200**.
+Acceptation : blocage puis déblocage effectifs.
+
+---
+
+**CAS-ADM-03 — Politique de mot de passe à la création et à la réinitialisation**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `POST /api/admin/users` avec `password = "court1A"`.
+2. `POST /api/admin/users/<id>/password` `{"password":"sansmajuscule1"}`.
+Résultat attendu : (1) 400, `details[0].champ = "password"`, message `Le mot de passe doit comporter au moins 10 caractères` ; aucun compte créé · (2) 400, `details[0].champ = "password"`, message `Le mot de passe doit contenir une minuscule, une majuscule et un chiffre` ; `password_changed_at` inchangé en base.
+Acceptation : deux 400, aucune écriture.
+
+---
+
+**CAS-ADM-04 — Unicité de l'adresse e-mail**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `POST /api/admin/users` avec `email = "AGENT@BANQUE.TN"` (casse différente d'un compte existant).
+2. `PUT /api/admin/users/<id banquier>` `{"email":"agent@banque.tn"}`.
+Résultat attendu : (1) HTTP **409** `{"error":"Un compte existe déjà avec l'adresse AGENT@BANQUE.TN."}` (comparaison insensible à la casse) · (2) HTTP 409 `{"error":"Un autre compte utilise déjà l'adresse agent@banque.tn."}`.
+Acceptation : deux 409, aucun doublon en base.
+
+---
+
+**CAS-ADM-05 — Rattachement à une banque inexistante ou désactivée**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : banque `BQ004` créée puis désactivée (sans compte actif).
+Étapes :
+1. `POST /api/admin/users` avec `bankId = 999999`.
+2. `POST /api/admin/users` avec `bankId = <BQ004>`.
+3. `PUT /api/admin/users/<id d'un agent>` `{"bankId":<BQ004>}`.
+Résultat attendu : (1) HTTP 400 `{"error":"Banque 999999 introuvable"}` · (2) et (3) HTTP 400 `{"error":"Cette banque est désactivée : aucun compte ne peut y être rattaché."}`.
+Acceptation : trois 400, aucun compte rattaché à une banque inactive.
+
+---
+
+**CAS-ADM-06 — Modification du rôle et de la banque d'un compte**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes : `PUT /api/admin/users/<id recette1>` `{"role":"BANQUIER","bankId":<BQ002>,"lastName":"Recette-2"}`.
+Résultat attendu : HTTP 200 ; corps avec `role":"BANQUIER"`, `bankCode":"BQ002"`, `lastName":"Recette-2"`. Un `admin_events` `action='MODIFICATION'` avec `payload.champs = ["role","bankId","lastName"]` (ordre indifférent, contenu exact).
+Acceptation : les trois champs modifiés et journalisés.
+
+---
+
+**CAS-ADM-07 — Mise à jour vide refusée**
+Niveau : BACK · Criticité : MINEUR
+Étapes : `PUT /api/admin/users/<id>` `{}` puis `PUT /api/admin/banks/<id>` `{}`.
+Résultat attendu : HTTP 400 dans les deux cas, `details[0].message = "Aucune modification fournie"`.
+Acceptation : deux 400.
+
+---
+
+**CAS-ADM-08 — Garde-fous : l'administrateur ne se verrouille pas lui-même**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : jeton de `admin@clicktopay.tn`, seul ADMIN actif.
+Étapes :
+1. `PUT /api/admin/users/<son propre id>` `{"role":"AGENT"}`.
+2. `PUT /api/admin/users/<son propre id>` `{"active":false}`.
+3. Créer un second ADMIN, puis rejouer l'étape 1 avec le **premier** compte.
+Résultat attendu : (1) HTTP **403** `{"error":"Vous ne pouvez pas modifier votre propre rôle."}` · (2) HTTP **403** `{"error":"Vous ne pouvez pas désactiver votre propre compte."}` · (3) toujours 403 : la protection porte sur soi-même, indépendamment du nombre d'administrateurs. (FRONT) l'écran « Comptes » n'offre ni bascule de rôle ni bouton « Désactiver » sur sa propre ligne.
+Acceptation : trois 403 et absence des commandes à l'écran.
+
+---
+
+**CAS-ADM-09 — La plateforme conserve au moins un administrateur actif (chemin séquentiel)**
+Niveau : BACK · Criticité : BLOQUANT
+Préconditions : exactement deux ADMIN actifs, A1 (celui dont on utilise le jeton) et A2.
+Étapes :
+1. Avec le jeton de A1 : `PUT /api/admin/users/<A2>` `{"role":"AGENT"}`.
+2. Avec le jeton de A1 : `PUT /api/admin/users/<A1>` `{"role":"AGENT"}`.
+3. Avec le jeton de A1 : `PUT /api/admin/users/<A1>` `{"active":false}`.
+Résultat attendu : (1) HTTP 200 — il reste un administrateur actif (A1) · (2) HTTP **403** `{"error":"Vous ne pouvez pas modifier votre propre rôle."}` · (3) HTTP **403** `{"error":"Vous ne pouvez pas désactiver votre propre compte."}`. À l'issue, `SELECT count(*) FROM users WHERE role='ADMIN' AND active` = **1**.
+Note de lecture du code : par voie séquentielle, l'invariant est tenu par la garde « compte courant », jamais par `assertResteUnAdmin` — l'acteur étant lui-même un ADMIN actif distinct de la cible, le comptage trouve toujours au moins lui. Le message `Impossible : la plateforme doit conserver au moins un administrateur actif.` n'est donc atteignable qu'en concurrence (CAS-ADM-10). À signaler à l'agent 7 si aucun cas ne l'exerce.
+Acceptation : 200, 403, 403, et un administrateur actif restant.
+
+---
+
+**CAS-ADM-10 — Concurrence : deux administrateurs se rétrogradent mutuellement**
+Niveau : BACK · Criticité : BLOQUANT
+Préconditions : A1 et A2 sont les **seuls** ADMIN actifs (`UPDATE users SET active=FALSE WHERE role='ADMIN' AND id NOT IN (A1,A2)`), chacun disposant de son propre jeton.
+Étapes : lancer **en parallèle**, sans attente entre les deux :
+1. jeton de A1 → `PUT /api/admin/users/<A2>` `{"role":"AGENT"}`
+2. jeton de A2 → `PUT /api/admin/users/<A1>` `{"role":"AGENT"}`
+Résultat attendu : une réponse 200 et une réponse **409** `{"error":"Impossible : la plateforme doit conserver au moins un administrateur actif."}` ; **aucun 500, aucun interblocage PostgreSQL** (le verrou consultatif `pg_advisory_xact_lock` sérialise les deux transactions) ; à l'issue, `SELECT count(*) FROM users WHERE role='ADMIN' AND active` = **1**.
+Acceptation : 1 succès, 1 conflit propre, exactement un administrateur survivant.
+
+---
+
+**CAS-ADM-11 — Un compte désactivé ne peut plus se connecter**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Étapes : `PUT /api/admin/users/<id recette1>` `{"active":false}` puis `POST /api/auth/login` avec ce compte.
+Résultat attendu : `PUT` → 200 avec `active":false` ; `login` → **401** `{"error":"Identifiants incorrects"}` (même message que pour un mot de passe erroné : pas d'information sur l'état du compte).
+Acceptation : 401 avec le message générique.
+
+---
+
+**CAS-ADM-12 — Banques : création, unicité, volumétrie**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `POST /api/admin/banks` `{"code":"bq009","name":"Banque de Recette"}`.
+2. `POST /api/admin/banks` `{"code":"BQ009","name":"Doublon"}`.
+3. `POST /api/admin/banks` `{"code":"B","name":"Trop court"}`.
+4. `GET /api/admin/banks`.
+Résultat attendu : (1) HTTP 201, `code = "BQ009"` (**mis en majuscules**) · (2) HTTP **409** `{"error":"Le code banque BQ009 est déjà utilisé."}` · (3) HTTP 400, `details[0].message = "Code banque trop court"` · (4) chaque banque porte `userCount` et `requestCount` numériques, cohérents avec `SELECT count(*)` en base.
+Acceptation : 201, 409, 400 et compteurs exacts.
+
+---
+
+**CAS-ADM-13 — Une banque avec des comptes actifs ne peut pas être désactivée**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : BQ001 compte 3 comptes actifs.
+Étapes :
+1. `PUT /api/admin/banks/<BQ001>` `{"active":false}`.
+2. Désactiver tous les comptes de la banque, puis rejouer l'étape 1.
+Résultat attendu : (1) HTTP **409** `{"error":"Cette banque compte 3 compte(s) actif(s). Désactivez-les avant de désactiver la banque."}` — le nombre annoncé égale `SELECT count(*) FROM users WHERE bank_id=<BQ001> AND active` · (2) HTTP 200, `active = false`.
+Acceptation : message avec le compte exact, puis désactivation possible.
+
+---
+
+**CAS-ADM-14 — Référentiel : la vue administrateur montre tout**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : au moins un code désactivé (CAS-MCC-08).
+Étapes : `GET /api/admin/mcc?limit=300`.
+Résultat attendu : HTTP 200 ; corps avec `total` (tous les codes, actifs et inactifs), `actifs` (< `total`), `count`, `items`. Les items incluent des codes `riskLevel = "INTERDIT"` **et** des codes `active = false`, contrairement à `GET /api/mcc`.
+Acceptation : `total > actifs` et présence des deux catégories.
+
+---
+
+**CAS-ADM-15 — Édition d'un code et historisation champ par champ**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Étapes :
+1. `PUT /api/admin/mcc/5977` `{"label":"Cosmétiques, parfumerie et soins","riskLevel":"SENSIBLE","note":"Contrôle renforcé","comment":"Demande conformité 2026-09"}`.
+2. `GET /api/admin/mcc/5977/history`.
+3. `GET /api/admin/events?limit=10`.
+Résultat attendu : (1) HTTP 200, corps reflétant les trois champs · (2) la première entrée a `action = "MODIFICATION"`, `comment = "Demande conformité 2026-09"`, `userName` = nom de l'administrateur, `champsModifies` contenant exactement `label`, `riskLevel`, `note` (et pas les champs non touchés), `avant`/`apres` renseignés · (3) le journal contient une ligne `entity='MCC'`, `entityId='5977'`, `action='MODIFICATION'`.
+Acceptation : les trois vérifications sont exactes.
+
+---
+
+**CAS-ADM-16 — Désactivation / réactivation d'un code : action historisée distincte**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `PUT /api/admin/mcc/5994` `{"active":false,"comment":"Retiré du manuel"}`.
+2. `PUT /api/admin/mcc/5994` `{"active":true,"comment":"Réintégré"}`.
+3. `GET /api/admin/mcc/5994/history`.
+Résultat attendu : l'historique contient, du plus récent au plus ancien, `REACTIVATION` puis `DESACTIVATION` (et non deux `MODIFICATION`) ; `SELECT count(*) FROM mcc_codes WHERE code='5994'` = 1 à tout instant (aucune suppression).
+Acceptation : les deux actions portent le bon libellé et la ligne survit.
+
+---
+
+**CAS-ADM-17 — Ajout d'un code absent du manuel**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `POST /api/admin/mcc` `{"code":"9101","label":"Bornes de recharge pour véhicules électriques","description":"Exploitation de bornes de recharge et abonnements associés.","keywords":["borne recharge","recharge electrique"],"sectors":["AUTOMOBILE"],"comment":"Code local acquéreur"}`.
+2. `POST /api/admin/mcc` avec le même code.
+3. `POST /api/admin/mcc` `{"code":"91","label":"X","description":"Description suffisante"}`.
+4. `GET /api/mcc/9101` avec un jeton AGENT.
+Résultat attendu : (1) HTTP **201** ; valeurs par défaut posées : `ecommerceRelevance = "MEDIUM"`, `riskLevel = "STANDARD"`, `networks = ["VISA","MASTERCARD"]`, `source = "Ajout manuel"` ; historique `CREATION` · (2) HTTP **409** `{"error":"Le MCC 9101 existe déjà dans le référentiel."}` · (3) HTTP 400 `Un MCC est composé de 4 chiffres` · (4) HTTP 200 : le code est immédiatement visible des agents.
+Acceptation : 201 / 409 / 400 / 200 conformes.
+
+---
+
+**CAS-ADM-18 — Concurrence : deux créations du même code**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : lancer en parallèle deux `POST /api/admin/mcc` portant `code = "9111"`.
+Résultat attendu : une réponse **201** et une réponse **409** `Le MCC 9111 existe déjà dans le référentiel.` (filet posé sur la violation de clé primaire, code PostgreSQL `23505`) ; jamais deux 201 ; jamais un 500.
+Acceptation : 1 × 201, 1 × 409, une seule ligne en base.
+
+---
+
+**CAS-ADM-19 — Code inexistant : 404 sur toutes les routes d'administration**
+Niveau : BACK · Criticité : MINEUR
+Étapes : `GET /api/admin/mcc/9999`, `GET /api/admin/mcc/9999/history`, `PUT /api/admin/mcc/9999` `{"label":"X test"}`.
+Résultat attendu : HTTP 404 aux trois appels, `{"error":"MCC 9999 introuvable"}`.
+Acceptation : trois 404 avec le message exact.
+
+---
+
+**CAS-ADM-20 — Modification vide d'un code**
+Niveau : BACK · Criticité : MINEUR
+Étapes : `PUT /api/admin/mcc/5977` `{"comment":"seulement un motif"}`.
+Résultat attendu : HTTP 400, `details[0].message = "Aucune modification fournie"` (le seul commentaire ne constitue pas une modification) ; aucune entrée d'historique créée.
+Acceptation : 400 et historique inchangé.
+
+---
+
+**CAS-ADM-21 — Journal d'administration : contenu, ordre et bornes**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. Enchaîner : création d'un compte, création d'une banque, modification d'un MCC.
+2. `GET /api/admin/events?limit=5`.
+3. `GET /api/admin/events?limit=9999` puis `?limit=0` puis `?limit=abc`.
+4. (FRONT) ouvrir `/administration/journal`.
+Résultat attendu : (2) les trois actions apparaissent en tête, **du plus récent au plus ancien**, chacune avec `entity` (`USER`/`BANK`/`MCC`), `entityId`, `action`, `userName` (nom de l'administrateur) et `createdAt` · (3) `limit=9999` → au plus 500 items, `limit=0` → au moins 1, `limit=abc` → 100 par défaut, aucun 500 · (4) le tableau affiche les mêmes lignes avec la date localisée `JJ/MM/AAAA HH:MM`.
+Acceptation : ordre, nominativité et bornes conformes.
+
+---
+
+**CAS-ADM-22 — Un `db:seed` ne réécrit pas les ajustements de la conformité**
+Niveau : BACK · Criticité : MAJEUR
+Étapes :
+1. `PUT /api/admin/mcc/5977` `{"riskLevel":"SENSIBLE","note":"Décision conformité"}`.
+2. Exécuter `npm run db:seed` (sans `forceMcc`).
+3. `GET /api/admin/mcc/5977`.
+Résultat attendu : `riskLevel = "SENSIBLE"` et `note = "Décision conformité"` **conservés** ; les codes absents ont bien été insérés ; aucun code existant réécrit.
+Acceptation : l'ajustement survit au réamorçage.
+
+---
+
+### 2.7 IMPORT — export, lecture Excel/CSV, rapport d'écart, application
+
+---
+
+**CAS-IMPORT-01 — Export du référentiel dans les deux formats**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `GET /api/admin/mcc/export?format=xlsx`.
+2. `GET /api/admin/mcc/export?format=csv`.
+3. `GET /api/admin/mcc/export` (sans paramètre).
+4. `GET /api/admin/mcc/export?format=csv&actifsSeuls=true` sur un référentiel comportant un code désactivé.
+5. (FRONT) `/administration/import`, boutons « Télécharger en Excel » et « Télécharger en CSV ».
+Résultat attendu :
+- (1) HTTP 200, `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `Content-Disposition: attachment; filename="referentiel-mcc-<AAAA-MM-JJ>.xlsx"`, corps commençant par la signature ZIP `PK`.
+- (2) HTTP 200, `Content-Type: text/csv; charset=utf-8`, première ligne d'en-tête contenant `Code,Libellé,Description,Mots-clés,Pertinence,Vigilance,Note,Secteur,Libellé EN,Description EN`.
+- (3) format `xlsx` par défaut.
+- (4) le fichier contient `actifs` lignes de données (sans le code désactivé), contre `total` en (2).
+- (5) un fichier est effectivement téléchargé par le navigateur, avec le même nom.
+Acceptation : en-têtes HTTP, nom de fichier et volumétrie conformes.
+
+---
+
+**CAS-IMPORT-02 — Aller-retour export → réimport sans perte (xlsx)**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes :
+1. `GET /api/admin/mcc/export?format=xlsx` → enregistrer le fichier.
+2. `POST /api/admin/mcc/import-fichier` avec ce fichier tel quel.
+Résultat attendu : HTTP 200 ; `lignesLues = 279` ; `entrees.length = 279` ; `anomalies = []` ; `rapport.resume.ajoutes = 0`, `modifies = 0`, `retires = 0`, `inchanges = 279`, `applique = false`.
+Acceptation : **zéro** ajout, zéro modification, zéro anomalie.
+
+---
+
+**CAS-IMPORT-03 — Aller-retour export → réimport sans perte (csv)**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes : idem CAS-IMPORT-02 avec `format=csv`.
+Résultat attendu : identique à CAS-IMPORT-02 — en particulier, les mots-clés multi-lignes et ceux contenant une virgule (ex. `local, suburban commuter`) ne doivent **pas** être scindés : `modifies = 0` sur le champ `keywords`.
+Acceptation : `modifies = 0` et `inchanges = 279`.
+
+---
+
+**CAS-IMPORT-04 — Fichier métier désordonné : ordre libre, colonnes en trop, variantes d'en-tête**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : construire un `.xlsx` dont la ligne 1 est, dans cet ordre : `Niveau de risque | Responsable | Intitulé | Code MCC | Synonymes | Pertinence e-commerce | Univers`.
+Étapes : `POST /api/admin/mcc/import-fichier`.
+Résultat attendu : HTTP 200 ; `colonnesDetectees` contient `riskLevel`, `label`, `code`, `keywords`, `ecommerceRelevance`, `sector` ; `colonnesIgnorees` contient `Responsable` ; chaque ligne est lue quelle que soit la position des colonnes.
+Acceptation : 6 champs reconnus, 1 colonne ignorée nommément, aucune ligne perdue.
+
+---
+
+**CAS-IMPORT-05 — Traduction des valeurs métier**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : fichier contenant les valeurs `Forte`, `Moyenne`, `Faible`, `HIGH`, `3`, `1` en colonne `Pertinence` et `Standard`, `Sensible`, `Interdit`, `Vigilance renforcée`, `Non éligible`, `Normale` en colonne `Vigilance`.
+Étapes : `POST /api/admin/mcc/import-fichier`.
+Résultat attendu : les `entrees` portent respectivement `ecommerceRelevance` ∈ `{HIGH, MEDIUM, LOW, HIGH, HIGH, LOW}` et `riskLevel` ∈ `{STANDARD, SENSIBLE, INTERDIT, SENSIBLE, INTERDIT, STANDARD}`. Aucune anomalie pour ces lignes.
+Acceptation : 12 traductions exactes.
+
+---
+
+**CAS-IMPORT-06 — Anomalies signalées avec leur numéro de ligne**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : fichier de 7 lignes de données contenant, dans l'ordre : ligne 2 code `5977` valide ; ligne 3 code `abc` ; ligne 4 code vide ; ligne 5 code `5977` (doublon) ; ligne 6 pertinence `Excellente` ; ligne 7 vigilance `Maximale` ; ligne 8 entièrement vide.
+Étapes : `POST /api/admin/mcc/import-fichier`.
+Résultat attendu : HTTP 200 ; `anomalies` contient exactement 4 entrées :
+- `{ligne:3, motif:"Code MCC illisible ou absent", valeur:"abc"}`
+- `{ligne:4, motif:"Code MCC illisible ou absent", valeur:null}`
+- `{ligne:5, motif:"Code 5977 déjà présent ligne 2", valeur:"5977"}`
+- `{ligne:6, motif:"Pertinence non reconnue : « Excellente »", …}` et `{ligne:7, motif:"Niveau de vigilance non reconnu : « Maximale »", …}` (soit 5 entrées au total avec les deux dernières).
+La ligne 8 vide est ignorée sans anomalie (`lignesLues` ne la compte pas).
+**Point d'attention** : les lignes 6 et 7 restent présentes dans `entrees`, privées du champ non reconnu — vérifier que le rapport d'écart ne présente donc pas ces codes comme modifiés sur ce champ.
+(FRONT) le bandeau « N ligne(s) écartée(s) » affiche chaque anomalie avec son numéro de ligne.
+Acceptation : chaque anomalie porte un numéro de ligne exact et aucune n'est silencieuse.
+
+---
+
+**CAS-IMPORT-07 — Codes normalisés par Excel**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : fichier dont la colonne `Code` contient `5977` (texte), `5977.0` (nombre rendu par Excel), `742` (zéro de tête perdu), `05977`, `59770`.
+Étapes : `POST /api/admin/mcc/import-fichier`.
+Résultat attendu : les codes lus valent `5977`, puis anomalie doublon sur `5977.0` (même code), `0742`, anomalie doublon sur `05977`, et anomalie `Code MCC illisible ou absent` pour `59770` (5 chiffres).
+Acceptation : la normalisation et les rejets sont conformes.
+
+---
+
+**CAS-IMPORT-08 — Le rapport d'écart ne modifie rien**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : fichier contenant un code nouveau `9201`, un code existant `5977` au libellé modifié, et **pas** le code `5942`.
+Étapes :
+1. `POST /api/admin/mcc/import-fichier`.
+2. `POST /api/admin/mcc/import` avec `{"entrees":[…],"apply":false}`.
+3. `GET /api/admin/mcc/5977` et `GET /api/admin/mcc/9201`.
+Résultat attendu : (1) et (2) HTTP 200 avec `rapport.ajoutes = [{code:"9201",…}]`, `rapport.modifies[0].champs` contenant `{champ:"label", avant:"Cosmétiques et parfumerie", apres:"<nouveau libellé>"}`, `rapport.retires` contenant `5942`, `resume.applique = false` · (3) `5977` **inchangé** en base, `9201` → HTTP 404. (FRONT) le bandeau « Simulation — aucune donnée modifiée » est affiché.
+Acceptation : aucune écriture après deux analyses.
+
+---
+
+**CAS-IMPORT-09 — Application après confirmation explicite**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : le fichier de CAS-IMPORT-08.
+Étapes :
+1. `POST /api/admin/mcc/import` `{"entrees":[…],"apply":true,"deactivateMissing":false,"comment":"Édition avril 2026"}`.
+2. `GET /api/admin/mcc/9201`, `GET /api/admin/mcc/5977`, `GET /api/admin/mcc/5942`.
+3. `GET /api/admin/mcc/9201/history` et `GET /api/admin/mcc/5977/history`.
+4. `GET /api/admin/events?limit=5`.
+5. (FRONT) refaire le parcours : charger le fichier, cliquer « Appliquer l'import », vérifier l'écran de confirmation, puis confirmer.
+Résultat attendu :
+- (1) 200, `resume.applique = true`, `resume.desactivationDesRetires = false`.
+- (2) `9201` créé (200) ; `5977` porte le nouveau libellé ; `5942` **toujours actif** (non désactivé).
+- (3) historique de `9201` : `action = "IMPORT_AJOUT"`, `comment = "Édition avril 2026"` ; historique de `5977` : `action = "IMPORT_MODIFICATION"` avec `avant`/`apres`.
+- (4) une ligne `entity='MCC'`, `entityId='IMPORT'`, `action='IMPORT_REFERENTIEL'` dont le `payload` reprend le résumé.
+- (5) l'écran affiche `X ajout(s), Y modification(s) … vont être appliqués` **avant** toute écriture, et n'écrit qu'après le second clic.
+Acceptation : les 5 points sont vrais.
+
+---
+
+**CAS-IMPORT-10 — Désactivation des codes absents : strictement optionnelle**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Étapes :
+1. `POST /api/admin/mcc/import` `{"entrees":[…],"apply":true,"deactivateMissing":"false"}` (chaîne).
+2. `POST /api/admin/mcc/import` `{"entrees":[…],"apply":true,"deactivateMissing":"peut-être"}`.
+3. `POST /api/admin/mcc/import` `{"entrees":[…],"apply":true,"deactivateMissing":true}`.
+Résultat attendu :
+- (1) HTTP 200 ; la chaîne `"false"` est interprétée **comme faux** : `resume.desactivationDesRetires = false`, aucun code absent désactivé (`SELECT count(*) FROM mcc_codes WHERE NOT active` inchangé).
+- (2) HTTP **400**, `details[0].champ = "deactivateMissing"`, message `Valeur booléenne attendue (true ou false)` ; aucune écriture.
+- (3) HTTP 200 ; chaque code absent passe à `active = false`, **jamais supprimé** (`SELECT count(*) FROM mcc_codes` constant) ; chacun reçoit une entrée d'historique `IMPORT_DESACTIVATION`.
+Acceptation : aucune désactivation non demandée ; les lignes survivent.
+
+---
+
+**CAS-IMPORT-11 — Divergence D2 : changement de secteur seul sur un code existant**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : code `5977` rattaché au secteur `BEAUTE_COSMETIQUE`.
+Étapes :
+1. Construire un fichier d'une seule ligne : `Code = 5977`, colonne `Secteur = SANTE`, tous les autres champs **identiques** à la base.
+2. `POST /api/admin/mcc/import-fichier` → relever le rapport.
+3. `POST /api/admin/mcc/import` avec `apply = true`.
+4. `GET /api/admin/mcc/5977` → relever `sectors`.
+Résultat attendu (comportement **actuel**) : (2) `5977` est classé dans `inchanges` (le champ `sector` n'est pas dans `COMPARABLES`) · (4) `sectors` vaut toujours `["BEAUTE_COSMETIQUE"]` : le changement de secteur **n'a pas été appliqué**, sans le moindre message.
+Acceptation : si `sectors` n'a pas changé, la divergence D2 est confirmée — la colonne `Secteur` du fichier n'est opérante que sur un code **ajouté** ou par ailleurs modifié. À remonter comme défaut MAJEUR (le README l'annonce comme un moyen de rattachement).
+
+---
+
+**CAS-IMPORT-12 — Divergence D3 : perte des secteurs multiples à l'aller-retour**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : `PUT /api/admin/mcc/5912` `{"sectors":["SANTE","BEAUTE_COSMETIQUE"]}` (deux secteurs).
+Étapes :
+1. `GET /api/admin/mcc/export?format=csv` → repérer la ligne `5912`.
+2. Dans le fichier, modifier **uniquement** son libellé (pour le faire entrer dans `modifies`).
+3. `POST /api/admin/mcc/import` avec `apply = true`.
+4. `GET /api/admin/mcc/5912` → relever `sectors`.
+Résultat attendu (comportement **actuel**) : (1) la colonne `Secteur` ne contient qu'**un seul** secteur (`sectors[0]`) · (4) `sectors` ne vaut plus qu'un seul élément : le second rattachement a été **effacé** par `ecrireSecteurs`.
+Acceptation : si `sectors.length` passe de 2 à 1, la divergence D3 est confirmée (perte de donnée silencieuse à l'aller-retour) — défaut MAJEUR.
+
+---
+
+**CAS-IMPORT-13 — Codes arrivant sans lexique métier**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : fichier de 3 nouvelles lignes : `9102` sans mots-clés ni secteur, `9103` avec `Mots-clés`, `9104` avec `Secteur`.
+Étapes : `POST /api/admin/mcc/import-fichier`.
+Résultat attendu : `resume.ajoutes = 3`, **`resume.muets = 1`**, `muets[0].code = "9102"` (seul le code sans mots-clés **ni** secteur est signalé). (FRONT) un bandeau « 1 code(s) arriveront sans mots-clés ni secteur » est affiché, et le tableau « Codes sans lexique métier » liste `9102`.
+Acceptation : un seul code signalé, nommément, avant application.
+
+---
+
+**CAS-IMPORT-14 — Fichiers refusés**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `POST /api/admin/mcc/import-fichier` **sans** champ `fichier`.
+2. Avec un fichier `referentiel.txt`.
+3. Avec un `.xlsx` dont la ligne 1 ne contient aucune colonne reconnaissable comme code.
+4. Avec un `.xlsx` ne contenant que la ligne d'en-tête.
+5. Avec un `.csv` de plus de 5 Mo.
+6. Avec un `.json` contenant `{"entrees":"pas un tableau"}`.
+Résultat attendu :
+- (1) 400 `{"error":"Aucun fichier reçu."}`
+- (2) 400 `{"error":"Format non pris en charge : attendu .xlsx, .csv ou .json."}`
+- (3) 400 commençant par `Fichier illisible : Colonne « code » introuvable. En-têtes lus : …`
+- (4) 400 `Fichier illisible : Aucune ligne exploitable : vérifiez que la colonne « code » contient des MCC à 4 chiffres.`
+- (5) refus du téléversement (limite multer 5 Mo), aucune erreur 500.
+- (6) 400 commençant par `Fichier illisible :`.
+Aucune écriture en base dans les six cas.
+Acceptation : six refus explicites, aucun 500.
+
+---
+
+**CAS-IMPORT-15 — Bornes et validation du corps `POST /api/admin/mcc/import`**
+Niveau : BACK · Criticité : MAJEUR
+Étapes :
+1. `{"entrees":[]}`.
+2. `{"entrees":[…2001 entrées…]}`.
+3. `{"entrees":[{"code":"5977","riskLevel":"BIZARRE"}],"apply":true}`.
+4. `{"entrees":[{"code":"5977","label":"<300 caractères>"}],"apply":true}`.
+5. `{"entrees":[{"code":"59"},{"code":"5977"}]}`.
+6. `{"entrees":[{"code":"5977"},{"code":"5977"}]}`.
+Résultat attendu : (1) 400 `Le fichier importé est vide` · (2) 400 `Fichier trop volumineux (2000 codes maximum)` · (3) 400 avec `details[0].champ = "entrees.0.riskLevel"` · (4) 400 sur `entrees.0.label` · (5) 400 `Code MCC invalide dans le fichier importé : « 59 »` · (6) 400 `Le code 5977 apparaît plusieurs fois dans le fichier.` **Aucune écriture** en base pour les six appels, y compris ceux portant `apply: true` (la validation précède la transaction).
+Acceptation : six 400, référentiel intact.
+
+---
+
+**CAS-IMPORT-16 — L'import reste réservé à l'administrateur**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes : avec un jeton AGENT puis BANQUIER, appeler `GET /api/admin/mcc/export`, `POST /api/admin/mcc/import-fichier` (avec un fichier valide) et `POST /api/admin/mcc/import` (`apply: true`).
+Résultat attendu : six réponses **403** `{"error":"Action réservée aux profils : ADMIN"}` ; aucune écriture, aucun fichier servi.
+Acceptation : six 403.
+
+---
+
+### 2.8 INDEXATION — mots-clés dérivés, secteurs, effet immédiat
+
+---
+
+**CAS-INDEX-01 — Un code importé est proposable immédiatement, sans redémarrage**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes :
+1. `POST /api/admin/mcc/import` `{"entrees":[{"code":"9101","label":"Bornes de recharge pour véhicules électriques","description":"Exploitation de bornes de recharge et abonnements associés."}],"apply":true}`.
+2. **Sans redémarrer l'API** : `POST /api/mcc/suggest` `{"activityDescription":"Installation et exploitation de bornes de recharge pour véhicules électriques en Tunisie","limit":10}`.
+Résultat attendu : `9101` figure dans `VISA` **et** `MASTERCARD`, avec un `score` ≥ 1 et des `matchedTerms` non vides contenant au moins `bornes recharge`.
+Acceptation : le code apparaît au premier appel qui suit l'écriture.
+
+---
+
+**CAS-INDEX-02 — Dérivation des mots-clés à partir du libellé et de la description**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : code `9101` de CAS-INDEX-01 (aucun mot-clé métier fourni).
+Étapes : `GET /api/admin/mcc/9101` ; relever `keywords` et `keywordsAuto`.
+Résultat attendu : `keywords = []` (rien n'a été saisi) et `keywordsAuto` contient, au minimum, les bigrammes du libellé `bornes recharge`, `recharge vehicules`, `vehicules electriques`, les jetons `bornes`, `recharge`, `vehicules`, `electriques` et leurs variantes singulier/pluriel `borne`, `recharges`, `vehicule`, `electrique`, plus les jetons de la description (`exploitation`, `abonnements`). La liste ne dépasse **jamais 30 entrées**. Les mots vides (`vente`, `ligne`, `produits`, `service`, `societe`…) en sont absents.
+(FRONT) la fiche du code affiche ces mots-clés dans un bloc **en lecture seule**, distinct du champ « Mots-clés » saisissable.
+Acceptation : les bigrammes, variantes et exclusions sont conformes ; ≤ 30 entrées ; bloc non éditable à l'écran.
+
+---
+
+**CAS-INDEX-03 — Le singulier retrouve un libellé écrit au pluriel**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : un code importé dont le libellé contient `Trottinettes électriques`.
+Étapes :
+1. `POST /api/mcc/suggest` `{"activityDescription":"Vente de trottinettes electriques neuves et reconditionnees pour la ville","limit":10}`.
+2. Idem avec `"Vente de trottinette electrique neuve et reconditionnee pour la ville"` (singulier).
+Résultat attendu : le code apparaît dans les deux réponses ; le rang du singulier est au plus celui du pluriel + 2.
+Acceptation : le code est proposé dans les deux formulations.
+
+---
+
+**CAS-INDEX-04 — Aucun synonyme n'est deviné**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : code `9105` de libellé `Trottinettes électriques`, sans mots-clés saisis.
+Étapes :
+1. `POST /api/mcc/suggest` `{"activityDescription":"Boutique de patinettes electriques et de pieces detachees pour la mobilite urbaine","limit":20}`.
+2. `PUT /api/admin/mcc/9105` `{"keywords":["patinette","patinettes electriques","trottinette"]}`.
+3. Rejouer l'étape 1.
+Résultat attendu : (1) `9105` est **absent** de la liste (aucune dérivation ne devine « patinette ») · (3) `9105` est présent, avec `matchedTerms` contenant `patinette`.
+Acceptation : absent avant saisie du lexique, présent après — sans redémarrage.
+
+---
+
+**CAS-INDEX-05 — Un lexique saisi pèse plus lourd qu'un dérivé**
+Niveau : BACK · Criticité : MINEUR
+Préconditions : deux codes importés portant le même mot dans leur libellé, dont un seul le porte aussi en `keywords` saisis.
+Étapes : `POST /api/mcc/suggest` avec une description contenant ce mot.
+Résultat attendu : le code dont le mot figure dans `keywords` (poids 5) devance celui où il n'est que dérivé (poids 3), toutes choses égales par ailleurs.
+Acceptation : ordre conforme.
+
+---
+
+**CAS-INDEX-06 — Divergence D1 : rang du rattachement à un secteur**
+Niveau : BACK · Criticité : MAJEUR
+Préconditions : secteur `ANIMALERIE` rattaché au seul code `5995`.
+Étapes :
+1. `PUT /api/admin/mcc/9101` `{"sectors":["ANIMALERIE"]}`.
+2. `GET /api/mcc/secteurs` → relever l'ordre des `mccs` du secteur `ANIMALERIE`.
+3. `PUT /api/admin/mcc/5995` `{"sectors":["ANIMALERIE"]}` (ré-enregistrement à l'identique).
+4. Rejouer l'étape 2.
+Résultat attendu (comportement **actuel**) : (2) `mccs = ["5995","9101"]` — le nouveau code est placé **en dernier**, malgré le commentaire du code qui annonce « le rang suit l'ordre fourni » · (4) `mccs = ["9101","5995"]` : le simple ré-enregistrement des secteurs de `5995` l'a **rétrogradé en fin de liste**, et le bonus de secteur (`38 − rang × 4`) en est affecté.
+Acceptation : si l'ordre change en (4) sans que l'administrateur ne l'ait demandé, la divergence D1 est confirmée — défaut MAJEUR (l'ordre de priorité d'un secteur n'est ni pilotable ni stable).
+
+---
+
+**CAS-INDEX-07 — Un secteur inconnu est refusé**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `PUT /api/admin/mcc/9101` `{"sectors":["SECTEUR_IMAGINAIRE"]}`.
+2. `POST /api/admin/mcc/import` `{"entrees":[{"code":"9106","label":"Test","description":"Description suffisante pour le banquier.","sector":"SECTEUR_IMAGINAIRE"}],"apply":true}`.
+3. `POST /api/mcc/suggest` `{"activitySector":"SECTEUR_IMAGINAIRE","activityDescription":"…"}`.
+Résultat attendu : (1) HTTP 400 `{"error":"Secteur inconnu : SECTEUR_IMAGINAIRE"}` ; aucun rattachement écrit · (2) HTTP 400 avec le même message, et **la transaction entière est annulée** : `GET /api/admin/mcc/9106` répond 404 · (3) HTTP 400, `details[0].champ = "activitySector"`, message `Secteur inconnu`.
+Acceptation : trois refus, aucun effet de bord.
+
+---
+
+**CAS-INDEX-08 — L'index est reconstruit au changement de libellé**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes :
+1. `PUT /api/admin/mcc/9101` `{"label":"Conciergerie et services à domicile"}`.
+2. Immédiatement : `POST /api/mcc/suggest` `{"activityDescription":"Service de conciergerie et d aide a domicile pour particuliers","limit":10}`.
+3. `POST /api/mcc/suggest` avec l'ancienne formulation (« bornes de recharge »).
+4. `GET /api/admin/mcc/9101` → relever `keywordsAuto`.
+Résultat attendu : (2) `9101` est proposé avec `matchedTerms` contenant `conciergerie` · (3) il n'est plus proposé sur l'ancien vocabulaire de libellé · (4) `keywordsAuto` a été **recalculé** : il contient `conciergerie` et plus `bornes recharge` (les jetons de la description subsistent).
+Acceptation : les trois effets sont immédiats, sans redémarrage.
+
+---
+
+**CAS-INDEX-09 — Les secteurs sont servis depuis la base**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `GET /api/mcc/secteurs` (jeton AGENT).
+2. Désactiver un secteur directement en base : `UPDATE sectors SET active = FALSE WHERE key = 'ANIMALERIE'` puis provoquer un rechargement (toute écriture sur un MCC).
+3. Rejouer l'étape 1 et `POST /api/requests` avec `activitySector = "ANIMALERIE"`.
+Résultat attendu : (1) la liste contient 27 secteurs, chacun avec `key`, `label` et `mccs` (tableau de codes) ; (FRONT) la liste déroulante « Secteur d'activité » du formulaire reprend ces libellés · (3) `ANIMALERIE` a disparu de la liste et la création de demande répond **400** `Secteur inconnu` (la validation lit `clesSecteurs()` à l'exécution).
+Acceptation : liste servie depuis la base et validation alignée dessus.
+
+---
+
+**CAS-INDEX-10 — Effet immédiat d'un changement de niveau de vigilance**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes :
+1. `POST /api/mcc/suggest` (JD-01) → vérifier que `5977` est proposé.
+2. `PUT /api/admin/mcc/5977` `{"riskLevel":"INTERDIT","comment":"Recette"}`.
+3. Rejouer l'étape 1 **sans redémarrage**.
+4. `POST /api/requests` (JD-01) avec `proposedVisaMcc = "5977"`.
+5. Rétablir `{"riskLevel":"STANDARD"}` et rejouer l'étape 1.
+Résultat attendu : (3) `5977` a disparu des deux listes · (4) HTTP 400 `Le MCC 5977 (Cosmétiques et parfumerie) n'est pas éligible à l'affiliation ClickToPay.` · (5) `5977` réapparaît en rang 1.
+Acceptation : les trois effets sont immédiats.
+
+---
+
+### 2.9 ROBUSTESSE — types hostiles, bornes, erreurs HTTP
+
+> Règle transverse de ce domaine : **aucune requête ne doit produire une réponse 500**. Un 500 est un échec, quel que soit le contenu envoyé.
+
+---
+
+**CAS-ROB-01 — La chaîne « false » ne vaut pas `true`**
+Niveau : BACK · Criticité : BLOQUANT
+Étapes :
+1. `POST /api/admin/mcc/import` `{"entrees":[…],"apply":"false","deactivateMissing":"false"}`.
+2. `PUT /api/admin/mcc/5977` `{"active":"false"}`.
+3. `PUT /api/admin/mcc/5977` `{"active":"0"}` puis `{"active":"non"}` puis `{"active":""}`.
+4. `POST /api/requests` (JD-01) avec `hasSubscription = "false"`, `isMarketplace = "0"`.
+Résultat attendu : (1) `resume.applique = false`, aucune écriture · (2)(3) le code est **désactivé** (`active = false`), jamais réactivé · (4) HTTP 201 avec `hasSubscription = false` et `isMarketplace = false` en base (colonnes booléennes, pas de chaîne).
+Acceptation : les valeurs textuelles fausses sont toutes interprétées comme fausses.
+
+---
+
+**CAS-ROB-02 — Une valeur booléenne incompréhensible est refusée, pas devinée**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : envoyer `{"active":"peut-être"}`, `{"active":2}`, `{"active":null}`, `{"active":[]}` sur `PUT /api/admin/mcc/5977`, et `{"apply":"oui-peut-etre"}` sur `POST /api/admin/mcc/import`.
+Résultat attendu : HTTP 400 à chaque fois, `details[0].message = "Valeur booléenne attendue (true ou false)"` ; aucune écriture. (Remarque : `"oui"`, `"on"`, `"yes"`, `1` sont acceptés comme vrais ; `"no"`, `"off"`, `"non"`, `0` comme faux.)
+Acceptation : cinq 400, aucun effet.
+
+---
+
+**CAS-ROB-03 — Les drapeaux métier faux ne faussent pas le moteur**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `POST /api/mcc/suggest` avec `{"activityDescription":"<JD-01>","isMarketplace":"false","hasSubscription":"false","deliveryMode":"PHYSIQUE"}`.
+Résultat attendu : le code `5262` (place de marché) **n'est pas** en rang 1 et subit la pénalité de −25 ; le classement est identique à celui obtenu avec les booléens `false` natifs (comparaison stricte des 6 codes et des 6 scores).
+Acceptation : classements strictement identiques entre la version texte et la version booléenne.
+
+---
+
+**CAS-ROB-04 — Dates impossibles refusées avant PostgreSQL**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `POST /api/requests` (JD-01) avec `companyCreatedOn` successivement égal à `2026-02-30`, `9999-99-99`, `2026-13-01`, `1800-01-01`, `2300-01-01`, `26-01-01`, `2026/01/01`.
+Résultat attendu : HTTP **400** aux 7 appels ; messages `Date inexistante au calendrier` (les 5 premiers) ou `Date attendue au format AAAA-MM-JJ` (les 2 derniers) ; **aucun 500**. Avec `2026-02-28`, HTTP 201.
+Acceptation : 7 refus en 400 et un succès.
+
+---
+
+**CAS-ROB-05 — Montants hors capacité de colonne**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `POST /api/requests` (JD-01) avec `shareCapital` = `1e15`, `99999999999.9999`, `-1`, `"abc"`, `Infinity` (en JSON : `1e999`).
+Résultat attendu : HTTP 400 à chaque fois, messages respectifs `Montant trop élevé`, `Montant trop élevé` (au-delà de `NUMERIC(14,3)`), `La valeur doit être positive`, `Montant invalide` ou `Format attendu : number`, `Montant invalide`. Avec `99999999999.999`, HTTP 201. Aucun 500 PostgreSQL de type « numeric field overflow ».
+Acceptation : 5 refus en 400, borne supérieure exacte acceptée.
+
+---
+
+**CAS-ROB-06 — Octet NUL et caractères de contrôle**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `POST /api/requests` (JD-01) avec `siteName = "Beldi\u0000Cosmetics"`, puis `companyName = "BELDI\u0007"`, puis `activityDescription` contenant `\u001f`.
+Résultat attendu : HTTP 400, `details[].message = "Caractères de contrôle non autorisés"`, champ correctement désigné ; aucune erreur PostgreSQL « invalid byte sequence for encoding UTF8 ». Les caractères `\n` et `\t` (autorisés) ne déclenchent pas le refus.
+Acceptation : trois 400 ciblés, tabulation et saut de ligne acceptés.
+
+---
+
+**CAS-ROB-07 — Identifiants de route non numériques ou hors bornes**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `GET /api/requests/abc`, `/api/requests/1.5`, `/api/requests/-1`, `/api/requests/0`, `/api/requests/2147483648`, `/api/requests/1%20OR%201=1`, `/api/admin/users/abc`, `/api/requests/abc/events`, `/api/requests/abc/suggestions`.
+Résultat attendu : HTTP **400** aux 9 appels (jamais 404, jamais 500) ; message `Demande invalide : « abc »` (et variantes) pour les routes de demandes, `Identifiant invalide : « abc »` pour les routes d'administration.
+Acceptation : neuf 400 avec le message nommant la valeur reçue.
+
+---
+
+**CAS-ROB-08 — Pagination et limites hostiles**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `GET /api/requests?limit=-10&offset=-5`, `?limit=0`, `?limit=abc`, `?limit=99999999`, `?offset=99999999999`, `GET /api/mcc?limit=-1`, `GET /api/admin/events?limit=-1`.
+Résultat attendu : HTTP 200 à chaque appel ; `limit` ramené dans `[1,200]` pour `/api/requests`, `[1,300]` pour `/api/mcc`, `[1,500]` pour `/api/admin/events` ; `offset` ramené dans `[0,1000000]` ; `items` toujours un tableau ; aucun 500.
+Acceptation : sept réponses 200 avec des tailles bornées.
+
+---
+
+**CAS-ROB-09 — Filtres de liste invalides**
+Niveau : BACK · Criticité : MINEUR
+Étapes : `GET /api/requests?status=INEXISTANT`, `GET /api/admin/users?role=SUPERADMIN`, `GET /api/admin/users?bankId=abc`, `GET /api/admin/users?bankId=1.5`.
+Résultat attendu : (1) HTTP 200 avec `items = []` (la colonne porte une contrainte `CHECK`, la valeur ne correspond à rien) · (2) HTTP 400 `{"error":"Rôle invalide : « SUPERADMIN »"}` · (3) et (4) HTTP 400 `{"error":"Banque invalide : « abc »"}` / `« 1.5 »`. Aucun 500.
+Acceptation : un 200 vide et trois 400.
+
+---
+
+**CAS-ROB-10 — Recherche : caractères spéciaux, jokers SQL et injection**
+Niveau : LES DEUX · Criticité : MAJEUR
+Étapes :
+1. `GET /api/requests?search=%25` (`%`), `?search=_`, `?search='`, `?search=" OR 1=1 --`, `?search=<script>alert(1)</script>`.
+2. `GET /api/mcc?search=' OR '1'='1`.
+3. (FRONT) saisir `<script>alert(1)</script>` dans la recherche du référentiel et dans le champ « Nom du site ».
+Résultat attendu : (1) et (2) HTTP 200, aucune erreur SQL, aucune divulgation de demande d'une autre banque (le filtre `bank_id` reste appliqué). Noter que `%` et `_` agissent comme jokers `ILIKE` : `search=%` remonte toutes les demandes **de la banque de l'appelant** — comportement acceptable, à consigner. (3) aucune exécution de script : le texte est affiché littéralement (React échappe), et l'enregistrement le restitue tel quel.
+Acceptation : zéro erreur SQL, zéro fuite inter-banques, zéro exécution de script.
+
+---
+
+**CAS-ROB-11 — Corps JSON malformé ou hors gabarit**
+Niveau : BACK · Criticité : MAJEUR
+Étapes :
+1. `POST /api/requests` avec le corps brut `{"siteName":` et `Content-Type: application/json`.
+2. `POST /api/requests` avec un corps de 2 Mo (limite : 1 Mo).
+3. `POST /api/requests` avec `Content-Type: text/plain` et un corps quelconque.
+4. `POST /api/mcc/suggest` avec un corps `[]` (tableau au lieu d'objet).
+Résultat attendu : (1) HTTP 400 (erreur d'analyse), **jamais 500** · (2) HTTP **413** ou 400, jamais 500 · (3) HTTP 400 : le corps n'est pas analysé, la validation zod signale les champs obligatoires · (4) HTTP 400 `Données invalides`.
+Acceptation : aucune réponse 5xx.
+
+---
+
+**CAS-ROB-12 — Les erreurs internes ne fuient pas**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : provoquer une indisponibilité de la base (couper PostgreSQL ou fermer le pool) puis appeler `GET /api/requests`.
+Résultat attendu : HTTP 500 avec **exactement** `{"error":"Erreur interne du serveur"}` — ni trace d'exécution, ni requête SQL, ni nom de table dans le corps. La trace complète est écrite dans les journaux serveur.
+Acceptation : corps strictement égal au message générique.
+
+---
+
+**CAS-ROB-13 — Longueurs maximales de chaque champ**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `POST /api/requests` (JD-01) en dépassant d'un caractère chacune des bornes : `siteName` 161, `siteUrl` 256, `companyName` 161, `rne` 33, `contactEmail` 161, `addressLine1` 181, `city` 81, `activityDescription` 2001, `productTypes` 1001, `currency` 4, `country` 81.
+Résultat attendu : HTTP 400 aux 11 appels, `details[].champ` désignant le champ fautif ; **aucune** erreur PostgreSQL « value too long for type character varying ». Avec les valeurs exactement à la borne, HTTP 201.
+Acceptation : 11 refus en 400 et un succès à la borne.
+
+---
+
+**CAS-ROB-14 — Caractères Unicode légitimes acceptés**
+Niveau : LES DEUX · Criticité : MINEUR
+Étapes : `POST /api/requests` avec `companyName = "SOCIÉTÉ ÉLÈVE & Cie – « Beldi »"`, `siteName = "Beldi 🌿"`, `city = "Sfax"`, `contactLastName = "بن علي"`.
+Résultat attendu : HTTP 201 ; relecture `GET` restituant les valeurs **à l'identique** (accents, tirets longs, guillemets français, emoji, caractères arabes) ; l'écran de détail les affiche sans `?` ni caractère de remplacement.
+Acceptation : aller-retour sans altération.
+
+---
+
+**CAS-ROB-15 — Types inattendus sur les champs structurés**
+Niveau : BACK · Criticité : MAJEUR
+Étapes : `PUT /api/admin/mcc/5977` avec `{"keywords":"un seul mot"}`, `{"keywords":[1,2]}`, `{"similar":["59"]}`, `{"networks":[]}`, `{"networks":["VISA","PAYPAL"]}`, `{"sectors":["A".repeat(50)]}`.
+Résultat attendu : HTTP 400 aux 6 appels, `details[0].champ` désignant le champ (`keywords`, `similar`, `networks`, `sectors`) ; aucune écriture ; aucun 500.
+Acceptation : six 400 ciblés.
+
+---
+
+**CAS-ROB-16 — En-têtes de sécurité et CORS**
+Niveau : BACK · Criticité : MINEUR
+Étapes :
+1. `GET /api/health` et relever les en-têtes de réponse.
+2. `OPTIONS /api/requests` avec `Origin: https://site-malveillant.example`.
+Résultat attendu : (1) présence des en-têtes posés par `helmet` : `X-Content-Type-Options: nosniff`, `X-Frame-Options` ou `Content-Security-Policy`, `Strict-Transport-Security` · (2) la réponse ne contient **pas** `Access-Control-Allow-Origin: https://site-malveillant.example` (seule l'origine configurée dans `CORS_ORIGIN` est autorisée).
+Acceptation : en-têtes de durcissement présents, origine étrangère non autorisée.
+
+---
+
+### 2.10 ERGONOMIE — restitution des erreurs, chargement, mobile, clavier, contrastes
+
+---
+
+**CAS-ERGO-01 — Le bandeau d'erreur est amené dans le champ de vision**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : formulaire de demande, étape 5 (page longue), champs invalides à l'étape 1.
+Étapes : cliquer « Soumettre au banquier » après avoir fait défiler la page vers le bas.
+Résultat attendu : le bandeau rouge est rendu avec `role="alert"`, la page défile jusqu'à lui (`block: "center"`) et il reçoit le focus clavier (`document.activeElement` = le conteneur `tabIndex=-1`). Un lecteur d'écran annonce le message. Aucune action n'est silencieuse.
+Acceptation : bandeau visible sans défilement manuel **et** focalisé.
+
+---
+
+**CAS-ERGO-02 — Les erreurs parlent métier, pas technique**
+Niveau : FRONT · Criticité : MAJEUR
+Étapes : provoquer les erreurs de CAS-DEM-03 puis une erreur d'import (`entrees.12.riskLevel`).
+Résultat attendu : la liste du bandeau affiche `Adresse du site`, `RNE`, `Description de l'activité`, `Niveau de vigilance (ligne 13)` — jamais `siteUrl`, `rne`, `entrees.12.riskLevel`. Le numéro de ligne affiché est celui du fichier (indice + 1).
+Acceptation : aucun nom technique visible.
+
+---
+
+**CAS-ERGO-03 — États de chargement**
+Niveau : FRONT · Criticité : MAJEUR
+Étapes (réseau bridé à « Slow 3G ») :
+1. Recharger l'application avec un jeton valide en `localStorage`.
+2. Ouvrir `/demandes/<id>`.
+3. Cliquer « Enregistrer le brouillon », puis « Valider l'affiliation » côté banquier.
+Résultat attendu : (1) le texte `Chargement de la session…` est affiché tant que `/api/auth/me` n'a pas répondu, sans écran vide · (2) `Chargement…` est affiché avant l'arrivée du détail · (3) les boutons d'action passent à l'état `disabled` (opacité 0.55, curseur `not-allowed`) pendant l'appel : un double-clic ne déclenche pas deux écritures.
+Acceptation : aucun écran vide, aucun double envoi possible.
+
+---
+
+**CAS-ERGO-04 — Serveur injoignable : la session n'est pas perdue**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : session ouverte, jeton en `localStorage`.
+Étapes : arrêter l'API, recharger la page.
+Résultat attendu : le jeton **n'est pas** effacé ; le message `Session non vérifiée : le serveur est injoignable. Vos identifiants sont conservés.` est disponible ; après redémarrage de l'API et rechargement, la session reprend sans ressaisie. À l'inverse, un 401 explicite efface bien le jeton et renvoie vers `/connexion`.
+Acceptation : distinction effective entre panne réseau (jeton conservé) et refus serveur (jeton effacé).
+
+---
+
+**CAS-ERGO-05 — Affichage à 375 px (mobile)**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : fenêtre 375 × 812.
+Étapes : parcourir `/connexion`, `/demandes`, `/demandes/nouvelle` (5 étapes), `/demandes/<id>`, `/referentiel`, `/administration/comptes`, `/administration/import`.
+Résultat attendu sur chaque écran :
+- aucun **défilement horizontal de la page** (`document.documentElement.scrollWidth <= 375`) ;
+- les tableaux défilent dans leur propre cadre (`.tableau`, `overflow-x: auto`), jamais la page ;
+- les grilles passent en une colonne (`minmax(260px, 1fr)` / `minmax(320px, 1fr)`) ;
+- la barre supérieure se replie (`flex-wrap`) et tous ses liens restent atteignables ;
+- les 5 onglets d'étape restent cliquables (`min-width: 150px`, retour à la ligne autorisé) ;
+- aucun texte tronqué ni superposé ; aucune zone cliquable inférieure à 32 × 32 px.
+Acceptation : les 6 points sont vrais sur les 7 écrans.
+
+---
+
+**CAS-ERGO-06 — Parcours complet au clavier**
+Niveau : FRONT · Criticité : MAJEUR
+Étapes : sans souris, depuis `/connexion` : se connecter, ouvrir « Nouvelle demande », remplir les 5 étapes, sélectionner un MCC, soumettre.
+Résultat attendu :
+- l'ordre de tabulation suit l'ordre visuel ;
+- chaque champ est atteignable et associé à son intitulé (`label[for]` ↔ `input[id]`, vérifiable pour `champ-siteName`, `champ-activityDescription`, `case-hasSubscription`…) ;
+- les cartes MCC sont des `<button>` activables par `Entrée` et `Espace`, porteuses de `aria-pressed` reflétant la sélection ;
+- l'élément focalisé est **visible** (anneau `box-shadow` sur les champs, anneau du navigateur sur les boutons) ;
+- aucun piège au clavier ; `Échap` ne perd pas la saisie.
+Acceptation : le parcours aboutit à une soumission sans souris et chaque étape du focus est visible.
+
+---
+
+**CAS-ERGO-07 — Contrastes**
+Niveau : FRONT · Criticité : MAJEUR
+Étapes : mesurer le rapport de contraste (WCAG 2.1) des couples suivants :
+| Élément | Premier plan | Arrière-plan | Seuil |
+| --- | --- | --- | --- |
+| Texte courant | `--gris-900` `#1f2933` | `--gris-050` `#f7f9fb` | ≥ 4,5:1 |
+| Aide sous un champ (`.champ__aide`) | `--gris-700` `#3e4c59` | `#ffffff` | ≥ 4,5:1 |
+| Message d'erreur (`.champ__erreur`) | `--rouge` `#b3261e` | `#ffffff` | ≥ 4,5:1 |
+| Onglet d'étape inactif (`.etape`) | `--gris-700` | `--gris-050` | ≥ 4,5:1 |
+| Libellés de la barre supérieure | `#d7e3ef` / `#a8c0d6` | `--bleu-900` `#0b2545` | ≥ 4,5:1 |
+| Bouton principal | `#ffffff` | `--bleu-500` `#1b6ca8` | ≥ 4,5:1 |
+| Bouton « Valider » | `#ffffff` | `--vert` `#1b7f5a` | ≥ 4,5:1 |
+| Étiquettes de statut et jetons | texte | fond de l'étiquette | ≥ 4,5:1 |
+Résultat attendu : tous les couples atteignent 4,5:1 (3:1 admis pour les textes ≥ 18,66 px gras). `--gris-500` `#7b8794` (3,66:1 sur blanc) ne doit être utilisé que comme **bordure** ou **filet**, jamais comme couleur de texte.
+Acceptation : zéro couple sous son seuil ; consigner chaque mesure.
+
+---
+
+**CAS-ERGO-08 — Tableau de bord : compteurs et filtres**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : au moins une demande dans chacun des 5 statuts, dans la banque de l'utilisateur.
+Étapes :
+1. Ouvrir `/demandes`.
+2. Filtrer par statut, puis par recherche (référence, raison sociale, RNE).
+Résultat attendu : les compteurs affichent exactement les valeurs de `GET /api/requests/stats` (`BROUILLON`, `SOUMISE`, `COMPLEMENT_REQUIS`, `VALIDEE`, `REJETEE`, `TOTAL`) ; chaque filtre restreint la liste en conséquence ; une liste vide affiche un message explicite et non un tableau vide sans en-tête.
+Acceptation : compteurs égaux à l'API et filtres opérants.
+
+---
+
+**CAS-ERGO-09 — Journal d'une demande : nominatif et horodaté**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : demande ayant parcouru `CREATION → SOUMISSION → COMPLEMENT_REQUIS → MODIFICATION → SOUMISSION → VALIDATION`.
+Étapes : ouvrir `/demandes/<id>` et lire le journal.
+Résultat attendu : six entrées, dans l'ordre chronologique, chacune avec son libellé français (`Demande créée`, `Soumise au banquier`, `Complément demandé à l’agent`, `Demande modifiée`, `Validée sans modification des MCC`…), le **nom et le rôle** de l'auteur et la date au format `JJ/MM/AAAA HH:MM`. Le commentaire du banquier est affiché tel quel.
+Acceptation : six entrées nominatives et horodatées, libellés conformes.
+
+---
+
+**CAS-ERGO-10 — Le code proposé reste visible à côté du code retenu**
+Niveau : FRONT · Criticité : MAJEUR
+Préconditions : demande VALIDEE avec substitution (CAS-WF-05).
+Étapes : ouvrir `/demandes/<id>`.
+Résultat attendu : l'écran affiche simultanément le MCC **proposé par l'agent** (`5977`) et le MCC **retenu par le banquier** (`5912` / `5999`) pour chaque réseau, avec une mention explicite de la modification ; les propositions figées du moteur restent consultables sur la même page.
+Acceptation : les deux valeurs sont lisibles sans navigation supplémentaire.
+
+---
+
+**CAS-ERGO-11 — Import : l'écran ne laisse pas croire qu'une simulation a écrit**
+Niveau : FRONT · Criticité : MAJEUR
+Étapes : charger un fichier sur `/administration/import` sans confirmer.
+Résultat attendu : le bandeau `Simulation — aucune donnée modifiée` est affiché ; les compteurs (ajoutés / modifiés / inchangés / absents / sans lexique) sont présents ; le bouton d'application demande une **seconde** confirmation récapitulant `X ajout(s), Y modification(s)[, Z désactivation(s)]` avant toute écriture ; la case « Désactiver les N code(s) absent(s) du fichier » est **décochée par défaut**.
+Acceptation : simulation clairement identifiée, case décochée, double confirmation.
+
+---
+
+**CAS-ERGO-12 — Message explicite quand aucune proposition n'est disponible**
+Niveau : FRONT · Criticité : MINEUR
+Étapes :
+1. Aller à l'étape 4 sans avoir décrit l'activité.
+2. Décrire l'activité avec un secteur inconnu injecté (provoquer une erreur 400 sur `/api/mcc/suggest`).
+Résultat attendu : (1) le message `Complétez la description de l'activité à l'étape précédente pour obtenir des propositions de MCC.` est affiché · (2) le bandeau `Propositions indisponibles` reprend le message serveur et le détail par champ — l'agent n'est **jamais** laissé devant une liste vide sans explication.
+Acceptation : un message adapté dans chacun des deux cas.
+
+---

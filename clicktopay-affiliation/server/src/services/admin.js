@@ -306,7 +306,7 @@ export async function listAdminEvents({ limit = 100 } = {}) {
   const { rows } = await query(
     `SELECT e.*, (u.first_name || ' ' || u.last_name) AS user_name
        FROM admin_events e LEFT JOIN users u ON u.id = e.user_id
-      ORDER BY e.created_at DESC, e.id DESC LIMIT $1`,
+      ORDER BY e.id DESC LIMIT $1`,
     [Math.min(limit, 500)]
   );
   return rows.map((r) => ({
