@@ -1720,3 +1720,211 @@ Résultat attendu : (1) le message `Complétez la description de l'activité à 
 Acceptation : un message adapté dans chacun des deux cas.
 
 ---
+
+## 3. Matrice de couverture
+
+Légende :
+- **Auto** : comportement déjà vérifié par un test automatisé existant (`cd server && npm test`, 94 tests, 94 succès au 2026-09-21). Le cas reste utile comme référence, il n'a pas à être rejoué à la main.
+- **Partiel** : un test existe mais ne couvre qu'une partie du cas ; le **reste** doit être exécuté manuellement. La colonne « Reste à faire » dit quoi.
+- **Manuel** : aucun test automatisé ; le cas est à exécuter intégralement.
+- Filière : **API** (recette API) ou **Nav.** (recette navigateur). Les cas « LES DEUX » apparaissent dans les deux filières.
+
+### 3.1 AUTH
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-AUTH-01 | Partiel | `server/tests/auth.test.js` — *un agent se connecte avec ses identifiants* | `last_login_at`, écran de connexion | API + Nav. |
+| CAS-AUTH-02 | Auto | `server/tests/auth.test.js` — *un mot de passe erroné est rejeté sans révéler…* | — | API |
+| CAS-AUTH-03 | Manuel | — | tout | API |
+| CAS-AUTH-04 | Partiel | `server/tests/auth.test.js` — *une route protégée refuse un appel sans jeton* | jeton illisible, schéma `Basic` | API |
+| CAS-AUTH-05 | Auto | `server/tests/auth.test.js` — *le serveur répond au contrôle de santé* | — | API |
+| CAS-AUTH-06 | Auto | `server/tests/robustesse.test.js` — *un compte désactivé perd immédiatement ses accès* ; `admin.test.js` — *un compte désactivé ne peut plus se connecter* | — | API |
+| CAS-AUTH-07 | **Manuel** | — | tout (**aucun test sur la banque désactivée**) | API |
+| CAS-AUTH-08 | Auto | `server/tests/robustesse.test.js` — *un agent muté de banque perd l'accès…* | — | API |
+| CAS-AUTH-09 | Auto | `server/tests/robustesse.test.js` — *un changement de rôle s'applique sans reconnexion* | — | API |
+| CAS-AUTH-10 | Auto | `server/tests/robustesse.test.js` — *une réinitialisation de mot de passe ferme les sessions…* | — | API |
+| CAS-AUTH-11 | Partiel | `server/tests/admin.test.js` — *la réinitialisation par l'administrateur force un changement* | les 3 routes bloquées, l'accès maintenu à `/api/auth`, l'écran | API + Nav. |
+| CAS-AUTH-12 | Partiel | `server/tests/admin.test.js` — *la création de compte impose une politique…* | les 4 variantes sur `/api/auth/password` | API + Nav. |
+| CAS-AUTH-13 | Partiel | `server/tests/admin.test.js` — *un mot de passe identique à l'ancien est refusé* | mot de passe actuel erroné, péremption de l'ancien jeton | API + Nav. |
+| CAS-AUTH-14 | Manuel | — | tout | API |
+| CAS-AUTH-15 | **Partiel** | `server/tests/robustesse.test.js` — *les tentatives répétées finissent par être refusées* (**teste le composant isolé, pas la route `/api/auth/login`**) | bout en bout sur la route réelle, `Retry-After`, clé par compte | API |
+| CAS-AUTH-16 | Manuel | — | tout | API |
+| CAS-AUTH-17 | Manuel | — | tout (divergence D5) | API |
+
+### 3.2 HABILITATION
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-HAB-01 | Partiel | `server/tests/requests.test.js` — *un banquier ne saisit pas de demande* | `PUT`, `submit`, URL forcée à l'écran | API + Nav. |
+| CAS-HAB-02 | Partiel | `server/tests/requests.test.js` — *un agent ne peut pas arbitrer une demande* | absence des boutons à l'écran | API + Nav. |
+| CAS-HAB-03 | Auto | `server/tests/admin.test.js` — *l'administration est fermée aux autres profils* ; `robustesse.test.js` — *l'import reste réservé à l'administrateur* | URL forcée à l'écran | API + Nav. |
+| CAS-HAB-04 | Partiel | `server/tests/requests.test.js` — *une demande reste invisible pour une autre banque* | `events`, `suggestions`, `PUT`, écran | API + Nav. |
+| CAS-HAB-05 | Manuel | — | tout (divergence D6) | API |
+| CAS-HAB-06 | Manuel | — | tout | API |
+| CAS-HAB-07 | Partiel | `server/tests/mcc.test.js` (rôle agent seulement) | rôles banquier et admin | API |
+| CAS-HAB-08 | Manuel | — | tout | API |
+| CAS-HAB-09 | Manuel | — | tout | Nav. |
+| CAS-HAB-10 | Manuel | — | tout | Nav. |
+
+### 3.3 DEMANDE
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-DEM-01 | Auto | `server/tests/requests.test.js` — *un agent saisit une demande et obtient une référence* | valeurs par défaut, événement CREATION | API |
+| CAS-DEM-02 | Manuel | — | tout | API |
+| CAS-DEM-03 | Partiel | `server/tests/requests.test.js` — *les champs obligatoires sont contrôlés champ par champ* (3 champs) ; *un descriptif trop court est refusé* | les 6 autres lignes du tableau | API |
+| CAS-DEM-04 | Manuel | — | tout | Nav. |
+| CAS-DEM-05 | Manuel | — | tout | Nav. |
+| CAS-DEM-06 | Manuel | — | tout | Nav. |
+| CAS-DEM-07 | Partiel | `server/tests/requests.test.js` — *une demande est modifiable tant qu'elle est au brouillon* | non-écrasement des champs absents, journal | API |
+| CAS-DEM-08 | Manuel | — | tout | API |
+| CAS-DEM-09 | Manuel | — | tout | API |
+| CAS-DEM-10 à 14 | Manuel | — | tout | Nav. |
+
+### 3.4 WORKFLOW
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-WF-01 | Auto | `server/tests/requests.test.js` — *la soumission fige les propositions du moteur* | — | API |
+| CAS-WF-02 | Auto | `server/tests/requests.test.js` — *la soumission exige un MCC Visa et un MCC Mastercard* | message à l'écran | API + Nav. |
+| CAS-WF-03 | Auto | `server/tests/requests.test.js` — *une demande soumise n'est plus modifiable par l'agent* | — | API |
+| CAS-WF-04 | Auto | `server/tests/requests.test.js` — *le banquier valide en conservant les MCC proposés* | type d'événement | API |
+| CAS-WF-05 | Auto | `server/tests/requests.test.js` — *le banquier peut substituer un autre MCC, réseau par réseau* | affichage proposé/retenu | API + Nav. |
+| CAS-WF-06 | Auto | `server/tests/requests.test.js` — *un rejet ou une demande de complément exige un commentaire* | commentaire vide `""`, codes finaux à `null` | API |
+| CAS-WF-07 | Manuel | — | tout | API |
+| CAS-WF-08 | Auto | `server/tests/requests.test.js` — *une demande renvoyée pour complément redevient modifiable…* ; *le journal retrace chaque étape* | remise à `null` du décideur | API + Nav. |
+| CAS-WF-09 | Manuel | — | tout (statut REJETEE terminal) | API |
+| CAS-WF-10 | Partiel | `server/tests/requests.test.js` — *seule une demande soumise peut être arbitrée* | `PUT` et `submit` sur VALIDEE | API |
+| CAS-WF-11 | Auto | `server/tests/requests.test.js` — *seule une demande soumise peut être arbitrée* | — | API |
+| CAS-WF-12 | Auto | `server/tests/robustesse.test.js` — *deux soumissions simultanées : une seule aboutit* | — | API |
+| CAS-WF-13 | Auto | `server/tests/robustesse.test.js` — *deux décisions contradictoires simultanées* | — | API |
+| CAS-WF-14 | Manuel | — | tout (immuabilité de la photographie) | API |
+| CAS-WF-15 | Manuel | — | tout | API |
+
+### 3.5 MCC
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-MCC-01 | Partiel | `server/tests/mcc.test.js` — *chaque proposition porte une description et les termes qui l'ont déclenchée* | ordre et scores exacts | API |
+| CAS-MCC-02 | Auto | `server/tests/mcc.test.js` — *la suggestion propose les mêmes codes pour Visa et Mastercard* | message à l'écran | API + Nav. |
+| CAS-MCC-03 | Manuel | — | tout | API |
+| CAS-MCC-04 | Partiel | `server/tests/mcc.test.js` — *une activité numérique fait remonter les MCC de biens numériques* | scores exacts, marqueur abonnement | API |
+| CAS-MCC-05 | Partiel | `server/tests/mcc.test.js` — *une place de marché est orientée vers le MCC 5262* | contre-épreuve `isMarketplace: false` | API |
+| CAS-MCC-06 | Partiel | `server/tests/mcc.test.js` — *aucun MCC interdit n'est jamais proposé automatiquement* (1 formulation) | 2 autres formulations | API |
+| CAS-MCC-07 | Partiel | `server/tests/requests.test.js` — *un MCC non éligible ne peut pas être proposé* ; *le banquier ne peut pas retenir un MCC interdit* | cas `PUT` | API |
+| CAS-MCC-08 | Auto | `server/tests/admin.test.js` — *un code désactivé disparaît du catalogue et n'est plus sélectionnable* | — | API |
+| CAS-MCC-09 | Manuel | — | tout | API + Nav. |
+| CAS-MCC-10 | Partiel | `server/tests/mcc.test.js` — *la recherche par mot-clé remonte le MCC attendu* ; `robustesse.test.js` — *une pagination négative…* | classement, bornes de `limit`, recherche vide | API |
+| CAS-MCC-11 | **Partiel** | `server/tests/mcc.test.js` — *un descriptif sans correspondance retombe sur un code de repli* (**assertion trop faible : `length >= 1`**) | vérifier réellement le repli (divergence D4) | API |
+| CAS-MCC-12 | Manuel | — | tout | API |
+| CAS-MCC-13 | Manuel | — | tout | API |
+| CAS-MCC-14 | Manuel | — | tout | Nav. |
+| CAS-MCC-15 | Partiel | `server/tests/admin.test.js` — *le changement de niveau de vigilance s'applique immédiatement* | cas de la désactivation | API |
+
+### 3.6 ADMIN
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-ADM-01 | Auto | `server/tests/admin.test.js` — *un administrateur liste les comptes avec leur banque* (+ créations dans les autres tests) | contrôle du hachage bcrypt en base | API |
+| CAS-ADM-02 | Auto | `server/tests/admin.test.js` — *un compte créé doit changer son mot de passe à la première connexion* | — | API + Nav. |
+| CAS-ADM-03 | Partiel | `server/tests/admin.test.js` — *la création de compte impose une politique de mot de passe* | cas de la réinitialisation | API |
+| CAS-ADM-04 | Auto | `server/tests/admin.test.js` — *une adresse e-mail déjà utilisée est refusée* | cas du `PUT` et de la casse | API |
+| CAS-ADM-05 | Manuel | — | tout | API |
+| CAS-ADM-06 | Auto | `server/tests/admin.test.js` — *le rôle et la banque d'un compte sont modifiables* | journal `payload.champs` | API + Nav. |
+| CAS-ADM-07 | Manuel | — | tout | API |
+| CAS-ADM-08 | Auto | `server/tests/admin.test.js` — *un administrateur ne peut ni changer son propre rôle ni se désactiver* | absence des commandes à l'écran | API + Nav. |
+| CAS-ADM-09 | Auto | `server/tests/admin.test.js` — *la plateforme refuse de perdre son dernier administrateur* | — | API |
+| CAS-ADM-10 | Auto | `server/tests/robustesse.test.js` — *deux administrateurs qui se rétrogradent simultanément* | — | API |
+| CAS-ADM-11 | Auto | `server/tests/admin.test.js` — *un compte désactivé ne peut plus se connecter* | — | API |
+| CAS-ADM-12 | Partiel | `server/tests/admin.test.js` — *les banques sont créées, listées et modifiées* | doublon de code, code trop court, compteurs | API + Nav. |
+| CAS-ADM-13 | Auto | `server/tests/admin.test.js` — *une banque comptant des utilisateurs actifs ne peut pas être désactivée* | texte exact du message | API |
+| CAS-ADM-14 | Auto | `server/tests/admin.test.js` — *la vue administrateur expose aussi les codes interdits et désactivés* | — | API |
+| CAS-ADM-15 | Auto | `server/tests/admin.test.js` — *un MCC est modifiable et la modification est historisée* | ligne du journal d'administration | API + Nav. |
+| CAS-ADM-16 | Manuel | — | tout (actions DESACTIVATION / REACTIVATION) | API |
+| CAS-ADM-17 | Auto | `server/tests/admin.test.js` — *un code absent du manuel peut être ajouté* | valeurs par défaut, code à 2 chiffres | API + Nav. |
+| CAS-ADM-18 | Auto | `server/tests/robustesse.test.js` — *deux créations simultanées du même MCC : 201 puis 409* | — | API |
+| CAS-ADM-19 | Manuel | — | tout | API |
+| CAS-ADM-20 | Manuel | — | tout | API |
+| CAS-ADM-21 | Partiel | `server/tests/admin.test.js` — *les actions d'administration sont journalisées* | bornes de `limit`, écran Journal | API + Nav. |
+| CAS-ADM-22 | Auto | `server/tests/admin.test.js` — *le seed ne réécrit pas les ajustements de la conformité* | — | API |
+
+### 3.7 IMPORT
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-IMPORT-01 | Partiel | `server/tests/robustesse.test.js` — *la route d'export sert bien un classeur Excel* | CSV, `actifsSeuls`, nom de fichier, téléchargement navigateur | API + Nav. |
+| CAS-IMPORT-02 | Auto | `server/tests/robustesse.test.js` — *un aller-retour export puis relecture ne modifie aucun code* | — | API |
+| CAS-IMPORT-03 | Auto | `server/tests/robustesse.test.js` — *le CSV est accepté au même titre que l'Excel* | volumétrie 279 en CSV | API |
+| CAS-IMPORT-04 | Auto | `server/tests/robustesse.test.js` — *un fichier métier désordonné est lu, et ses anomalies signalées* | — | API |
+| CAS-IMPORT-05 | Partiel | `server/tests/robustesse.test.js` (quelques valeurs) | les 12 traductions | API |
+| CAS-IMPORT-06 | Partiel | `server/tests/robustesse.test.js` — *un fichier métier désordonné…* | anomalies de pertinence/vigilance, ligne vide, écran | API + Nav. |
+| CAS-IMPORT-07 | Manuel | — | tout | API |
+| CAS-IMPORT-08 | Auto | `server/tests/admin.test.js` — *l'import produit un rapport d'écart sans rien modifier* | bandeau « Simulation » | API + Nav. |
+| CAS-IMPORT-09 | Auto | `server/tests/admin.test.js` — *l'import applique les écarts et historise chaque code touché* | journal `IMPORT_REFERENTIEL`, double confirmation à l'écran | API + Nav. |
+| CAS-IMPORT-10 | Partiel | `server/tests/robustesse.test.js` — *la chaîne « false » ne déclenche pas un import destructeur* | `deactivateMissing: true`, historique `IMPORT_DESACTIVATION` | API |
+| CAS-IMPORT-11 | Manuel | — | tout (divergence D2) | API |
+| CAS-IMPORT-12 | Manuel | — | tout (divergence D3) | API |
+| CAS-IMPORT-13 | Auto | `server/tests/indexation.test.js` — *le rapport d'import signale les codes sans lexique métier* | bandeau et tableau à l'écran | API + Nav. |
+| CAS-IMPORT-14 | Partiel | `server/tests/robustesse.test.js` — *un fichier sans colonne « code »…* ; *un format non pris en charge est refusé* | fichier absent, en-tête seul, > 5 Mo, JSON invalide | API |
+| CAS-IMPORT-15 | Partiel | `server/tests/admin.test.js` — *un fichier d'import invalide est rejeté avant toute écriture* ; `robustesse.test.js` — *chaque ligne d'un import est validée* | bornes 0 / 2001, doublon, code à 2 chiffres | API |
+| CAS-IMPORT-16 | Auto | `server/tests/robustesse.test.js` — *l'import reste réservé à l'administrateur* | rôle banquier, export et lecture de fichier | API |
+
+### 3.8 INDEXATION
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-INDEX-01 | Auto | `server/tests/indexation.test.js` — *un code importé est indexé immédiatement, sans redémarrage* | — | API |
+| CAS-INDEX-02 | Auto | `server/tests/indexation.test.js` — *ses mots-clés sont dérivés de son libellé et de sa description* | plafond de 30, bloc en lecture seule à l'écran | API + Nav. |
+| CAS-INDEX-03 | Auto | `server/tests/indexation.test.js` — *le singulier retrouve un libellé écrit au pluriel* | — | API |
+| CAS-INDEX-04 | Partiel | `server/tests/indexation.test.js` — *un lexique métier saisi à la main reste plus fort que les dérivés* | absence avant saisie (« patinette ») | API |
+| CAS-INDEX-05 | Auto | `server/tests/indexation.test.js` — *un lexique métier saisi à la main reste plus fort que les dérivés* | — | API |
+| CAS-INDEX-06 | Manuel | — | tout (divergence D1) | API |
+| CAS-INDEX-07 | Partiel | `server/tests/indexation.test.js` — *un secteur inconnu est refusé* | via import, via `/api/requests` | API |
+| CAS-INDEX-08 | Auto | `server/tests/indexation.test.js` — *l'index est reconstruit quand le libellé change* | recalcul de `keywordsAuto` | API |
+| CAS-INDEX-09 | Partiel | `server/tests/indexation.test.js` — *les secteurs sont servis depuis la base* ; `mcc.test.js` — *les secteurs d'activité sont exposés au formulaire* | désactivation d'un secteur | API |
+| CAS-INDEX-10 | Auto | `server/tests/admin.test.js` — *le changement de niveau de vigilance s'applique immédiatement au moteur* | — | API |
+
+### 3.9 ROBUSTESSE
+
+| Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
+| --- | --- | --- | --- | --- |
+| CAS-ROB-01 | Auto | `server/tests/robustesse.test.js` — *la chaîne « false » ne déclenche pas un import destructeur* ; *active : « false » désactive…* | variantes `"0"`, `"non"`, `""` sur une demande | API |
+| CAS-ROB-02 | Auto | `server/tests/robustesse.test.js` — *une valeur booléenne incompréhensible est refusée, pas devinée* | — | API |
+| CAS-ROB-03 | Auto | `server/tests/robustesse.test.js` — *les drapeaux métier « false » ne faussent pas le moteur* | — | API |
+| CAS-ROB-04 | Partiel | `server/tests/robustesse.test.js` — *une date inexistante est refusée avant PostgreSQL* | les 6 autres valeurs | API |
+| CAS-ROB-05 | Partiel | `server/tests/robustesse.test.js` — *un montant hors capacité de colonne est refusé* | négatif, texte, infini, borne exacte | API |
+| CAS-ROB-06 | Auto | `server/tests/robustesse.test.js` — *un octet NUL est refusé au lieu de casser l'encodage* | autres caractères de contrôle, `\n`/`\t` acceptés | API |
+| CAS-ROB-07 | Partiel | `server/tests/robustesse.test.js` — *un identifiant non numérique donne 400 et non 500* | 8 autres formes | API |
+| CAS-ROB-08 | Partiel | `server/tests/robustesse.test.js` — *une pagination négative est ramenée à une borne saine* | `/api/mcc`, `/api/admin/events`, offset géant | API |
+| CAS-ROB-09 | Manuel | — | tout | API |
+| CAS-ROB-10 | Manuel | — | tout | API + Nav. |
+| CAS-ROB-11 | Manuel | — | tout | API |
+| CAS-ROB-12 | Manuel | — | tout | API |
+| CAS-ROB-13 | Manuel | — | tout | API |
+| CAS-ROB-14 | Manuel | — | tout | API + Nav. |
+| CAS-ROB-15 | Partiel | `server/tests/robustesse.test.js` — *chaque ligne d'un import est validée, pas seulement son code* | `keywords`, `similar`, `networks`, `sectors` sur `PUT /api/admin/mcc` | API |
+| CAS-ROB-16 | Manuel | — | tout | API |
+
+### 3.10 ERGONOMIE
+
+| Cas | Couverture | Filière |
+| --- | --- | --- |
+| CAS-ERGO-01 à CAS-ERGO-12 | **Manuel** — aucun test automatisé côté interface (pas de suite front dans le dépôt) | Nav. |
+
+### 3.11 Récapitulatif de couverture
+
+| Domaine | Cas | Auto | Partiel | Manuel |
+| --- | --- | --- | --- | --- |
+| AUTH | 17 | 5 | 6 | 6 |
+| HABILITATION | 10 | 1 | 4 | 5 |
+| DEMANDE | 14 | 1 | 2 | 11 |
+| WORKFLOW | 15 | 10 | 1 | 4 |
+| MCC | 15 | 3 | 7 | 5 |
+| ADMIN | 22 | 12 | 4 | 6 |
+| IMPORT | 16 | 6 | 6 | 4 |
+| INDEXATION | 10 | 5 | 3 | 2 |
+| ROBUSTESSE | 16 | 3 | 5 | 8 |
+| ERGONOMIE | 12 | 0 | 0 | 12 |
+| **Total** | **147** | **46** | **38** | **63** |
+
+---
