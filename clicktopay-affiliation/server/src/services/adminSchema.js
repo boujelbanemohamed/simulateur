@@ -76,6 +76,9 @@ const champsMcc = {
   riskLevel: z.enum(['STANDARD', 'SENSIBLE', 'INTERDIT']).optional(),
   note: optionnel(1000),
   networks: z.array(z.enum(['VISA', 'MASTERCARD'])).min(1).optional(),
+  // Rattachement aux secteurs du formulaire : c'est lui qui fait remonter le
+  // code en tête lorsque l'agent déclare ce secteur.
+  sectors: z.array(z.string().trim().max(40)).max(10).optional(),
 };
 
 export const createMccSchema = z.object({
@@ -97,6 +100,7 @@ export const updateMccSchema = z
     riskLevel: champsMcc.riskLevel,
     note: champsMcc.note,
     networks: champsMcc.networks,
+    sectors: champsMcc.sectors,
     active: booleen().optional(),
     comment: optionnel(1000),
   })
@@ -123,6 +127,7 @@ const entreeImportSchema = z.object({
   note: texte(1000).optional(),
   networks: z.array(z.enum(['VISA', 'MASTERCARD'])).min(1).optional(),
   source: texte(160).optional(),
+  sector: texte(40).optional(),
 });
 
 export const importMccSchema = z.object({

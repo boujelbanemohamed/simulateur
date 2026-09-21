@@ -17,6 +17,7 @@ const VIGILANCES = [
 const MCC_VIDE = {
   code: '', label: '', description: '', labelEn: '', descriptionEn: '',
   keywords: '', ecommerceRelevance: 'MEDIUM', riskLevel: 'STANDARD', note: '', comment: '',
+  sectors: [], keywordsAuto: [],
 };
 
 /** Les mots-clés circulent en tableau côté API, en texte séparé par des virgules côté écran. */
@@ -27,6 +28,8 @@ const versFormulaire = (mcc) => ({
   descriptionEn: mcc.descriptionEn ?? '',
   note: mcc.note ?? '',
   keywords: (mcc.keywords ?? []).join(', '),
+  sectors: mcc.sectors ?? [],
+  keywordsAuto: mcc.keywordsAuto ?? [],
   comment: '',
 });
 
@@ -39,10 +42,12 @@ const versPayload = (formulaire) => ({
   ecommerceRelevance: formulaire.ecommerceRelevance,
   riskLevel: formulaire.riskLevel,
   note: formulaire.note || null,
+  sectors: formulaire.sectors,
   comment: formulaire.comment || null,
 });
 
 export default function AdminMccPage() {
+  const [secteurs, setSecteurs] = useState([]);
   const [recherche, setRecherche] = useState('');
   const [codes, setCodes] = useState([]);
   const [totaux, setTotaux] = useState({ total: 0, actifs: 0, count: 0 });
@@ -69,6 +74,10 @@ export default function AdminMccPage() {
     const timer = setTimeout(charger, recherche ? 250 : 0);
     return () => clearTimeout(timer);
   }, [charger, recherche]);
+
+  useEffect(() => {
+    api.sectors().then(setSecteurs).catch(() => setSecteurs([]));
+  }, []);
 
   const maj = (cle) => (e) => setFormulaire((f) => ({ ...f, [cle]: e.target.value }));
 
@@ -185,6 +194,41 @@ export default function AdminMccPage() {
             </Champ>
           </div>
 
+          <Champ label="Secteurs d'activité rattachés" name="sectors"
+            aide="C'est ce rattachement qui fait remonter le code lorsque l'agent déclare ce secteur. Maintenez Ctrl pour en choisir plusieurs.">
+            <select id="champ-sectors" multiple size={6} value={formulaire.sectors}
+              onChange={(e) =>
+                setFormulaire((f) => ({
+                  ...f,
+                  sectors: [...e.target.selectedOptions].map((o) => o.value),
+                }))
+              }>
+              {secteurs.map((sec) => (
+                <option key={sec.key} value={sec.key}>{sec.label}</option>
+              ))}
+            </select>
+          </Champ>
+
+          {!creation && (
+            <div className="champ">
+              <label>Mots-clés dérivés automatiquement</label>
+              <div className="mcc__meta">
+                {formulaire.keywordsAuto.length === 0 ? (
+                  <span className="champ__aide">aucun</span>
+                ) : (
+                  formulaire.keywordsAuto.map((mot) => (
+                    <span key={mot} className="jeton">{mot}</span>
+                  ))
+                )}
+              </div>
+              <span className="champ__aide">
+                Déduits du libellé et de la description, recalculés à chaque modification.
+                Ils rendent le code trouvable sans saisie, mais ne remplacent pas un
+                lexique métier : ajoutez les mots que le commerçant emploierait.
+              </span>
+            </div>
+          )}
+
           <Champ label="Note affichée au banquier" name="note" value={formulaire.note} onChange={maj('note')} />
 
           <details>
@@ -252,7 +296,7 @@ export default function AdminMccPage() {
             <tr>
               <th>Code</th>
               <th>Libellé</th>
-              <th>Pertinence</th>
+              <th>Secteurs</th>
               <th>Vigilance</th>
               <th>Statut</th>
               <th>Mise à jour</th>
@@ -264,7 +308,11 @@ export default function AdminMccPage() {
               <tr key={m.code}>
                 <td className="mono">{m.code}</td>
                 <td>{m.label}</td>
-                <td>{PERTINENCES.find((p) => p.valeur === m.ecommerceRelevance)?.libelle}</td>
+                <td>
+                  {m.sectors?.length > 0
+                    ? m.sectors.map((c) => secteurs.find((s) => s.key === c)?.label ?? c).join(', ')
+                    : <span className="jeton jeton--risque">aucun</span>}
+                </td>
                 <td>
                   {m.riskLevel === 'STANDARD' && <span className="jeton">Standard</span>}
                   {m.riskLevel === 'SENSIBLE' && <span className="jeton jeton--risque">Renforcée</span>}

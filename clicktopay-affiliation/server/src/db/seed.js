@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { pool, withTransaction } from './pool.js';
 import { migrate } from './migrate.js';
 import { rechargerCatalogue } from '../services/mccCatalog.js';
+import { SECTEURS_INITIAUX } from '../services/sectors.js';
 
 // Fichier d'amorçage : il n'alimente que les codes absents de la base, qui fait foi.
 const catalogPath = fileURLToPath(new URL('../../data/mcc-catalog.json', import.meta.url));
@@ -66,6 +67,23 @@ export async function seed({ withDemoUsers = true, forceMcc = false } = {}) {
           mcc.note, mcc.networks, mcc.source,
         ]
       );
+    }
+
+    // Secteurs : insérés s'ils manquent, jamais réécrits — le rattachement des
+    // MCC se gère ensuite depuis l'écran d'administration.
+    for (const [position, secteur] of SECTEURS_INITIAUX.entries()) {
+      await client.query(
+        `INSERT INTO sectors (key, label, position) VALUES ($1, $2, $3)
+         ON CONFLICT (key) DO NOTHING`,
+        [secteur.key, secteur.label, position]
+      );
+      for (const [rang, code] of secteur.mccs.entries()) {
+        await client.query(
+          `INSERT INTO mcc_sectors (sector_key, mcc_code, rank) VALUES ($1, $2, $3)
+           ON CONFLICT (sector_key, mcc_code) DO NOTHING`,
+          [secteur.key, code, rang]
+        );
+      }
     }
 
     if (withDemoUsers) {

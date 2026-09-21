@@ -290,3 +290,7 @@ details summary { font-size: 0.9rem; font-weight: 600; }
   padding: 0.35rem 0.75rem; border-radius: var(--rayon);
   background: rgba(168, 106, 5, 0.35);
 }
+
+/* Sélection multiple des secteurs rattachés à un MCC. */
+.champ select[multiple] { padding: 0.35rem; }
+.champ select[multiple] option { padding: 0.2rem 0.35rem; }

@@ -1,5 +1,5 @@
-import { catalogueActif, normalize } from './mccCatalog.js';
-import { getSector } from './sectors.js';
+import { catalogueActif, getSecteur, normalize } from './mccCatalog.js';
+import { tokenize } from './motsCles.js';
 import { config } from '../config.js';
 
 /**
@@ -13,29 +13,12 @@ import { config } from '../config.js';
  * ils restent consultables via la recherche manuelle du catalogue.
  */
 
-const STOPWORDS = new Set([
-  'les', 'des', 'une', 'aux', 'par', 'pour', 'avec', 'dans', 'sur', 'sous', 'que', 'qui',
-  'nos', 'notre', 'vos', 'votre', 'ses', 'son', 'sa', 'est', 'sont', 'ont', 'plus', 'tout',
-  'tous', 'toute', 'toutes', 'ainsi', 'entre', 'chez', 'cette', 'ces', 'leur', 'leurs',
-  'vente', 'ventes', 'vend', 'vendre', 'site', 'ligne', 'client', 'clients', 'produit',
-  'produits', 'service', 'services', 'societe', 'entreprise', 'commerce', 'boutique',
-  'the', 'and', 'for', 'with', 'this', 'that', 'are', 'not', 'mcc', 'merchants', 'classified',
-  'include', 'included', 'including', 'other', 'elsewhere',
-]);
-
 const RELEVANCE_BONUS = { HIGH: 8, MEDIUM: 3, LOW: -6 };
 
 // MCC dédiés aux biens et services livrés par voie électronique.
 const DIGITAL_MCCS = new Set(['5815', '5816', '5817', '5818', '5734', '4816', '4899', '7372']);
 const SUBSCRIPTION_MCCS = new Set(['5968', '4899', '5817', '4816']);
 const REMOTE_SALE_MCCS = new Set(['5964', '5965', '5969', '5968', '5960', '5962']);
-
-/** Découpe un texte en jetons signifiants (mots de 3 lettres et plus). */
-export function tokenize(text) {
-  return normalize(text)
-    .split(' ')
-    .filter((token) => token.length >= 3 && !STOPWORDS.has(token));
-}
 
 /**
  * Score brut -> score de confiance borné 1..99.
@@ -80,7 +63,7 @@ export function suggestMcc(profile = {}, options = {}) {
     }
   }
   const fullText = normalize(weightedText.map((w) => w.text).join(' '));
-  const sector = getSector(activitySector);
+  const sector = getSecteur(activitySector);
   const sectorMccs = new Map((sector?.mccs ?? []).map((code, index) => [code, index]));
 
   const scored = catalogueActif()
@@ -88,32 +71,23 @@ export function suggestMcc(profile = {}, options = {}) {
     .map((mcc) => {
       let raw = 0;
       const matched = new Set();
+      const { tokens, tokensForts, phrases } = mcc.index;
 
       // 1. Expressions métier complètes présentes telles quelles dans le texte saisi.
-      for (const keyword of mcc.keywords) {
-        const normalized = normalize(keyword);
-        if (normalized.length < 4) continue;
-        if (normalized.includes(' ') && fullText.includes(normalized)) {
+      for (const phrase of phrases) {
+        if (fullText.includes(phrase.normalise)) {
           raw += 14;
-          matched.add(keyword);
+          matched.add(phrase.libelle);
         }
       }
 
-      // 2. Correspondances mot à mot, pondérées par le champ d'origine.
-      const fields = [
-        { text: mcc.label, weight: 4 },
-        { text: mcc.keywords.join(' '), weight: 5 },
-        { text: mcc.description, weight: 2 },
-        { text: `${mcc.labelEn} ${mcc.descriptionEn}`, weight: 1 },
-      ];
-      for (const field of fields) {
-        const fieldTokens = new Set(tokenize(field.text));
-        for (const [token, tokenWeight] of tokenWeights) {
-          if (fieldTokens.has(token)) {
-            raw += field.weight * tokenWeight * 0.5;
-            if (field.weight >= 4) matched.add(token);
-          }
-        }
+      // 2. Correspondances mot à mot. Le poids de chaque jeton est déjà la somme
+      // des pondérations de champ, calculée une fois au chargement du catalogue.
+      for (const [token, tokenWeight] of tokenWeights) {
+        const poidsChamp = tokens.get(token);
+        if (poidsChamp === undefined) continue;
+        raw += poidsChamp * tokenWeight * 0.5;
+        if (tokensForts.has(token)) matched.add(token);
       }
 
       // 3. Amorçage par le secteur déclaré : le premier MCC du secteur prime.

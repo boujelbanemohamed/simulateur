@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SECTOR_KEYS } from './sectors.js';
+import { clesSecteurs } from './mccCatalog.js';
 import { MONTANT_MAX, booleen, dateCalendaire, sansCaracteresDeControle } from './zodHelpers.js';
 
 // Messages génériques en français (zod répond en anglais par défaut).
@@ -34,6 +34,15 @@ const optionalDate = dateCalendaire()
   .nullable()
   .optional()
   .or(z.literal('').transform(() => null));
+
+/** Le référentiel des secteurs vit en base : la validation le lit à l'exécution. */
+const secteurValide = () =>
+  z
+    .string()
+    .trim()
+    .max(40)
+    .refine((v) => clesSecteurs().includes(v), 'Secteur inconnu')
+    .or(z.literal('').transform(() => null));
 
 const mccCode = z
   .string()
@@ -81,7 +90,8 @@ export const affiliationRequestSchema = z.object({
   country: trimmed(80).default('Tunisie'),
 
   // Activité
-  activitySector: z.enum(SECTOR_KEYS).optional().nullable(),
+  // Validé contre les secteurs réellement chargés, et non contre une liste figée.
+  activitySector: secteurValide().nullable().optional(),
   activityDescription: trimmed(2000).min(
     20,
     "Décrivez l'activité en 20 caractères minimum : ce texte alimente la proposition de MCC"
@@ -128,7 +138,7 @@ export const suggestionProfileSchema = z.object({
   siteName: trimmed(160).default(''),
   siteUrl: trimmed(255).default(''),
   companyName: trimmed(160).default(''),
-  activitySector: z.enum(SECTOR_KEYS).optional().nullable(),
+  activitySector: secteurValide().nullable().optional(),
   deliveryMode: z.enum(['PHYSIQUE', 'NUMERIQUE', 'SERVICE', 'MIXTE']).default('PHYSIQUE'),
   hasSubscription: booleen().default(false),
   isMarketplace: booleen().default(false),

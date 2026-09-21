@@ -1,6 +1,6 @@
 import { query, withTransaction } from '../db/pool.js';
 import { badRequest, conflict, notFound } from '../middleware/errors.js';
-import { getMcc, rechargerCatalogue } from './mccCatalog.js';
+import { clesSecteurs, getMcc, rechargerCatalogue } from './mccCatalog.js';
 
 /**
  * Administration du référentiel MCC.
@@ -9,6 +9,30 @@ import { getMcc, rechargerCatalogue } from './mccCatalog.js';
  * validées y font référence), tout est historisé, et un code retiré d'une
  * édition du manuel est désactivé plutôt qu'effacé.
  */
+
+/**
+ * Remplace les secteurs d'un MCC. Le rang suit l'ordre fourni : le premier code
+ * d'un secteur est celui que le moteur remonte en priorité.
+ */
+async function ecrireSecteurs(client, code, secteurs) {
+  const connus = clesSecteurs();
+  const inconnus = secteurs.filter((s) => !connus.includes(s));
+  if (inconnus.length > 0) throw badRequest(`Secteur inconnu : ${inconnus.join(', ')}`);
+
+  await client.query('DELETE FROM mcc_sectors WHERE mcc_code = $1', [code]);
+  for (const [rang, secteur] of secteurs.entries()) {
+    // Le type de $1 est posé explicitement : sans cast, PostgreSQL déduit
+    // « text » pour la valeur insérée et « varchar » pour la comparaison, et
+    // refuse la requête (« inconsistent types deduced for parameter $1 »).
+    await client.query(
+      `INSERT INTO mcc_sectors (sector_key, mcc_code, rank)
+       VALUES ($1::varchar, $2,
+               (SELECT COALESCE(MAX(rank), -1) + 1 FROM mcc_sectors WHERE sector_key = $1::varchar))
+       ON CONFLICT (sector_key, mcc_code) DO NOTHING`,
+      [secteur, code]
+    );
+  }
+}
 
 const CHAMPS = {
   label: 'label_fr',
@@ -38,6 +62,7 @@ const instantane = (mcc) =>
     note: mcc.note,
     networks: mcc.networks,
     active: mcc.active,
+    sectors: mcc.sectors,
   };
 
 async function historiser(client, { code, userId, action, avant, apres, comment = null }) {
@@ -84,6 +109,7 @@ export async function createMcc({ payload, user }) {
           payload.source ?? 'Ajout manuel', user.id,
         ]
       );
+      if (payload.sectors?.length) await ecrireSecteurs(client, payload.code, payload.sectors);
       await historiser(client, {
         code: payload.code, userId: user.id, action: 'CREATION',
         avant: null, apres: payload, comment: payload.comment ?? null,
@@ -105,7 +131,7 @@ export async function updateMcc({ code, payload, user }) {
   const avant = getMcc(code);
   if (!avant) throw notFound(`MCC ${code} introuvable`);
 
-  const { comment, ...champs } = payload;
+  const { comment, sectors, ...champs } = payload;
   const sets = [];
   const values = [];
   for (const [cle, colonne] of Object.entries(CHAMPS)) {
@@ -114,20 +140,24 @@ export async function updateMcc({ code, payload, user }) {
       sets.push(`${colonne} = $${values.length}`);
     }
   }
-  if (sets.length === 0) return avant;
+  if (sets.length === 0 && sectors === undefined) return avant;
 
   // L'état d'arrivée se déduit des champs soumis : pas besoin de relire la base
   // dans une transaction dont l'écriture n'est pas encore visible du pool.
   const apres = { ...instantane(avant), ...champs };
+  if (sectors !== undefined) apres.sectors = sectors;
 
   await withTransaction(async (client) => {
-    values.push(user.id, code);
-    await client.query(
-      `UPDATE mcc_codes SET ${sets.join(', ')}, updated_at = now(),
-              updated_by = $${values.length - 1}
-        WHERE code = $${values.length}`,
-      values
-    );
+    if (sets.length > 0) {
+      values.push(user.id, code);
+      await client.query(
+        `UPDATE mcc_codes SET ${sets.join(', ')}, updated_at = now(),
+                updated_by = $${values.length - 1}
+          WHERE code = $${values.length}`,
+        values
+      );
+    }
+    if (sectors !== undefined) await ecrireSecteurs(client, code, sectors);
     await historiser(client, {
       code, userId: user.id,
       action: champs.active === false ? 'DESACTIVATION' : champs.active === true ? 'REACTIVATION' : 'MODIFICATION',
@@ -224,11 +254,20 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
     .filter((r) => !presents.has(r.code))
     .map((r) => ({ code: r.code, label: r.label_fr }));
 
+  // Un code sans mots-clés métier et sans secteur n'est trouvable que si l'agent
+  // emploie les mots exacts de son libellé : on le signale plutôt que de le
+  // laisser passer silencieusement.
+  rapport.muets = rapport.ajoutes
+    .map(({ code }) => entrees.find((e) => String(e.code).trim() === code))
+    .filter((e) => e && !(e.keywords?.length > 0) && !e.sector)
+    .map((e) => ({ code: String(e.code).trim(), label: e.label ?? e.labelEn ?? '' }));
+
   rapport.resume = {
     ajoutes: rapport.ajoutes.length,
     modifies: rapport.modifies.length,
     inchanges: rapport.inchanges.length,
     retires: rapport.retires.length,
+    muets: rapport.muets.length,
     applique: Boolean(apply),
     desactivationDesRetires: Boolean(apply && deactivateMissing),
   };
@@ -252,6 +291,7 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
           entree.source ?? 'Import référentiel', user.id,
         ]
       );
+      if (entree.sector) await ecrireSecteurs(client, code, [entree.sector]);
       await historiser(client, {
         code, userId: user.id, action: 'IMPORT_AJOUT', avant: null, apres: entree, comment,
       });
@@ -281,6 +321,7 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
           entree.note ?? avant.note, user.id, modification.code,
         ]
       );
+      if (entree.sector) await ecrireSecteurs(client, modification.code, [entree.sector]);
       await historiser(client, {
         code: modification.code, userId: user.id, action: 'IMPORT_MODIFICATION',
         avant: instantane(avant), apres: entree, comment,

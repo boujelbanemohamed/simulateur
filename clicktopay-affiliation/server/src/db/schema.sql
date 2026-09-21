@@ -196,3 +196,28 @@ CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC
 -- Horodatage du dernier changement de mot de passe : tout jeton émis avant est
 -- refusé, ce qui coupe réellement les sessions ouvertes lors d'une réinitialisation.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- ===========================================================================
+-- Secteurs d'activité : ils amorcent le moteur de suggestion avec les MCC les
+-- plus fréquents pour un type de commerce. Sortis du code source pour que les
+-- codes ajoutés par import puissent y être rattachés sans redéploiement.
+-- ===========================================================================
+
+CREATE TABLE IF NOT EXISTS sectors (
+  key       VARCHAR(40)  PRIMARY KEY,
+  label     VARCHAR(120) NOT NULL,
+  position  SMALLINT     NOT NULL DEFAULT 0,
+  active    BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+-- Un MCC peut relever de plusieurs secteurs (5912 est à la fois « santé » et
+-- « beauté ») : le rattachement est donc une table de liaison, avec un rang qui
+-- traduit la priorité du code dans le secteur.
+CREATE TABLE IF NOT EXISTS mcc_sectors (
+  sector_key VARCHAR(40) NOT NULL REFERENCES sectors(key) ON DELETE CASCADE,
+  mcc_code   CHAR(4)     NOT NULL REFERENCES mcc_codes(code) ON DELETE CASCADE,
+  rank       SMALLINT    NOT NULL DEFAULT 0,
+  PRIMARY KEY (sector_key, mcc_code)
+);
+
+CREATE INDEX IF NOT EXISTS idx_mcc_sectors_code ON mcc_sectors(mcc_code);

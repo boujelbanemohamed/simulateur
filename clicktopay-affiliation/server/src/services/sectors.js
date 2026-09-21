@@ -1,9 +1,12 @@
 /**
- * Secteurs d'activité proposés à l'agent dans le formulaire.
- * Chaque secteur amorce le moteur de suggestion avec les MCC les plus
- * fréquemment retenus pour ce type de e-commerçant.
+ * Amorçage des secteurs d'activité.
+ *
+ * Cette liste n'est plus lue à l'exécution : elle sert uniquement à peupler les
+ * tables `sectors` et `mcc_sectors` au premier `db:seed`. Le rattachement d'un
+ * MCC à un secteur se gère ensuite depuis l'écran d'administration, pour que les
+ * codes ajoutés par import puissent en bénéficier eux aussi.
  */
-export const SECTORS = [
+export const SECTEURS_INITIAUX = [
   { key: 'MODE_HABILLEMENT', label: 'Mode et habillement', mccs: ['5651', '5691', '5621', '5611', '5641', '5661', '5948', '5699'] },
   { key: 'ELECTRONIQUE_HIGHTECH', label: 'Électronique et high-tech', mccs: ['5732', '5722', '4812', '5045', '5946'] },
   { key: 'INFORMATIQUE_LOGICIEL', label: 'Informatique, logiciels et services en ligne', mccs: ['7372', '5734', '4816', '7379', '5817'] },
@@ -33,7 +36,4 @@ export const SECTORS = [
   { key: 'AUTRE', label: 'Autre activité', mccs: ['5999', '5969', '8999'] },
 ];
 
-export const SECTOR_KEYS = SECTORS.map((s) => s.key);
-
-const byKey = new Map(SECTORS.map((s) => [s.key, s]));
-export const getSector = (key) => byKey.get(key) ?? null;
+export const CLES_SECTEURS_INITIALES = SECTEURS_INITIAUX.map((s) => s.key);

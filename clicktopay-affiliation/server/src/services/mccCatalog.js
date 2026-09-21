@@ -1,4 +1,8 @@
 import { pool, query } from '../db/pool.js';
+import { deriverMotsCles, tokenize } from './motsCles.js';
+import { normalize } from './texte.js';
+
+export { normalize };
 
 /**
  * Référentiel MCC.
@@ -12,7 +16,7 @@ import { pool, query } from '../db/pool.js';
  * Toute écriture doit appeler `rechargerCatalogue()`.
  */
 
-let cache = { items: [], byCode: new Map() };
+let cache = { items: [], byCode: new Map(), secteurs: [] };
 let chargement = null;
 
 /**
@@ -24,6 +28,45 @@ let chargement = null;
  */
 const CANAL = 'mcc_catalogue_modifie';
 let ecoute = null;
+
+/**
+ * Poids des champs dans le score. Ils reproduisent la pondération historique du
+ * moteur : un même mot présent dans le libellé ET dans les mots-clés compte deux
+ * fois, d'où une somme et non un maximum.
+ */
+const POIDS = { label: 4, keywords: 5, keywordsAuto: 3, description: 2, en: 1 };
+
+/**
+ * Index de recherche d'un MCC, calculé une fois au chargement du catalogue.
+ *
+ * Auparavant le moteur retokenisait les quatre champs de chacun des 280 codes à
+ * chaque appel, soit à chaque frappe de l'agent. Le coût devenait proportionnel
+ * à la taille du référentiel.
+ */
+function construireIndex(mcc) {
+  const tokens = new Map();
+  const tokensForts = new Set();
+
+  const ajouter = (texte, poids) => {
+    for (const jeton of tokenize(texte)) {
+      tokens.set(jeton, (tokens.get(jeton) ?? 0) + poids);
+      if (poids >= POIDS.label) tokensForts.add(jeton);
+    }
+  };
+
+  ajouter(mcc.label, POIDS.label);
+  ajouter(mcc.keywords.join(' '), POIDS.keywords);
+  ajouter(mcc.keywordsAuto.join(' '), POIDS.keywordsAuto);
+  ajouter(mcc.description, POIDS.description);
+  ajouter(`${mcc.labelEn} ${mcc.descriptionEn}`, POIDS.en);
+
+  // Expressions complètes : elles valent bien plus qu'un mot isolé.
+  const phrases = [...mcc.keywords, ...mcc.keywordsAuto]
+    .map((cle) => ({ libelle: cle, normalise: normalize(cle) }))
+    .filter((p) => p.normalise.includes(' ') && p.normalise.length >= 4);
+
+  return { tokens, tokensForts, phrases };
+}
 
 const versMcc = (row) => ({
   code: row.code,
@@ -40,12 +83,41 @@ const versMcc = (row) => ({
   source: row.source,
   active: row.active,
   updatedAt: row.updated_at,
+  // Dérivés du libellé et de la description : ils rendent trouvable un code
+  // importé, qui n'arrive avec aucun mot-clé métier.
+  keywordsAuto: deriverMotsCles({
+    label: row.label_fr,
+    description: row.description_fr,
+    labelEn: row.label_en,
+  }),
+  sectors: [],
 });
 
 async function chargerCatalogue() {
-  const { rows } = await query('SELECT * FROM mcc_codes ORDER BY code');
-  const items = rows.map(versMcc);
-  cache = { items, byCode: new Map(items.map((m) => [m.code, m])) };
+  const [codes, secteurs, rattachements] = await Promise.all([
+    query('SELECT * FROM mcc_codes ORDER BY code'),
+    query('SELECT * FROM sectors WHERE active ORDER BY position, label'),
+    query('SELECT * FROM mcc_sectors ORDER BY sector_key, rank'),
+  ]);
+
+  const items = codes.rows.map(versMcc);
+  const byCode = new Map(items.map((m) => [m.code, m]));
+
+  // Rattachement MCC <-> secteur, dans les deux sens.
+  const parSecteur = new Map(
+    secteurs.rows.map((s) => [s.key, { key: s.key, label: s.label, position: s.position, mccs: [] }])
+  );
+  for (const lien of rattachements.rows) {
+    const secteur = parSecteur.get(lien.sector_key);
+    const mcc = byCode.get(lien.mcc_code);
+    if (!secteur || !mcc) continue;
+    secteur.mccs.push(lien.mcc_code);
+    mcc.sectors.push(lien.sector_key);
+  }
+
+  for (const mcc of items) mcc.index = construireIndex(mcc);
+
+  cache = { items, byCode, secteurs: [...parSecteur.values()] };
   return cache;
 }
 
@@ -106,6 +178,11 @@ export const catalogueActif = () => cache.items.filter((m) => m.active);
 
 export const getMcc = (code) => cache.byCode.get(String(code ?? '').trim()) ?? null;
 
+/** Secteurs d'activité proposés au formulaire, avec leurs MCC rattachés. */
+export const secteurs = () => cache.secteurs;
+export const getSecteur = (key) => cache.secteurs.find((s) => s.key === key) ?? null;
+export const clesSecteurs = () => cache.secteurs.map((s) => s.key);
+
 export const estSelectionnable = (code) => {
   const mcc = getMcc(code);
   return Boolean(mcc) && mcc.active && mcc.riskLevel !== 'INTERDIT';
@@ -135,14 +212,4 @@ export function searchCatalog(term, { limit = 30, includeProhibited = true, incl
     .sort((a, b) => a.weight - b.weight || a.mcc.code.localeCompare(b.mcc.code))
     .slice(0, taille)
     .map((r) => r.mcc);
-}
-
-/** Minuscule, sans accents ni ponctuation : la base de toute comparaison. */
-export function normalize(text) {
-  return String(text ?? '')
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
 }

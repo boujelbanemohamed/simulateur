@@ -37,6 +37,7 @@ export async function resetDatabase() {
   await pool.query('DELETE FROM users WHERE email <> ALL($1::text[])', [COMPTES_DE_DEMONSTRATION]);
   await pool.query("UPDATE users SET active = TRUE, must_change_password = FALSE");
   await pool.query('DELETE FROM mcc_codes WHERE code <> ALL($1::text[])', [CODES_DE_REFERENCE]);
+  await pool.query('DELETE FROM mcc_sectors');
   await pool.query('DELETE FROM mcc_code_history');
   await pool.query('DELETE FROM admin_events');
   await seed({ forceMcc: true });

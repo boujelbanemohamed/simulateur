@@ -87,7 +87,9 @@ export default function AdminMccImportPage() {
         <p className="champ__aide">
           Téléchargez le référentiel, corrigez-le dans Excel, puis réimportez le même fichier.
           Les colonnes attendues sont celles de l'export ; leur ordre est libre et les colonnes
-          supplémentaires sont ignorées.
+          supplémentaires sont ignorées. Les colonnes <strong>Mots-clés</strong> et{' '}
+          <strong>Secteur</strong> déterminent la capacité du moteur à proposer le code :
+          remplissez-les chaque fois que vous le pouvez.
         </p>
         <div className="barre-actions">
           <button type="button" className="bouton bouton--secondaire" onClick={() => telecharger('xlsx')}>
@@ -103,7 +105,7 @@ export default function AdminMccImportPage() {
         <h2>2. Charger le fichier corrigé</h2>
         <Champ label="Fichier Excel ou CSV" name="fichier" type="file"
           accept=".xlsx,.csv,.json" onChange={choisirFichier}
-          aide="Colonnes reconnues : Code, Libellé, Description, Mots-clés, Pertinence, Vigilance, Note." />
+          aide="Colonnes reconnues : Code, Libellé, Description, Mots-clés, Pertinence, Vigilance, Note, Secteur." />
         {fichier && (
           <p className="champ__aide">
             {fichier.name} — {(fichier.size / 1024).toFixed(0)} Ko
@@ -194,7 +196,24 @@ export default function AdminMccImportPage() {
                 <div className="compteur__valeur">{rapport.resume.retires}</div>
                 <div className="compteur__libelle">Absents du fichier</div>
               </div>
+              {rapport.resume.muets > 0 && (
+                <div className="compteur compteur--rejetee">
+                  <div className="compteur__valeur">{rapport.resume.muets}</div>
+                  <div className="compteur__libelle">Sans lexique</div>
+                </div>
+              )}
             </div>
+
+            {rapport.muets?.length > 0 && (
+              <Message type="attention"
+                titre={`${rapport.muets.length} code(s) arriveront sans mots-clés ni secteur`}>
+                Leurs mots-clés seront dérivés du libellé et de la description, ce qui suffit
+                quand l'agent emploie les mêmes mots. Pour qu'ils remontent sur le vocabulaire
+                réel des commerçants, renseignez la colonne <strong>Mots-clés</strong> ou{' '}
+                <strong>Secteur</strong> du fichier, ou complétez-les ensuite depuis l'onglet
+                Référentiel MCC.
+              </Message>
+            )}
 
             {!applique && (
               <>
@@ -273,6 +292,26 @@ export default function AdminMccImportPage() {
                         </tr>
                       ))
                     )}
+                  </tbody>
+                </table>
+              </Tableau>
+            </div>
+          )}
+
+          {rapport.muets?.length > 0 && (
+            <div className="carte">
+              <h2>Codes sans lexique métier ({rapport.muets.length})</h2>
+              <p className="champ__aide">
+                Ces codes seront trouvables sur les mots de leur libellé, mais pas sur les
+                synonymes qu'un commerçant utiliserait spontanément.
+              </p>
+              <Tableau>
+                <table>
+                  <thead><tr><th>Code</th><th>Libellé</th></tr></thead>
+                  <tbody>
+                    {rapport.muets.slice(0, 50).map((m) => (
+                      <tr key={m.code}><td className="mono">{m.code}</td><td>{m.label}</td></tr>
+                    ))}
                   </tbody>
                 </table>
               </Tableau>

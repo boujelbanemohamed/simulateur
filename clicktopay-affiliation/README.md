@@ -202,13 +202,58 @@ d'administration** :
 Ces classements reflètent les pratiques courantes d'acquisition e-commerce ; ils
 relèvent de la politique de votre banque et doivent être revus avec la conformité.
 
+## Indexation : ce qu'un code importé devient pour le moteur
+
+C'est le point le plus sensible du produit : un code ajouté par import n'a de
+valeur que s'il est effectivement proposé aux agents.
+
+**Le rafraîchissement est automatique.** Après toute écriture, le catalogue est
+relu et l'index reconstruit, puis la modification est propagée aux autres
+instances par `LISTEN/NOTIFY`. Un code importé est proposable immédiatement,
+sans redéploiement ni redémarrage.
+
+**L'index est pré-calculé.** Au chargement du catalogue, chaque MCC reçoit sa
+table de jetons pondérés et ses expressions. Le moteur ne retokenise plus les
+280 codes à chaque frappe : le coût est passé de 11,8 ms à 4,1 ms par appel, et
+il ne dépend plus de la taille du référentiel.
+
+**Les mots-clés sont dérivés à l'import.** Le manuel Visa ne fournit aucun
+lexique métier : un code importé arriverait muet. `services/motsCles.js` dérive
+donc des mots-clés de son libellé et de sa description — jetons signifiants,
+bigrammes du libellé, et variantes singulier/pluriel, pour que « borne de
+recharge » retrouve « Bornes de recharge ». Ces mots-clés dérivés sont affichés
+en lecture seule sur la fiche du code, et recalculés à chaque modification du
+libellé.
+
+**Les secteurs sont en base.** Le rattachement d'un MCC à un secteur d'activité
+est passé du code source aux tables `sectors` et `mcc_sectors` : un code importé
+peut donc être rattaché, depuis l'écran d'administration ou par la colonne
+`Secteur` du fichier, et bénéficier du coup de pouce qui remonte les bons codes
+quand l'agent déclare son secteur. Un MCC peut relever de plusieurs secteurs.
+
+Effet mesuré sur un code importé sans aucun mot-clé métier :
+
+| Formulation de l'agent | Avant | Après |
+| --- | --- | --- |
+| Mots du libellé | rang 1 | rang 1 |
+| Même mot au singulier | absent | rang 2 |
+| Secteur déclaré au formulaire | aucun effet | rang 3 |
+| Vocabulaire du client (« patinette ») | absent | absent, puis rang 1 après saisie du lexique |
+
+La dernière ligne est la limite honnête de l'exercice : **aucune dérivation ne
+devine un synonyme absent du texte**. C'est pourquoi le rapport d'import compte
+les codes arrivant sans mots-clés ni secteur et les liste explicitement — ils
+seront trouvables sur les mots de leur libellé, mais pas sur le vocabulaire
+spontané d'un commerçant. Renseigner la colonne `Mots-clés` du fichier, ou
+compléter le code après import, reste le seul moyen d'y parvenir.
+
 ## Le moteur de proposition
 
 `server/src/services/mccSuggestion.js` calcule un score à partir de :
 
 - les **expressions métier complètes** trouvées dans le descriptif d'activité (poids fort) ;
-- les **correspondances mot à mot** avec le libellé, les mots-clés, la description
-  française et la définition anglaise du MCC ;
+- les **correspondances mot à mot** avec le libellé, les mots-clés saisis, les
+  mots-clés dérivés, la description française et la définition anglaise ;
 - le **secteur d'activité** déclaré, qui amorce la liste avec les codes les plus
   fréquents pour ce type de commerce ;
 - le **modèle de vente** : livraison numérique, paiement récurrent, place de marché ;
@@ -256,6 +301,7 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 | GET | `/api/admin/mcc/export` | admin | Référentiel courant en `.xlsx` ou `.csv` |
 | POST | `/api/admin/mcc/import-fichier` | admin | Lecture d'un fichier Excel/CSV : lignes, anomalies et rapport d'écart |
 | POST | `/api/admin/mcc/import` | admin | Rapport d'écart, puis application |
+| GET | `/api/mcc/secteurs` | tous | Secteurs et MCC rattachés (lus en base) |
 | GET | `/api/admin/events` | admin | Journal d'administration |
 
 ## Règles de sécurité appliquées
@@ -296,8 +342,8 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 
 ```bash
 cd server
-npm test      # 84 tests : authentification, référentiel, moteur, workflow,
-              # habilitations, administration, robustesse et concurrence
+npm test      # 94 tests : authentification, référentiel, moteur, workflow,
+              # habilitations, administration, robustesse, concurrence et indexation
 ```
 
 Les tests utilisent la base `clicktopay_test`, rejouée à chaque exécution. Ils
@@ -307,6 +353,11 @@ cycle complément requis → re-soumission, le blocage tant qu'un mot de passe
 réinitialisé n'est pas changé, la protection du dernier administrateur, l'effet
 immédiat d'un changement de vigilance sur le moteur, et le fait qu'un `db:seed`
 ne réécrit pas les ajustements de la conformité.
+
+`tests/indexation.test.js` vérifie qu'un code importé est réellement proposable :
+dérivation des mots-clés, variantes singulier/pluriel, rattachement à un secteur,
+reconstruction de l'index au changement de libellé, et signalement des codes sans
+lexique métier.
 
 `tests/robustesse.test.js` est une suite adversariale, écrite à partir des
 défauts relevés en recette : types hostiles (chaînes `"false"`, dates

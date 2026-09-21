@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import { asyncRoute, entierDeRequete, notFound, validate } from '../middleware/errors.js';
-import { catalogueActif, getMcc, searchCatalog } from '../services/mccCatalog.js';
+import { catalogueActif, getMcc, searchCatalog, secteurs } from '../services/mccCatalog.js';
 import { suggestForNetworks } from '../services/mccSuggestion.js';
-import { SECTORS } from '../services/sectors.js';
+
 import { suggestionProfileSchema } from '../services/requestSchema.js';
 
 export const mccRouter = Router();
@@ -20,7 +20,9 @@ mccRouter.get('/', (req, res) => {
   res.json({ total: catalogueActif().length, count: results.length, items: results });
 });
 
-mccRouter.get('/secteurs', (req, res) => res.json(SECTORS));
+mccRouter.get('/secteurs', (req, res) =>
+  res.json(secteurs().map(({ key, label, mccs }) => ({ key, label, mccs })))
+);
 
 mccRouter.get('/:code', (req, res) => {
   const mcc = getMcc(req.params.code);

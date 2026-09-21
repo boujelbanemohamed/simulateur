@@ -21,6 +21,7 @@ const COLONNES = {
   ecommerceRelevance: ['pertinence', 'pertinence e commerce', 'pertinence ecommerce', 'relevance'],
   riskLevel: ['vigilance', 'niveau de vigilance', 'risque', 'niveau de risque', 'risk'],
   note: ['note', 'commentaire', 'remarque'],
+  sector: ['secteur', 'secteur d activite', 'famille', 'univers'],
 };
 
 const PERTINENCES = {
@@ -144,7 +145,7 @@ export async function lireReferentiel(buffer, nomFichier = '') {
     vus.set(code, numero);
 
     const entree = { code };
-    for (const champ of ['label', 'description', 'labelEn', 'descriptionEn', 'note']) {
+    for (const champ of ['label', 'description', 'labelEn', 'descriptionEn', 'note', 'sector']) {
       const v = texte(valeur(champ));
       if (v !== null) entree[champ] = v;
     }
@@ -189,6 +190,7 @@ const EN_TETES = [
   { champ: 'ecommerceRelevance', titre: 'Pertinence', largeur: 14 },
   { champ: 'riskLevel', titre: 'Vigilance', largeur: 16 },
   { champ: 'note', titre: 'Note', largeur: 40 },
+  { champ: 'sector', titre: 'Secteur', largeur: 28 },
   { champ: 'labelEn', titre: 'Libellé EN', largeur: 45 },
   { champ: 'descriptionEn', titre: 'Description EN', largeur: 70 },
 ];
@@ -222,6 +224,9 @@ export async function ecrireReferentiel(codes, format = 'xlsx') {
       ecommerceRelevance: LIBELLE_PERTINENCE[mcc.ecommerceRelevance] ?? mcc.ecommerceRelevance,
       riskLevel: LIBELLE_VIGILANCE[mcc.riskLevel] ?? mcc.riskLevel,
       note: mcc.note ?? '',
+      // Un seul secteur à l'export : la colonne sert à rattacher un code importé,
+      // le rattachement multiple se gère depuis l'écran d'administration.
+      sector: (mcc.sectors ?? [])[0] ?? '',
       labelEn: mcc.labelEn ?? '',
       descriptionEn: mcc.descriptionEn ?? '',
     });
