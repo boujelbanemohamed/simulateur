@@ -4,6 +4,9 @@ process.env.NODE_ENV = 'test';
 process.env.DATABASE_URL =
   process.env.TEST_DATABASE_URL ?? 'postgres://clicktopay:clicktopay@127.0.0.1:5432/clicktopay_test';
 process.env.JWT_SECRET = 'secret-de-test';
+// Les tests enchaînent bien plus de connexions qu'un utilisateur réel : la
+// limitation de débit reste active mais ne doit pas les faire échouer.
+process.env.LOGIN_RATE_LIMIT_MAX = process.env.LOGIN_RATE_LIMIT_MAX ?? '10000';
 
 const { readFile } = await import('node:fs/promises');
 const { fileURLToPath } = await import('node:url');
@@ -27,6 +30,12 @@ export const app = createApp();
  */
 export async function resetDatabase() {
   await pool.query('TRUNCATE affiliation_requests RESTART IDENTITY CASCADE');
+  // Les comptes créés par les tests sont supprimés : sans cela une suite laisse
+  // des adresses en place et la suivante échoue en 409 sur leur recréation.
+  await pool.query('DELETE FROM admin_events');
+  await pool.query('UPDATE mcc_codes SET updated_by = NULL WHERE updated_by IS NOT NULL');
+  await pool.query('DELETE FROM users WHERE email <> ALL($1::text[])', [COMPTES_DE_DEMONSTRATION]);
+  await pool.query("UPDATE users SET active = TRUE, must_change_password = FALSE");
   await pool.query('DELETE FROM mcc_codes WHERE code <> ALL($1::text[])', [CODES_DE_REFERENCE]);
   await pool.query('DELETE FROM mcc_code_history');
   await pool.query('DELETE FROM admin_events');
@@ -34,6 +43,14 @@ export async function resetDatabase() {
   await pool.query("UPDATE mcc_codes SET active = TRUE WHERE NOT active");
   await rechargerCatalogue();
 }
+
+/** Les seuls comptes qui survivent à une réinitialisation. */
+const COMPTES_DE_DEMONSTRATION = [
+  'agent@banque.tn',
+  'agent2@banque.tn',
+  'banquier@banque.tn',
+  'admin@clicktopay.tn',
+];
 
 export const CREDENTIALS = {
   agent: { email: 'agent@banque.tn', password: 'Agent#2026' },

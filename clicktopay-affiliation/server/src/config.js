@@ -18,4 +18,8 @@ export const config = {
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   // Nombre de MCC proposés par réseau
   suggestionLimit: Number(process.env.SUGGESTION_LIMIT ?? 6),
+  // Tentatives de connexion autorisées par fenêtre, par IP et par compte visé.
+  // Relevé dans les tests automatisés, qui se connectent des dizaines de fois.
+  loginRateLimitMax: Number(process.env.LOGIN_RATE_LIMIT_MAX ?? 10),
+  loginRateLimitWindowMs: Number(process.env.LOGIN_RATE_LIMIT_WINDOW_MS ?? 15 * 60 * 1000),
 };

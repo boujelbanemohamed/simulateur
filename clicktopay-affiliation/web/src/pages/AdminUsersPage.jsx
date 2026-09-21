@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { Champ, ErreurApi, Message, formaterDate } from '../components/ui.jsx';
+import { Champ, ErreurApi, Message, Tableau, formaterDate } from '../components/ui.jsx';
 
 const ROLES = [
   { valeur: 'AGENT', libelle: 'Agent' },
@@ -99,6 +99,7 @@ export default function AdminUsersPage() {
   };
 
   const erreursChamps = erreur?.fieldErrors ?? {};
+  const estMonCompte = formulaire?.id === user.id;
 
   return (
     <>
@@ -125,8 +126,12 @@ export default function AdminUsersPage() {
               onChange={maj('lastName')} erreur={erreursChamps.lastName} />
             <Champ label="Adresse e-mail" name="email" type="email" requis value={formulaire.email}
               onChange={maj('email')} erreur={erreursChamps.email} />
-            <Champ label="Rôle" name="role" erreur={erreursChamps.role}>
-              <select id="champ-role" value={formulaire.role} onChange={maj('role')}>
+            <Champ label="Rôle" name="role" erreur={erreursChamps.role}
+              aide={estMonCompte ? 'Votre propre rôle ne peut pas être modifié.' : undefined}>
+              {/* Le serveur refuse l'auto-rétrogradation : proposer le choix ne
+                  menait qu'à un 403 après coup. */}
+              <select id="champ-role" value={formulaire.role} onChange={maj('role')}
+                disabled={estMonCompte}>
                 {ROLES.map((r) => (
                   <option key={r.valeur} value={r.valeur}>{r.libelle}</option>
                 ))}
@@ -141,7 +146,7 @@ export default function AdminUsersPage() {
               </select>
             </Champ>
             {!formulaire.id && (
-              <Champ label="Mot de passe provisoire" name="password" type="text" requis
+              <Champ label="Mot de passe provisoire" name="nouveauCompteMotDePasse" type="text" requis
                 value={formulaire.password} onChange={maj('password')} erreur={erreursChamps.password}
                 aide="10 caractères minimum, une minuscule, une majuscule et un chiffre" />
             )}
@@ -163,7 +168,7 @@ export default function AdminUsersPage() {
           <Message type="attention">
             L'utilisateur devra définir un nouveau mot de passe à sa prochaine connexion.
           </Message>
-          <Champ label="Mot de passe provisoire" name="password" type="text" requis
+          <Champ label="Mot de passe provisoire" name="reinitMotDePasse" type="text" requis
             value={reinitialisation.password} erreur={erreursChamps.password}
             onChange={(e) => setReinitialisation((r) => ({ ...r, password: e.target.value }))} />
           <div className="barre-actions barre-actions--fin">
@@ -186,6 +191,7 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
+        <Tableau>
         <table>
           <thead>
             <tr>
@@ -222,11 +228,11 @@ export default function AdminUsersPage() {
                 <td>
                   <div className="barre-actions">
                     <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      onClick={() => { setFormulaire({ ...u, bankId: String(u.bankId), password: '' }); setErreur(null); }}>
+                      onClick={() => { setFormulaire({ ...u, bankId: String(u.bankId), password: '' }); setReinitialisation(null); setErreur(null); }}>
                       Modifier
                     </button>
                     <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      onClick={() => { setReinitialisation({ compte: u, password: '' }); setErreur(null); }}>
+                      onClick={() => { setReinitialisation({ compte: u, password: '' }); setFormulaire(null); setErreur(null); }}>
                       Mot de passe
                     </button>
                     <button type="button" className="bouton bouton--secondaire bouton--petit"
@@ -239,6 +245,7 @@ export default function AdminUsersPage() {
             ))}
           </tbody>
         </table>
+        </Tableau>
       </div>
     </>
   );

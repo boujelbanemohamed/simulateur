@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { asyncRoute, notFound, validate } from '../middleware/errors.js';
+import { asyncRoute, entierDeRequete, notFound, validate } from '../middleware/errors.js';
 import { catalogueActif, getMcc, searchCatalog } from '../services/mccCatalog.js';
 import { suggestForNetworks } from '../services/mccSuggestion.js';
 import { SECTORS } from '../services/sectors.js';
@@ -14,7 +14,7 @@ mccRouter.use(authenticate);
 mccRouter.get('/', (req, res) => {
   const { search = '', limit = 30, eligibleOnly } = req.query;
   const results = searchCatalog(search, {
-    limit: Math.min(Number(limit) || 30, 300),
+    limit: entierDeRequete(limit, { defaut: 30, min: 1, max: 300 }),
     includeProhibited: eligibleOnly !== 'true',
   });
   res.json({ total: catalogueActif().length, count: results.length, items: results });

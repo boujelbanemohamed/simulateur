@@ -79,6 +79,41 @@ export const api = {
     updateBank: (id, payload) => request(`/admin/banks/${id}`, { method: 'PUT', body: payload }),
 
     listMcc: (params = {}) => request(`/admin/mcc${qs(params)}`),
+
+    /** Téléverse un fichier Excel ou CSV : renvoie les lignes lues et le rapport d'écart. */
+    lireFichierMcc: async (fichier) => {
+      const corps = new FormData();
+      corps.append('fichier', fichier);
+      const res = await fetch('/api/admin/mcc/import-fichier', {
+        method: 'POST',
+        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+        body: corps, // pas de Content-Type : le navigateur pose la frontière multipart
+      });
+      const donnees = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new ApiError(donnees?.error ?? `Erreur ${res.status}`, {
+          status: res.status,
+          details: donnees?.details,
+        });
+      }
+      return donnees;
+    },
+
+    /** Télécharge le référentiel courant. La requête est authentifiée, d'où le Blob. */
+    exporterMcc: async (format = 'xlsx') => {
+      const res = await fetch(`/api/admin/mcc/export?format=${format}`, {
+        headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {},
+      });
+      if (!res.ok) throw new ApiError(`Export impossible (erreur ${res.status})`, { status: res.status });
+      const blob = await res.blob();
+      const lien = document.createElement('a');
+      lien.href = URL.createObjectURL(blob);
+      lien.download = `referentiel-mcc-${new Date().toISOString().slice(0, 10)}.${format}`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      URL.revokeObjectURL(lien.href);
+    },
     getMcc: (code) => request(`/admin/mcc/${code}`),
     mccHistory: (code) => request(`/admin/mcc/${code}/history`),
     createMcc: (payload) => request('/admin/mcc', { method: 'POST', body: payload }),

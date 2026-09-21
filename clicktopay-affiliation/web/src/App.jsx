@@ -13,8 +13,8 @@ import AdminMccPage from './pages/AdminMccPage.jsx';
 import AdminMccImportPage from './pages/AdminMccImportPage.jsx';
 import AdminEventsPage from './pages/AdminEventsPage.jsx';
 
-function Protege({ children, adminSeul = false }) {
-  const { user, loading, isAdmin, mustChangePassword } = useAuth();
+function Protege({ children, adminSeul = false, agentSeul = false }) {
+  const { user, loading, isAdmin, isAgent, mustChangePassword } = useAuth();
   const location = useLocation();
   if (loading) return <p className="vide">Chargement de la session…</p>;
   if (!user) return <Navigate to="/connexion" state={{ from: location }} replace />;
@@ -24,11 +24,14 @@ function Protege({ children, adminSeul = false }) {
     return <Navigate to="/mot-de-passe" replace />;
   }
   if (adminSeul && !isAdmin) return <Navigate to="/demandes" replace />;
+  // Sans ce filtre, un banquier atteignait le formulaire de saisie par l'URL et
+  // ne découvrait le refus qu'au moment d'enregistrer.
+  if (agentSeul && !isAgent) return <Navigate to="/demandes" replace />;
   return children;
 }
 
 function Entete() {
-  const { user, logout, isAgent, isAdmin } = useAuth();
+  const { user, logout, isAgent, isAdmin, mustChangePassword } = useAuth();
   const lien = ({ isActive }) => (isActive ? 'actif' : undefined);
 
   return (
@@ -36,19 +39,28 @@ function Entete() {
       <div className="topbar__brand">
         ClickToPay <span>| Affiliation</span>
       </div>
+      {/* Pendant un changement de mot de passe imposé, la navigation est retirée :
+          chaque lien ramenait silencieusement au même écran. */}
       <nav>
-        <NavLink to="/demandes" className={lien}>
-          Demandes
-        </NavLink>
-        {isAgent && (
+        {mustChangePassword && (
+          <span className="topbar__contrainte">Changement de mot de passe requis</span>
+        )}
+        {!mustChangePassword && (
+          <NavLink to="/demandes" className={lien}>
+            Demandes
+          </NavLink>
+        )}
+        {!mustChangePassword && isAgent && (
           <NavLink to="/demandes/nouvelle" className={lien}>
             Nouvelle demande
           </NavLink>
         )}
-        <NavLink to="/referentiel" className={lien}>
-          Référentiel MCC
-        </NavLink>
-        {isAdmin && (
+        {!mustChangePassword && (
+          <NavLink to="/referentiel" className={lien}>
+            Référentiel MCC
+          </NavLink>
+        )}
+        {!mustChangePassword && isAdmin && (
           <NavLink to="/administration" className={lien}>
             Administration
           </NavLink>
@@ -80,9 +92,9 @@ export default function App() {
         <Routes>
           <Route path="/connexion" element={user ? <Navigate to="/demandes" replace /> : <LoginPage />} />
           <Route path="/demandes" element={<Protege><DashboardPage /></Protege>} />
-          <Route path="/demandes/nouvelle" element={<Protege><RequestFormPage /></Protege>} />
+          <Route path="/demandes/nouvelle" element={<Protege agentSeul><RequestFormPage /></Protege>} />
           <Route path="/demandes/:id" element={<Protege><RequestDetailPage /></Protege>} />
-          <Route path="/demandes/:id/modifier" element={<Protege><RequestFormPage /></Protege>} />
+          <Route path="/demandes/:id/modifier" element={<Protege agentSeul><RequestFormPage /></Protege>} />
           <Route path="/referentiel" element={<Protege><CatalogPage /></Protege>} />
           <Route path="/mot-de-passe" element={<Protege><PasswordPage /></Protege>} />
           <Route path="/administration" element={<Protege adminSeul><AdminLayout /></Protege>}>

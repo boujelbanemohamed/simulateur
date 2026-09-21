@@ -192,3 +192,7 @@ CREATE TABLE IF NOT EXISTS admin_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC);
+
+-- Horodatage du dernier changement de mot de passe : tout jeton émis avant est
+-- refusé, ce qui coupe réellement les sessions ouvertes lors d'une réinitialisation.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ NOT NULL DEFAULT now();

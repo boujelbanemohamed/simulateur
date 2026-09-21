@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { forbidden, unauthorized } from './errors.js';
+import { query } from '../db/pool.js';
+import { asyncRoute, forbidden, unauthorized } from './errors.js';
 
 export function signToken(user) {
   return jwt.sign(
@@ -9,32 +10,62 @@ export function signToken(user) {
       email: user.email,
       role: user.role,
       bankId: user.bank_id,
-      mustChangePassword: Boolean(user.must_change_password),
     },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn }
   );
 }
 
-export function authenticate(req, res, next) {
+/**
+ * Authentifie la requête.
+ *
+ * Le jeton n'est qu'une preuve d'identité : le rôle, la banque et l'état du
+ * compte sont relus en base à chaque appel. Les déduire de la charge utile
+ * signée reviendrait à figer les droits pour toute la durée de vie du jeton —
+ * un compte désactivé, un agent muté vers une autre banque ou un mot de passe
+ * réinitialisé resteraient sans effet jusqu'à l'expiration.
+ */
+export const authenticate = asyncRoute(async (req, res, next) => {
   const header = req.headers.authorization ?? '';
   const [scheme, token] = header.split(' ');
-  if (scheme !== 'Bearer' || !token) return next(unauthorized());
+  if (scheme !== 'Bearer' || !token) throw unauthorized();
 
+  let charge;
   try {
-    const payload = jwt.verify(token, config.jwtSecret);
-    req.user = {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role,
-      bankId: payload.bankId,
-      mustChangePassword: Boolean(payload.mustChangePassword),
-    };
-    next();
+    charge = jwt.verify(token, config.jwtSecret);
   } catch {
-    next(unauthorized('Session expirée ou jeton invalide'));
+    throw unauthorized('Session expirée ou jeton invalide');
   }
-}
+
+  const { rows } = await query(
+    `SELECT u.id, u.email, u.role, u.bank_id, u.active, u.must_change_password,
+            u.password_changed_at, b.active AS bank_active
+       FROM users u JOIN banks b ON b.id = u.bank_id
+      WHERE u.id = $1`,
+    [charge.sub]
+  );
+  const utilisateur = rows[0];
+
+  if (!utilisateur) throw unauthorized('Compte introuvable');
+  if (!utilisateur.active) throw unauthorized('Compte désactivé');
+  if (!utilisateur.bank_active) throw unauthorized('Banque désactivée');
+
+  // Un jeton émis avant le dernier changement de mot de passe est périmé : c'est
+  // ce qui ferme les sessions déjà ouvertes après une réinitialisation.
+  const changeLe = Math.floor(new Date(utilisateur.password_changed_at).getTime() / 1000);
+  if (typeof charge.iat === 'number' && charge.iat < changeLe) {
+    throw unauthorized('Mot de passe modifié : reconnectez-vous');
+  }
+
+  req.user = {
+    id: utilisateur.id,
+    email: utilisateur.email,
+    role: utilisateur.role,
+    bankId: utilisateur.bank_id,
+    mustChangePassword: utilisateur.must_change_password,
+  };
+  next();
+});
 
 /** Restreint l'accès à une liste de rôles. ADMIN est toujours autorisé. */
 export const requireRole = (...roles) => (req, res, next) => {

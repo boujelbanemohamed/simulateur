@@ -6,14 +6,29 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(Boolean(getToken()));
+  const [erreurSession, setErreurSession] = useState(null);
 
-  // Un jeton présent au chargement est revalidé côté serveur avant d'afficher l'application.
+  // Un jeton présent au chargement est revalidé côté serveur avant d'afficher
+  // l'application. Seul un refus explicite du serveur invalide le jeton : une
+  // coupure réseau ou une erreur 5xx passagère ne doit pas coûter la session
+  // (ni le brouillon en cours de saisie).
   useEffect(() => {
     if (!getToken()) return;
     api
       .me()
-      .then(setUser)
-      .catch(() => clearToken())
+      .then((profil) => {
+        setUser(profil);
+        setErreurSession(null);
+      })
+      .catch((err) => {
+        if (err.status === 401 || err.status === 403) {
+          clearToken();
+        } else {
+          setErreurSession(
+            'Session non vérifiée : le serveur est injoignable. Vos identifiants sont conservés.'
+          );
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -52,12 +67,13 @@ export function AuthProvider({ children }) {
       login,
       logout,
       changePassword,
+      erreurSession,
       isAgent: user?.role === 'AGENT' || user?.role === 'ADMIN',
       isBanquier: user?.role === 'BANQUIER' || user?.role === 'ADMIN',
       isAdmin: user?.role === 'ADMIN',
       mustChangePassword: Boolean(user?.mustChangePassword),
     }),
-    [user, loading, login, logout, changePassword]
+    [user, loading, login, logout, changePassword, erreurSession]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

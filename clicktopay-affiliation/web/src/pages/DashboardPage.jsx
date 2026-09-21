@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { Champ, ErreurApi, Statut, formaterDate } from '../components/ui.jsx';
+import { Champ, ErreurApi, Statut, Tableau, formaterDate } from '../components/ui.jsx';
 
 const COMPTEURS = [
   { cle: 'SOUMISE', libelle: 'À traiter', classe: 'soumise' },
@@ -129,6 +129,7 @@ export default function DashboardPage() {
         )}
 
         {!chargement && demandes.length > 0 && (
+          <Tableau>
           <table>
             <thead>
               <tr>
@@ -165,6 +166,7 @@ export default function DashboardPage() {
               ))}
             </tbody>
           </table>
+          </Tableau>
         )}
       </div>
     </>

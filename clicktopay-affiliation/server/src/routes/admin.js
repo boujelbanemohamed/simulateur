@@ -1,6 +1,7 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { authenticate, requireRole } from '../middleware/auth.js';
-import { asyncRoute, validate } from '../middleware/errors.js';
+import { asyncRoute, entierDeRequete, idDeRoute, validate } from '../middleware/errors.js';
 import {
   createBankSchema, createMccSchema, createUserSchema, importMccSchema,
   resetPasswordSchema, updateBankSchema, updateMccSchema, updateUserSchema,
@@ -11,7 +12,21 @@ import {
 } from '../services/admin.js';
 import { createMcc, getMccHistory, importCatalog, updateMcc } from '../services/mccAdmin.js';
 import { catalogueComplet, getMcc, searchCatalog } from '../services/mccCatalog.js';
-import { notFound } from '../middleware/errors.js';
+import { badRequest, notFound } from '../middleware/errors.js';
+import { ecrireReferentiel, lireReferentiel } from '../services/mccImportFile.js';
+
+/**
+ * Le fichier reste en mémoire : une édition du manuel pèse quelques centaines de
+ * kilo-octets et n'a pas vocation à être conservée sur disque.
+ */
+const televersement = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (req, fichier, callback) => {
+    if (/\.(xlsx|csv|json)$/i.test(fichier.originalname)) return callback(null, true);
+    callback(badRequest('Format non pris en charge : attendu .xlsx, .csv ou .json.'));
+  },
+});
 
 export const adminRouter = Router();
 
@@ -27,7 +42,7 @@ adminRouter.get(
   )
 );
 
-adminRouter.get('/users/:id', asyncRoute(async (req, res) => res.json(await getUser(Number(req.params.id)))));
+adminRouter.get('/users/:id', asyncRoute(async (req, res) => res.json(await getUser(idDeRoute(req.params.id, 'Identifiant')))));
 
 adminRouter.post(
   '/users',
@@ -41,7 +56,7 @@ adminRouter.put(
   '/users/:id',
   validate(updateUserSchema),
   asyncRoute(async (req, res) =>
-    res.json(await updateUser({ id: Number(req.params.id), payload: req.body, user: req.user }))
+    res.json(await updateUser({ id: idDeRoute(req.params.id, 'Identifiant'), payload: req.body, user: req.user }))
   )
 );
 
@@ -49,7 +64,7 @@ adminRouter.post(
   '/users/:id/password',
   validate(resetPasswordSchema),
   asyncRoute(async (req, res) =>
-    res.json(await resetPassword({ id: Number(req.params.id), password: req.body.password, user: req.user }))
+    res.json(await resetPassword({ id: idDeRoute(req.params.id, 'Identifiant'), password: req.body.password, user: req.user }))
   )
 );
 
@@ -69,7 +84,7 @@ adminRouter.put(
   '/banks/:id',
   validate(updateBankSchema),
   asyncRoute(async (req, res) =>
-    res.json(await updateBank({ id: Number(req.params.id), payload: req.body, user: req.user }))
+    res.json(await updateBank({ id: idDeRoute(req.params.id, 'Identifiant'), payload: req.body, user: req.user }))
   )
 );
 
@@ -79,7 +94,7 @@ adminRouter.put(
 adminRouter.get('/mcc', (req, res) => {
   const { search = '', limit = 50 } = req.query;
   const items = searchCatalog(search, {
-    limit: Math.min(Number(limit) || 50, 300),
+    limit: entierDeRequete(limit, { defaut: 50, min: 1, max: 300 }),
     includeProhibited: true,
     includeInactive: true,
   });
@@ -92,6 +107,29 @@ adminRouter.get('/mcc', (req, res) => {
   });
 });
 
+/** Export du référentiel courant : point de départ du cycle télécharger → corriger → réimporter. */
+adminRouter.get(
+  '/mcc/export',
+  asyncRoute(async (req, res) => {
+    const format = req.query.format === 'csv' ? 'csv' : 'xlsx';
+    const codes = req.query.actifsSeuls === 'true'
+      ? catalogueComplet().filter((m) => m.active)
+      : catalogueComplet();
+    const contenu = await ecrireReferentiel(codes, format);
+    const jour = new Date().toISOString().slice(0, 10);
+
+    res.setHeader(
+      'Content-Type',
+      format === 'csv'
+        ? 'text/csv; charset=utf-8'
+        : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="referentiel-mcc-${jour}.${format}"`);
+    res.send(contenu);
+  })
+);
+
+// Déclaré après /mcc/export : sinon « export » serait capturé comme un code.
 adminRouter.get('/mcc/:code', (req, res) => {
   const mcc = getMcc(req.params.code);
   if (!mcc) throw notFound(`MCC ${req.params.code} introuvable`);
@@ -120,6 +158,40 @@ adminRouter.put(
 );
 
 /**
+ * Lecture d'un fichier Excel ou CSV. Cette route ne modifie rien : elle renvoie
+ * les lignes normalisées, les anomalies de lecture et le rapport d'écart, que
+ * l'administrateur examine avant de confirmer l'application.
+ */
+adminRouter.post(
+  '/mcc/import-fichier',
+  televersement.single('fichier'),
+  asyncRoute(async (req, res) => {
+    if (!req.file) throw badRequest('Aucun fichier reçu.');
+
+    let lecture;
+    try {
+      lecture = /\.json$/i.test(req.file.originalname)
+        ? { ...lireJson(req.file.buffer), anomalies: [], colonnesIgnorees: [] }
+        : await lireReferentiel(req.file.buffer, req.file.originalname);
+    } catch (err) {
+      throw badRequest(`Fichier illisible : ${err.message}`);
+    }
+
+    // Simulation systématique : le rapport d'écart est produit sans écriture.
+    const rapport = await importCatalog({ entrees: lecture.entrees, apply: false, user: req.user });
+    res.json({ fichier: req.file.originalname, ...lecture, rapport });
+  })
+);
+
+/** Compatibilité : un référentiel fourni en JSON reste accepté. */
+function lireJson(buffer) {
+  const donnees = JSON.parse(buffer.toString('utf8'));
+  const entrees = Array.isArray(donnees) ? donnees : donnees.entrees ?? donnees.items;
+  if (!Array.isArray(entrees)) throw new Error('le fichier doit contenir un tableau de codes MCC');
+  return { entrees, colonnesDetectees: ['json'], lignesLues: entrees.length };
+}
+
+/**
  * Import d'une nouvelle édition du référentiel.
  * Sans `apply`, la route ne renvoie que le rapport d'écart : rien n'est modifié.
  */
@@ -134,6 +206,10 @@ adminRouter.post(
 adminRouter.get(
   '/events',
   asyncRoute(async (req, res) =>
-    res.json({ items: await listAdminEvents({ limit: Number(req.query.limit) || 100 }) })
+    res.json({
+      items: await listAdminEvents({
+        limit: entierDeRequete(req.query.limit, { defaut: 100, min: 1, max: 500 }),
+      }),
+    })
   )
 );

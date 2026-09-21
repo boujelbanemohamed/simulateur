@@ -7,7 +7,9 @@ import './styles/app.css';
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* Comportement v7 adopté explicitement : sans ces drapeaux, React Router
+        émet deux avertissements sur chaque page. */}
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <App />
       </AuthProvider>

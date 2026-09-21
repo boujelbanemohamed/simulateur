@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { booleen, entier } from './zodHelpers.js';
 
 const texte = (max) => z.string().trim().max(max);
 // L'ordre compte : `.optional()` doit envelopper la transformation, sinon un
@@ -26,7 +27,7 @@ export const createUserSchema = z.object({
   firstName: texte(80).min(1, 'Le prénom est obligatoire'),
   lastName: texte(80).min(1, 'Le nom est obligatoire'),
   role: z.enum(ROLES),
-  bankId: z.coerce.number().int().positive('Banque obligatoire'),
+  bankId: entier({ min: 1 }),
   password: motDePasse,
 });
 
@@ -36,8 +37,8 @@ export const updateUserSchema = z
     firstName: texte(80).min(1).optional(),
     lastName: texte(80).min(1).optional(),
     role: z.enum(ROLES).optional(),
-    bankId: z.coerce.number().int().positive().optional(),
-    active: z.coerce.boolean().optional(),
+    bankId: entier({ min: 1 }).optional(),
+    active: booleen().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Aucune modification fournie' });
 
@@ -58,7 +59,7 @@ export const createBankSchema = z.object({
 export const updateBankSchema = z
   .object({
     name: texte(160).min(2).optional(),
-    active: z.coerce.boolean().optional(),
+    active: booleen().optional(),
   })
   .refine((v) => Object.keys(v).length > 0, { message: 'Aucune modification fournie' });
 
@@ -96,19 +97,41 @@ export const updateMccSchema = z
     riskLevel: champsMcc.riskLevel,
     note: champsMcc.note,
     networks: champsMcc.networks,
-    active: z.coerce.boolean().optional(),
+    active: booleen().optional(),
     comment: optionnel(1000),
   })
   .refine((v) => Object.keys(v).filter((k) => k !== 'comment').length > 0, {
     message: 'Aucune modification fournie',
   });
 
+/**
+ * Une ligne du fichier importé. Chaque champ est validé ici, et pas seulement le
+ * code : sans cela, une valeur hors énumération ou un libellé trop long passe la
+ * simulation, affiche un rapport d'écart rassurant, puis fait échouer
+ * l'application en erreur 500 sans désigner la ligne fautive.
+ */
+const entreeImportSchema = z.object({
+  code: z.union([z.string(), z.number()]).transform((v) => String(v).trim()),
+  label: texte(255).optional(),
+  description: texte(2000).optional(),
+  labelEn: texte(255).optional(),
+  descriptionEn: texte(2000).optional(),
+  keywords: listeTextes(120),
+  similar: z.array(z.string().regex(/^\d{4}$/)).max(50).optional(),
+  ecommerceRelevance: z.enum(['HIGH', 'MEDIUM', 'LOW']).optional(),
+  riskLevel: z.enum(['STANDARD', 'SENSIBLE', 'INTERDIT']).optional(),
+  note: texte(1000).optional(),
+  networks: z.array(z.enum(['VISA', 'MASTERCARD'])).min(1).optional(),
+  source: texte(160).optional(),
+});
+
 export const importMccSchema = z.object({
   // Une édition complète du manuel : quelques centaines de codes.
-  entrees: z.array(z.object({ code: z.union([z.string(), z.number()]) }).passthrough())
+  entrees: z.array(entreeImportSchema)
     .min(1, 'Le fichier importé est vide')
     .max(2000, 'Fichier trop volumineux (2000 codes maximum)'),
-  apply: z.coerce.boolean().default(false),
-  deactivateMissing: z.coerce.boolean().default(false),
+  // Drapeaux gouvernant une opération destructrice : strictement booléens.
+  apply: booleen().default(false),
+  deactivateMissing: booleen().default(false),
   comment: optionnel(1000),
 });

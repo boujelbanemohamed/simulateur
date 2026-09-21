@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { SECTOR_KEYS } from './sectors.js';
+import { MONTANT_MAX, booleen, dateCalendaire, sansCaracteresDeControle } from './zodHelpers.js';
 
 // Messages génériques en français (zod répond en anglais par défaut).
 z.setErrorMap((issue, ctx) => {
@@ -12,7 +13,7 @@ z.setErrorMap((issue, ctx) => {
   return { message: ctx.defaultError };
 });
 
-const trimmed = (max) => z.string().trim().max(max);
+const trimmed = (max) => sansCaracteresDeControle(z.string().trim().max(max));
 const requiredText = (max, champ) =>
   trimmed(max).min(1, `${champ} est obligatoire`);
 // `.optional()` enveloppe la transformation : un champ absent reste absent et
@@ -24,14 +25,14 @@ const optionalText = (max) =>
     .optional();
 const optionalNumber = z.coerce
   .number()
+  .finite('Montant invalide')
   .nonnegative('La valeur doit être positive')
-  .optional()
-  .nullable();
-const optionalDate = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date attendue au format AAAA-MM-JJ')
-  .optional()
+  .max(MONTANT_MAX, 'Montant trop élevé')
   .nullable()
+  .optional();
+const optionalDate = dateCalendaire()
+  .nullable()
+  .optional()
   .or(z.literal('').transform(() => null));
 
 const mccCode = z
@@ -87,9 +88,9 @@ export const affiliationRequestSchema = z.object({
   ),
   productTypes: optionalText(1000),
   deliveryMode: z.enum(['PHYSIQUE', 'NUMERIQUE', 'SERVICE', 'MIXTE']).default('PHYSIQUE'),
-  hasSubscription: z.coerce.boolean().default(false),
-  isMarketplace: z.coerce.boolean().default(false),
-  sellsAbroad: z.coerce.boolean().default(false),
+  hasSubscription: booleen().default(false),
+  isMarketplace: booleen().default(false),
+  sellsAbroad: booleen().default(false),
   averageBasket: optionalNumber,
   monthlyVolume: optionalNumber,
   currency: trimmed(3).default('TND'),
@@ -129,7 +130,7 @@ export const suggestionProfileSchema = z.object({
   companyName: trimmed(160).default(''),
   activitySector: z.enum(SECTOR_KEYS).optional().nullable(),
   deliveryMode: z.enum(['PHYSIQUE', 'NUMERIQUE', 'SERVICE', 'MIXTE']).default('PHYSIQUE'),
-  hasSubscription: z.coerce.boolean().default(false),
-  isMarketplace: z.coerce.boolean().default(false),
+  hasSubscription: booleen().default(false),
+  isMarketplace: booleen().default(false),
   limit: z.coerce.number().int().min(1).max(20).optional(),
 });

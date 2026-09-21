@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
-import { Case, Champ, CarteMcc, ErreurApi, Message } from '../components/ui.jsx';
+import { Case, Champ, CarteMcc, ErreurApi, Message, libelleLivraison } from '../components/ui.jsx';
+
+// Plafonds alignés sur la validation du serveur : mieux vaut empêcher la saisie
+// que refuser un texte déjà écrit.
+const MAX_DESCRIPTION = 2000;
+const MAX_PRODUITS = 1000;
 
 const ETAPES = [
   { titre: 'Site et société', detail: 'Identité du e-commerçant' },
@@ -45,17 +50,22 @@ export default function RequestFormPage() {
   const [rechercheMcc, setRechercheMcc] = useState('');
   const [resultatsMcc, setResultatsMcc] = useState([]);
   const [erreur, setErreur] = useState(null);
+  const [erreurSuggestion, setErreurSuggestion] = useState(null);
   const [info, setInfo] = useState(null);
   const [enregistrement, setEnregistrement] = useState(false);
   const [demandeId, setDemandeId] = useState(id ? Number(id) : null);
   const [statut, setStatut] = useState('BROUILLON');
+  const [reference, setReference] = useState(null);
   const abort = useRef(null);
 
-  const majChamp = (cle) => (e) =>
+  const majChamp = (cle) => (e) => {
+    // Le bandeau « enregistré en brouillon » devient faux dès la frappe suivante.
+    setInfo(null);
     setFormulaire((f) => ({
       ...f,
       [cle]: e.target.type === 'checkbox' ? e.target.checked : e.target.value,
     }));
+  };
 
   useEffect(() => {
     api.sectors().then(setSecteurs).catch(() => setSecteurs([]));
@@ -74,6 +84,7 @@ export default function RequestFormPage() {
         if (charge.companyCreatedOn) charge.companyCreatedOn = charge.companyCreatedOn.slice(0, 10);
         setFormulaire(charge);
         setStatut(demande.status);
+        setReference(demande.reference);
       })
       .catch(setErreur);
   }, [id, modeEdition]);
@@ -108,9 +119,16 @@ export default function RequestFormPage() {
       abort.current = new AbortController();
       api
         .suggest(profil, abort.current.signal)
-        .then(setSuggestions)
+        .then((resultat) => {
+          setSuggestions(resultat);
+          setErreurSuggestion(null);
+        })
         .catch((err) => {
-          if (err.name !== 'AbortError') setSuggestions(null);
+          if (err.name === 'AbortError') return;
+          // Avaler cette erreur laissait l'agent devant une liste vide et un
+          // message l'invitant à remplir un champ déjà rempli.
+          setSuggestions(null);
+          setErreurSuggestion(err);
         });
     }, 400);
     return () => clearTimeout(timer);
@@ -139,6 +157,11 @@ export default function RequestFormPage() {
         const demande = demandeId
           ? await api.updateRequest(demandeId, payload)
           : await api.createRequest(payload);
+        if (!demandeId) {
+          // Le brouillon prend son URL : sans cela un F5 vidait toute la saisie
+          // et une seconde sauvegarde créait une demande en double.
+          navigate(`/demandes/${demande.id}/modifier`, { replace: true });
+        }
         setDemandeId(demande.id);
         setStatut(demande.status);
         if (!silencieux) setInfo(`Demande ${demande.reference} enregistrée en brouillon.`);
@@ -150,7 +173,7 @@ export default function RequestFormPage() {
         setEnregistrement(false);
       }
     },
-    [formulaire, demandeId]
+    [formulaire, demandeId, navigate]
   );
 
   const soumettre = async () => {
@@ -172,6 +195,9 @@ export default function RequestFormPage() {
   };
 
   const erreursChamps = erreur?.fieldErrors ?? {};
+  // Seuls ces deux statuts autorisent l'agent à modifier : afficher un formulaire
+  // éditable sur les autres ne menait qu'à un 409 après une ressaisie complète.
+  const modifiable = ['BROUILLON', 'COMPLEMENT_REQUIS'].includes(statut);
   const choisirMcc = (reseau) => (code) =>
     setFormulaire((f) => ({ ...f, [reseau]: f[reseau] === code ? '' : code }));
 
@@ -190,6 +216,12 @@ export default function RequestFormPage() {
         </div>
       </div>
 
+      {!modifiable && (
+        <Message type="attention" titre={`Demande ${reference ?? ''} au statut ${statut.replace('_', ' ').toLowerCase()}`}>
+          Elle n'est plus modifiable par l'agent. Vous la consultez en lecture seule ;
+          toute saisie serait refusée à l'enregistrement.
+        </Message>
+      )}
       {statut === 'COMPLEMENT_REQUIS' && (
         <Message type="attention" titre="Demande renvoyée par le banquier">
           Corrigez les points signalés puis soumettez à nouveau la demande.
@@ -336,13 +368,15 @@ export default function RequestFormPage() {
             </div>
             <Champ label="Description de l'activité" name="activityDescription" requis
               erreur={erreursChamps.activityDescription}
-              aide={`${formulaire.activityDescription.length} caractères (20 minimum)`}>
-              <textarea id="champ-activityDescription" value={formulaire.activityDescription}
+              aide={`${formulaire.activityDescription.length} / ${MAX_DESCRIPTION} caractères (20 minimum)`}>
+              <textarea id="champ-activityDescription" maxLength={MAX_DESCRIPTION}
+                value={formulaire.activityDescription}
                 onChange={majChamp('activityDescription')}
                 placeholder="Exemple : vente en ligne de cosmétiques naturels, huiles essentielles et savons artisanaux fabriqués en Tunisie." />
             </Champ>
-            <Champ label="Types de produits ou services vendus" name="productTypes">
-              <textarea id="champ-productTypes" value={formulaire.productTypes}
+            <Champ label="Types de produits ou services vendus" name="productTypes"
+              aide={`${formulaire.productTypes.length} / ${MAX_PRODUITS} caractères`}>
+              <textarea id="champ-productTypes" maxLength={MAX_PRODUITS} value={formulaire.productTypes}
                 onChange={majChamp('productTypes')}
                 placeholder="Crèmes, huiles d'argan, savons, coffrets cadeaux…" />
             </Champ>
@@ -368,6 +402,7 @@ export default function RequestFormPage() {
 
         {etape === 3 && (
           <SelectionMcc
+            erreurSuggestion={erreurSuggestion}
             suggestions={suggestions}
             formulaire={formulaire}
             erreursChamps={erreursChamps}
@@ -381,7 +416,8 @@ export default function RequestFormPage() {
         )}
 
         {etape === 4 && (
-          <Recapitulatif formulaire={formulaire} secteurs={secteurs} suggestions={suggestions} />
+          <Recapitulatif formulaire={formulaire} secteurs={secteurs}
+            suggestions={suggestions} resultatsMcc={resultatsMcc} />
         )}
 
         <div className="barre-actions barre-actions--fin" style={{ marginTop: '1.25rem' }}>
@@ -390,19 +426,29 @@ export default function RequestFormPage() {
               Précédent
             </button>
           )}
-          <button type="button" className="bouton bouton--secondaire" onClick={() => { enregistrer(); }}
-            disabled={enregistrement}>
-            Enregistrer le brouillon
-          </button>
+          {!modifiable && demandeId && (
+            <button type="button" className="bouton bouton--secondaire"
+              onClick={() => navigate(`/demandes/${demandeId}`)}>
+              Voir la demande
+            </button>
+          )}
+          {modifiable && (
+            <button type="button" className="bouton bouton--secondaire" onClick={() => { enregistrer(); }}
+              disabled={enregistrement}>
+              Enregistrer le brouillon
+            </button>
+          )}
           {etape < ETAPES.length - 1 ? (
             <button type="button" className="bouton" onClick={() => setEtape((e) => e + 1)}>
               Suivant
             </button>
           ) : (
-            <button type="button" className="bouton bouton--valider" onClick={soumettre}
-              disabled={enregistrement}>
-              Soumettre au banquier
-            </button>
+            modifiable && (
+              <button type="button" className="bouton bouton--valider" onClick={soumettre}
+                disabled={enregistrement}>
+                Soumettre au banquier
+              </button>
+            )
           )}
         </div>
       </form>
@@ -412,7 +458,7 @@ export default function RequestFormPage() {
 
 /** Étape 4 : propositions du moteur, arbitrage réseau par réseau, recherche manuelle. */
 function SelectionMcc({
-  suggestions, formulaire, erreursChamps, choisirMcc, appliquerAuxDeux,
+  suggestions, erreurSuggestion, formulaire, erreursChamps, choisirMcc, appliquerAuxDeux,
   rechercheMcc, setRechercheMcc, resultatsMcc, onJustification,
 }) {
   const [reseau, setReseau] = useState('proposedVisaMcc');
@@ -422,7 +468,14 @@ function SelectionMcc({
     <>
       <fieldset>
         <legend>Codes MCC proposés</legend>
-        {propositions.length === 0 ? (
+        {erreurSuggestion && (
+          <Message type="erreur" titre="Propositions indisponibles">
+            {erreurSuggestion.message}
+            {erreurSuggestion.details?.length > 0 &&
+              ` — ${erreurSuggestion.details.map((d) => d.message).join(' ; ')}`}
+          </Message>
+        )}
+        {!erreurSuggestion && propositions.length === 0 ? (
           <Message type="attention">
             Complétez la description de l'activité à l'étape précédente pour obtenir des
             propositions de MCC.
@@ -480,6 +533,11 @@ function SelectionMcc({
         <Champ label="Recherche" name="rechercheMcc" value={rechercheMcc}
           onChange={(e) => setRechercheMcc(e.target.value)}
           placeholder="Mot-clé ou code à 4 chiffres (ex. « librairie » ou « 5942 »)" />
+        {rechercheMcc.trim().length >= 2 && resultatsMcc.length === 0 && (
+          <p className="champ__aide">
+            Aucun code éligible ne correspond à « {rechercheMcc} ».
+          </p>
+        )}
         <div className="mcc-liste">
           {resultatsMcc.map((mcc) => (
             <CarteMcc key={mcc.code} mcc={mcc} montrerVo={false}
@@ -498,9 +556,28 @@ function SelectionMcc({
   );
 }
 
-function Recapitulatif({ formulaire, secteurs, suggestions }) {
+function Recapitulatif({ formulaire, secteurs, suggestions, resultatsMcc = [] }) {
   const secteur = secteurs.find((s) => s.key === formulaire.activitySector);
-  const mccRetenu = (code) => suggestions?.VISA?.find((m) => m.code === code);
+  const [fiches, setFiches] = useState({});
+
+  // Un code retenu via la recherche manuelle n'est pas dans les propositions :
+  // sans cette relecture, le récapitulatif n'affichait qu'un code nu.
+  const codes = [formulaire.proposedVisaMcc, formulaire.proposedMastercardMcc].filter(Boolean);
+  useEffect(() => {
+    const connus = [...(suggestions?.VISA ?? []), ...resultatsMcc];
+    const manquants = codes.filter((c) => !connus.some((m) => m.code === c) && !fiches[c]);
+    if (manquants.length === 0) return;
+    Promise.all(manquants.map((c) => api.getMcc(c).catch(() => null))).then((resultats) => {
+      const ajout = {};
+      for (const mcc of resultats.filter(Boolean)) ajout[mcc.code] = mcc;
+      if (Object.keys(ajout).length > 0) setFiches((f) => ({ ...f, ...ajout }));
+    });
+  }, [codes.join('|')]);
+
+  const mccRetenu = (code) =>
+    suggestions?.VISA?.find((m) => m.code === code) ??
+    resultatsMcc.find((m) => m.code === code) ??
+    fiches[code];
 
   const lignes = [
     ['Nom du site', formulaire.siteName],
@@ -515,7 +592,7 @@ function Recapitulatif({ formulaire, secteurs, suggestions }) {
     ['Adresse', [formulaire.addressLine1, formulaire.postalCode, formulaire.city, formulaire.country]
       .filter(Boolean).join(', ')],
     ["Secteur d'activité", secteur?.label],
-    ['Mode de livraison', formulaire.deliveryMode],
+    ['Mode de livraison', libelleLivraison(formulaire.deliveryMode)],
     ['MCC Visa proposé', formulaire.proposedVisaMcc],
     ['MCC Mastercard proposé', formulaire.proposedMastercardMcc],
   ];

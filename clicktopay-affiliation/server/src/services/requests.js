@@ -238,13 +238,20 @@ export async function submitRequest({ id, user }) {
   const suggestions = suggestMcc(request);
 
   return withTransaction(async (client) => {
-    await client.query(
+    // La garde de statut est portée par l'UPDATE lui-même : deux soumissions
+    // simultanées passeraient toutes deux le contrôle de statut lu plus haut.
+    // Les traces de la décision précédente sont effacées : une demande en attente
+    // d'arbitrage ne doit pas afficher un décideur.
+    const { rowCount } = await client.query(
       `UPDATE affiliation_requests
           SET status = 'SOUMISE', submitted_at = now(), updated_at = now(),
-              decision_comment = NULL
-        WHERE id = $1`,
+              decision_comment = NULL, decided_at = NULL, decided_by = NULL
+        WHERE id = $1 AND status IN ('BROUILLON', 'COMPLEMENT_REQUIS')`,
       [id]
     );
+    if (rowCount === 0) {
+      throw conflict('Cette demande vient d’être soumise par ailleurs.');
+    }
     await client.query('DELETE FROM mcc_suggestions WHERE request_id = $1', [id]);
     for (const network of ['VISA', 'MASTERCARD']) {
       let rank = 0;
@@ -302,7 +309,10 @@ export async function decideRequest({ id, decision, visaMcc, mastercardMcc, comm
     (finalVisa !== request.proposedVisaMcc || finalMastercard !== request.proposedMastercardMcc);
 
   return withTransaction(async (client) => {
-    await client.query(
+    // `AND status = 'SOUMISE'` : sans cette garde, deux arbitrages simultanés
+    // aboutissent tous les deux et la demande porte deux décisions contradictoires
+    // dans sa piste d'audit.
+    const { rowCount } = await client.query(
       `UPDATE affiliation_requests
           SET status = $1,
               final_visa_mcc = $2,
@@ -311,7 +321,7 @@ export async function decideRequest({ id, decision, visaMcc, mastercardMcc, comm
               decided_at = now(),
               decided_by = $5,
               updated_at = now()
-        WHERE id = $6`,
+        WHERE id = $6 AND status = 'SOUMISE'`,
       [
         decision,
         decision === 'VALIDEE' ? finalVisa : null,
@@ -321,6 +331,9 @@ export async function decideRequest({ id, decision, visaMcc, mastercardMcc, comm
         id,
       ]
     );
+    if (rowCount === 0) {
+      throw conflict('Cette demande vient d’être arbitrée par ailleurs.');
+    }
     await logEvent(client, {
       requestId: id,
       userId: user.id,

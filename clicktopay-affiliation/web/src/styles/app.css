@@ -98,7 +98,8 @@ a { color: var(--bleu-500); }
 }
 .champ textarea { min-height: 90px; resize: vertical; }
 .champ--erreur input, .champ--erreur select, .champ--erreur textarea { border-color: var(--rouge); }
-.champ__aide { font-size: 0.8rem; color: var(--gris-500); }
+/* --gris-500 sur blanc plafonne à 3,66:1 : sous le seuil AA pour ces textes. */
+.champ__aide { font-size: 0.8rem; color: var(--gris-700); }
 .champ__erreur { font-size: 0.8rem; color: var(--rouge); font-weight: 600; }
 .champ--case { flex-direction: row; align-items: center; gap: 0.5rem; }
 .champ--case label { font-weight: 500; color: var(--gris-900); font-size: 0.9rem; }
@@ -138,16 +139,23 @@ legend {
 }
 .etiquette--brouillon { background: var(--gris-100); color: var(--gris-700); border-color: var(--gris-300); }
 .etiquette--soumise { background: var(--bleu-100); color: var(--bleu-700); border-color: #b8d3e8; }
-.etiquette--complement { background: var(--ambre-clair); color: var(--ambre); border-color: #eccb92; }
+.etiquette--complement { background: var(--ambre-clair); color: #7d4e04; border-color: #eccb92; }
 .etiquette--validee { background: var(--vert-clair); color: var(--vert); border-color: #a9dcc6; }
 .etiquette--rejetee { background: var(--rouge-clair); color: var(--rouge); border-color: #f0b8b3; }
 
 /* ---------- Tableaux ---------- */
+/* Le tableau défile dans son cadre : sans cela, c'est toute la page qui part en
+   défilement horizontal sur mobile et les colonnes d'actions sortent de l'écran. */
+.tableau { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tableau table { min-width: 720px; }
+
 table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--gris-300); }
 th { background: var(--gris-100); color: var(--gris-700); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
 tbody tr:hover { background: var(--gris-050); }
 td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88em; }
+/* `.champ input { font: inherit }` écrase la famille : on la repose explicitement. */
+.champ input.mono, input.mono { font-family: "Consolas", "SF Mono", monospace; }
 
 /* ---------- Compteurs du tableau de bord ---------- */
 .compteurs { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-bottom: 1.25rem; }
@@ -169,10 +177,12 @@ td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88
   display: flex; gap: 0.9rem; align-items: flex-start;
   border: 1px solid var(--gris-300); border-radius: var(--rayon);
   padding: 0.85rem 1rem; background: var(--blanc);
-  cursor: pointer; text-align: left; width: 100%; font: inherit;
+  text-align: left; width: 100%; font: inherit;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
-.mcc:hover { border-color: var(--bleu-500); background: var(--gris-050); }
+div.mcc { cursor: default; }
+button.mcc { cursor: pointer; }
+button.mcc:hover { border-color: var(--bleu-500); background: var(--gris-050); }
 .mcc--choisi { border-color: var(--bleu-500); background: var(--bleu-100); box-shadow: 0 0 0 1px var(--bleu-500) inset; }
 .mcc__code {
   font-family: "Consolas", "SF Mono", monospace; font-weight: 700; font-size: 1.05rem;
@@ -183,10 +193,10 @@ td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88
 .mcc__corps { flex: 1; min-width: 0; }
 .mcc__titre { font-weight: 700; color: var(--gris-900); margin-bottom: 0.15rem; }
 .mcc__description { font-size: 0.88rem; color: var(--gris-700); margin: 0 0 0.4rem; }
-.mcc__vo { font-size: 0.8rem; color: var(--gris-500); font-style: italic; margin: 0 0 0.4rem; }
+.mcc__vo { font-size: 0.8rem; color: var(--gris-700); font-style: italic; margin: 0 0 0.4rem; }
 .mcc__meta { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
 .mcc__score {
-  font-weight: 700; font-size: 0.78rem; color: var(--vert);
+  font-weight: 700; font-size: 0.78rem; color: #11543b;
   background: var(--vert-clair); border-radius: 999px; padding: 0.1rem 0.55rem;
 }
 .mcc__score--moyen { color: var(--ambre); background: var(--ambre-clair); }
@@ -206,7 +216,7 @@ td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88
 .message--attention { background: var(--ambre-clair); border-color: #eccb92; color: #7d4e04; }
 .message ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
 
-.vide { text-align: center; color: var(--gris-500); padding: 2.5rem 1rem; }
+.vide { text-align: center; color: var(--gris-700); padding: 2.5rem 1rem; }
 
 /* ---------- Fil des étapes ---------- */
 .etapes { display: flex; gap: 0.4rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
@@ -216,6 +226,7 @@ td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88
   border-top: none; border-left: none; border-right: none; text-align: left; font: inherit;
   cursor: pointer;
 }
+.etape { color: var(--gris-700); }
 .etape strong { display: block; color: inherit; }
 .etape--active { border-bottom-color: var(--bleu-500); color: var(--bleu-900); font-weight: 600; }
 .etape--faite { border-bottom-color: var(--vert); color: var(--vert); }
@@ -224,16 +235,16 @@ td .mono, .mono { font-family: "Consolas", "SF Mono", monospace; font-size: 0.88
 .connexion { min-height: 100vh; display: grid; place-items: center; background: linear-gradient(160deg, var(--bleu-900), var(--bleu-700)); padding: 1.5rem; }
 .connexion__carte { background: var(--blanc); border-radius: 12px; padding: 2rem; width: min(420px, 100%); box-shadow: 0 18px 40px rgba(6, 22, 42, 0.35); }
 .connexion__titre { text-align: center; margin-bottom: 0.25rem; }
-.connexion__sous-titre { text-align: center; color: var(--gris-500); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.connexion__sous-titre { text-align: center; color: var(--gris-700); font-size: 0.9rem; margin-bottom: 1.5rem; }
 .connexion .bouton { width: 100%; padding: 0.65rem; }
-.connexion__aide { margin-top: 1.25rem; font-size: 0.8rem; color: var(--gris-500); border-top: 1px solid var(--gris-300); padding-top: 0.9rem; }
+.connexion__aide { margin-top: 1.25rem; font-size: 0.8rem; color: var(--gris-700); border-top: 1px solid var(--gris-300); padding-top: 0.9rem; }
 .connexion__aide code { background: var(--gris-100); padding: 0.05rem 0.3rem; border-radius: 4px; }
 
 /* ---------- Détail ---------- */
 .paire { display: flex; justify-content: space-between; gap: 1rem; padding: 0.4rem 0; border-bottom: 1px solid var(--gris-100); font-size: 0.9rem; }
 .paire:last-child { border-bottom: none; }
-.paire dt { color: var(--gris-500); }
-.paire dd { margin: 0; text-align: right; font-weight: 500; color: var(--gris-900); max-width: 60%; }
+.paire dt { color: var(--gris-700); }
+.paire dd { margin: 0; text-align: right; font-weight: 500; color: var(--gris-900); max-width: 60%; overflow-wrap: anywhere; }
 dl { margin: 0; }
 
 .journal { list-style: none; margin: 0; padding: 0; }
@@ -243,7 +254,7 @@ dl { margin: 0; }
   width: 8px; height: 8px; border-radius: 50%; background: var(--bleu-500);
 }
 .journal__titre { font-weight: 600; font-size: 0.9rem; }
-.journal__meta { font-size: 0.8rem; color: var(--gris-500); }
+.journal__meta { font-size: 0.8rem; color: var(--gris-700); }
 .journal__commentaire { font-size: 0.87rem; color: var(--gris-700); margin-top: 0.2rem; font-style: italic; }
 
 .filtres { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: flex-end; }
@@ -273,3 +284,9 @@ dl { margin: 0; }
 .topbar__user { padding: 0.2rem 0.5rem; color: var(--blanc); }
 
 details summary { font-size: 0.9rem; font-weight: 600; }
+
+.topbar__contrainte {
+  color: #fdf1dc; font-size: 0.85rem; font-weight: 600;
+  padding: 0.35rem 0.75rem; border-radius: var(--rayon);
+  background: rgba(168, 106, 5, 0.35);
+}

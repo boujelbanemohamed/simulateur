@@ -46,31 +46,55 @@ async function historiser(client, { code, userId, action, avant, apres, comment 
      VALUES ($1, $2, $3, $4, $5, $6)`,
     [code, userId, action, avant, apres, comment]
   );
+  // Le journal d'administration doit aussi porter la trace : c'est là que l'on
+  // regarde « qui a touché à quoi », sans ouvrir chaque code un par un.
+  await client.query(
+    `INSERT INTO admin_events (user_id, entity, entity_id, action, payload)
+     VALUES ($1, 'MCC', $2, $3, $4)`,
+    [userId, code, action, { comment, champs: champsModifies(avant, apres) }]
+  );
+}
+
+/** Liste des champs réellement différents entre deux états d'un code. */
+function champsModifies(avant, apres) {
+  if (!avant || !apres) return [];
+  return Object.keys(apres).filter(
+    (cle) => JSON.stringify(apres[cle]) !== JSON.stringify(avant[cle])
+  );
 }
 
 export async function createMcc({ payload, user }) {
+  // Contrôle rapide sur le cache, puis filet sur la contrainte de clé primaire :
+  // deux créations simultanées du même code passeraient toutes deux ce test.
   if (getMcc(payload.code)) throw conflict(`Le MCC ${payload.code} existe déjà dans le référentiel.`);
 
-  await withTransaction(async (client) => {
-    await client.query(
-      `INSERT INTO mcc_codes (code, label_fr, description_fr, label_en, description_en,
-                              keywords, similar_codes, ecommerce_relevance, risk_level,
-                              note, networks, source, updated_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        payload.code, payload.label, payload.description,
-        payload.labelEn ?? payload.label, payload.descriptionEn ?? payload.description,
-        payload.keywords ?? [], payload.similar ?? [],
-        payload.ecommerceRelevance ?? 'MEDIUM', payload.riskLevel ?? 'STANDARD',
-        payload.note ?? null, payload.networks ?? ['VISA', 'MASTERCARD'],
-        payload.source ?? 'Ajout manuel', user.id,
-      ]
-    );
-    await historiser(client, {
-      code: payload.code, userId: user.id, action: 'CREATION',
-      avant: null, apres: payload, comment: payload.comment ?? null,
+  try {
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO mcc_codes (code, label_fr, description_fr, label_en, description_en,
+                                keywords, similar_codes, ecommerce_relevance, risk_level,
+                                note, networks, source, updated_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [
+          payload.code, payload.label, payload.description,
+          payload.labelEn ?? payload.label, payload.descriptionEn ?? payload.description,
+          payload.keywords ?? [], payload.similar ?? [],
+          payload.ecommerceRelevance ?? 'MEDIUM', payload.riskLevel ?? 'STANDARD',
+          payload.note ?? null, payload.networks ?? ['VISA', 'MASTERCARD'],
+          payload.source ?? 'Ajout manuel', user.id,
+        ]
+      );
+      await historiser(client, {
+        code: payload.code, userId: user.id, action: 'CREATION',
+        avant: null, apres: payload, comment: payload.comment ?? null,
+      });
     });
-  });
+  } catch (err) {
+    if (err.code === '23505') {
+      throw conflict(`Le MCC ${payload.code} existe déjà dans le référentiel.`);
+    }
+    throw err;
+  }
   // Le cache est relu après le commit : il passe par le pool et ne verrait pas
   // une écriture encore non validée.
   await rechargerCatalogue();

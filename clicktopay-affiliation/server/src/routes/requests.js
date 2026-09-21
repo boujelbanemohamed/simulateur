@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireRole } from '../middleware/auth.js';
-import { asyncRoute, validate } from '../middleware/errors.js';
+import { asyncRoute, entierDeRequete, idDeRoute, validate } from '../middleware/errors.js';
 import {
   affiliationRequestSchema,
   affiliationRequestUpdateSchema,
@@ -30,8 +30,8 @@ requestsRouter.get(
       status: req.query.status,
       search: req.query.search,
       mine: req.query.mine === 'true',
-      limit: Math.min(Number(req.query.limit) || 50, 200),
-      offset: Number(req.query.offset) || 0,
+      limit: entierDeRequete(req.query.limit, { defaut: 50, min: 1, max: 200 }),
+      offset: entierDeRequete(req.query.offset, { defaut: 0, min: 0, max: 1000000 }),
     });
     res.json({ count: items.length, items });
   })
@@ -54,7 +54,7 @@ requestsRouter.post(
 
 requestsRouter.get(
   '/:id',
-  asyncRoute(async (req, res) => res.json(await getRequest(Number(req.params.id), req.user)))
+  asyncRoute(async (req, res) => res.json(await getRequest(idDeRoute(req.params.id, 'Demande'), req.user)))
 );
 
 requestsRouter.put(
@@ -62,7 +62,7 @@ requestsRouter.put(
   requireRole('AGENT'),
   validate(affiliationRequestUpdateSchema),
   asyncRoute(async (req, res) =>
-    res.json(await updateRequest({ id: Number(req.params.id), payload: req.body, user: req.user }))
+    res.json(await updateRequest({ id: idDeRoute(req.params.id, 'Demande'), payload: req.body, user: req.user }))
   )
 );
 
@@ -71,7 +71,7 @@ requestsRouter.post(
   '/:id/submit',
   requireRole('AGENT'),
   asyncRoute(async (req, res) =>
-    res.json(await submitRequest({ id: Number(req.params.id), user: req.user }))
+    res.json(await submitRequest({ id: idDeRoute(req.params.id, 'Demande'), user: req.user }))
   )
 );
 
@@ -81,7 +81,7 @@ requestsRouter.post(
   requireRole('BANQUIER'),
   validate(decisionSchema),
   asyncRoute(async (req, res) =>
-    res.json(await decideRequest({ id: Number(req.params.id), ...req.body, user: req.user }))
+    res.json(await decideRequest({ id: idDeRoute(req.params.id, 'Demande'), ...req.body, user: req.user }))
   )
 );
 
@@ -89,11 +89,11 @@ requestsRouter.post(
 requestsRouter.get(
   '/:id/suggestions',
   asyncRoute(async (req, res) =>
-    res.json(await getSuggestionsSnapshot(Number(req.params.id), req.user))
+    res.json(await getSuggestionsSnapshot(idDeRoute(req.params.id, 'Demande'), req.user))
   )
 );
 
 requestsRouter.get(
   '/:id/events',
-  asyncRoute(async (req, res) => res.json(await getEvents(Number(req.params.id), req.user)))
+  asyncRoute(async (req, res) => res.json(await getEvents(idDeRoute(req.params.id, 'Demande'), req.user)))
 );

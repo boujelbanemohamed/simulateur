@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
-import { Champ, ErreurApi, Message, formaterDate } from '../components/ui.jsx';
+import { Champ, ErreurApi, Message, Tableau, formaterDate } from '../components/ui.jsx';
 
 export default function AdminBanksPage() {
   const [banques, setBanques] = useState([]);
@@ -82,7 +82,8 @@ export default function AdminBanksPage() {
           <div className="grille">
             <Champ label="Code banque" name="code" requis value={formulaire.code}
               onChange={(e) => setFormulaire((f) => ({ ...f, code: e.target.value }))}
-              erreur={erreursChamps.code} disabled={Boolean(formulaire.id)}
+              erreur={erreursChamps.code ?? (erreur?.status === 409 ? erreur.message : undefined)}
+              disabled={Boolean(formulaire.id)}
               aide="2 à 16 caractères, normalisé en majuscules" />
             <Champ label="Raison sociale" name="name" requis value={formulaire.name}
               onChange={(e) => setFormulaire((f) => ({ ...f, name: e.target.value }))}
@@ -100,6 +101,7 @@ export default function AdminBanksPage() {
       )}
 
       <div className="carte">
+        <Tableau>
         <table>
           <thead>
             <tr>
@@ -141,6 +143,7 @@ export default function AdminBanksPage() {
             ))}
           </tbody>
         </table>
+        </Tableau>
         <p className="champ__aide" style={{ marginTop: '0.75rem' }}>
           Une banque ne peut être désactivée que si elle ne compte plus aucun compte actif.
           Ses demandes déjà enregistrées sont conservées.

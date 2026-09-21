@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { pool, withTransaction } from './pool.js';
 import { migrate } from './migrate.js';
 import { rechargerCatalogue } from '../services/mccCatalog.js';

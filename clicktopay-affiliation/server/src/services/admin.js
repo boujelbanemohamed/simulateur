@@ -1,9 +1,12 @@
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 import { query, withTransaction } from '../db/pool.js';
 import { badRequest, conflict, forbidden, notFound } from '../middleware/errors.js';
 import { getMcc, rechargerCatalogue } from './mccCatalog.js';
 
 const SALT_ROUNDS = 10;
+
+/** Clé arbitraire mais stable du verrou protégeant la population d'administrateurs. */
+const VERROU_ADMINISTRATEURS = 4242;
 
 async function journaliser(client, { userId, entity, entityId, action, payload = {} }) {
   await client.query(
@@ -45,8 +48,14 @@ export async function listUsers({ search, bankId, role } = {}) {
     conditions.push(`(u.email ILIKE ${p} OR u.first_name ILIKE ${p} OR u.last_name ILIKE ${p})`);
   }
   if (bankId) {
-    values.push(Number(bankId));
+    // Un filtre illisible ne doit pas remonter en erreur PostgreSQL.
+    const identifiant = Number(bankId);
+    if (!Number.isInteger(identifiant)) throw badRequest(`Banque invalide : « ${bankId} »`);
+    values.push(identifiant);
     conditions.push(`u.bank_id = $${values.length}`);
+  }
+  if (role && !['AGENT', 'BANQUIER', 'ADMIN'].includes(role)) {
+    throw badRequest(`Rôle invalide : « ${role} »`);
   }
   if (role) {
     values.push(role);
@@ -114,11 +123,10 @@ export async function updateUser({ id, payload, user }) {
       throw forbidden('Vous ne pouvez pas désactiver votre propre compte.');
     }
   }
-  if (avant.role === 'ADMIN' && (payload.role !== undefined || payload.active === false)) {
-    await assertResteUnAdmin(id, payload);
-  }
-
   await withTransaction(async (client) => {
+    if (avant.role === 'ADMIN') {
+      await assertResteUnAdmin(client, id, payload);
+    }
     if (payload.bankId !== undefined) await assertBanqueActive(client, payload.bankId);
     if (payload.email !== undefined) {
       const existe = await client.query(
@@ -151,17 +159,31 @@ export async function updateUser({ id, payload, user }) {
   return getUser(id);
 }
 
-/** Refuse de retirer le dernier administrateur actif de la plateforme. */
-async function assertResteUnAdmin(id, payload) {
+/**
+ * Refuse de retirer le dernier administrateur actif de la plateforme.
+ *
+ * Le comptage doit se faire dans la transaction appelante ET verrouiller les
+ * lignes comptées : exécuté en dehors, deux administrateurs qui se rétrogradent
+ * simultanément voient chacun l'autre et la plateforme se retrouve sans aucun
+ * administrateur, sans autre issue qu'une intervention SQL directe.
+ */
+async function assertResteUnAdmin(client, id, payload) {
   const perdLeRole = payload.role !== undefined && payload.role !== 'ADMIN';
   const estDesactive = payload.active === false;
   if (!perdLeRole && !estDesactive) return;
 
-  const { rows } = await query(
-    "SELECT COUNT(*)::int AS total FROM users WHERE role = 'ADMIN' AND active AND id <> $1",
+  // Verrou consultatif de transaction : il sérialise toutes les mutations du
+  // périmètre « administrateurs ». Un FOR UPDATE sur les lignes suffirait à
+  // protéger l'invariant, mais deux rétrogradations croisées se verrouilleraient
+  // mutuellement et PostgreSQL trancherait par un interblocage (erreur 500) ;
+  // ici la seconde transaction attend, puis se voit refuser proprement.
+  await client.query('SELECT pg_advisory_xact_lock($1)', [VERROU_ADMINISTRATEURS]);
+
+  const { rows } = await client.query(
+    "SELECT id FROM users WHERE role = 'ADMIN' AND active AND id <> $1",
     [id]
   );
-  if (rows[0].total === 0) {
+  if (rows.length === 0) {
     throw conflict("Impossible : la plateforme doit conserver au moins un administrateur actif.");
   }
 }
@@ -172,7 +194,8 @@ export async function resetPassword({ id, password, user }) {
   await withTransaction(async (client) => {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     await client.query(
-      'UPDATE users SET password_hash = $1, must_change_password = TRUE, updated_at = now() WHERE id = $2',
+      `UPDATE users SET password_hash = $1, must_change_password = TRUE,
+              password_changed_at = now(), updated_at = now() WHERE id = $2`,
       [hash, id]
     );
     await journaliser(client, {
@@ -194,7 +217,8 @@ export async function changeOwnPassword({ user, currentPassword, newPassword }) 
   }
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
   await query(
-    'UPDATE users SET password_hash = $1, must_change_password = FALSE, updated_at = now() WHERE id = $2',
+    `UPDATE users SET password_hash = $1, must_change_password = FALSE,
+            password_changed_at = now(), updated_at = now() WHERE id = $2`,
     [hash, user.id]
   );
   return { changed: true };

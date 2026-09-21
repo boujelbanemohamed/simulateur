@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api/client.js';
 import { useAuth } from '../auth/AuthContext.jsx';
-import { CarteMcc, Champ, ErreurApi, Message, Statut, formaterDate } from '../components/ui.jsx';
+import { CarteMcc, Champ, ErreurApi, Message, Statut, formaterDate, libelleLivraison } from '../components/ui.jsx';
 
 const LIBELLES_EVENEMENT = {
   CREATION: 'Demande créée',
@@ -64,6 +64,9 @@ export default function RequestDetailPage() {
       await charger();
     } catch (err) {
       setErreur(err);
+      // Un 409 signifie que la demande a changé d'état ailleurs : rester sur
+      // l'ancien affichage laisserait le banquier réessayer indéfiniment.
+      if (err.status === 409) await charger();
     } finally {
       setEnvoi(false);
     }
@@ -76,6 +79,7 @@ export default function RequestDetailPage() {
       await charger();
     } catch (err) {
       setErreur(err);
+      if (err.status === 409) await charger();
     } finally {
       setEnvoi(false);
     }
@@ -88,6 +92,7 @@ export default function RequestDetailPage() {
     isAgent && ['BROUILLON', 'COMPLEMENT_REQUIS'].includes(demande.status) &&
     (demande.createdBy === user.id || user.role === 'ADMIN');
   const arbitrable = isBanquier && demande.status === 'SOUMISE';
+  const erreursChamps = erreur?.fieldErrors ?? {};
   const mccModifie =
     demande.status === 'VALIDEE' &&
     (demande.finalVisaMcc !== demande.proposedVisaMcc ||
@@ -183,7 +188,7 @@ export default function RequestDetailPage() {
             <p className="mcc__description">{demande.activityDescription}</p>
             {demande.productTypes && <p className="mcc__description">{demande.productTypes}</p>}
             <dl>
-              <Ligne libelle="Mode de livraison" valeur={demande.deliveryMode} />
+              <Ligne libelle="Mode de livraison" valeur={libelleLivraison(demande.deliveryMode)} />
               <Ligne libelle="Paiement récurrent" valeur={demande.hasSubscription ? 'Oui' : 'Non'} />
               <Ligne libelle="Place de marché" valeur={demande.isMarketplace ? 'Oui' : 'Non'} />
               <Ligne libelle="Vente à l'international" valeur={demande.sellsAbroad ? 'Oui' : 'Non'} />
@@ -218,17 +223,25 @@ export default function RequestDetailPage() {
               </p>
               <div className="grille grille--2">
                 <Champ label="MCC Visa retenu" name="visaMcc" className="mono" value={arbitrage.visaMcc}
+                  erreur={erreursChamps.visaMcc}
                   onChange={(e) => setArbitrage((a) => ({ ...a, visaMcc: e.target.value }))}
                   placeholder="5977" />
                 <Champ label="MCC Mastercard retenu" name="mastercardMcc" value={arbitrage.mastercardMcc}
+                  erreur={erreursChamps.mastercardMcc}
                   onChange={(e) => setArbitrage((a) => ({ ...a, mastercardMcc: e.target.value }))}
                   placeholder="5977" />
               </div>
-              <Champ label="Commentaire" name="comment">
+              <Champ label="Commentaire" name="comment" erreur={erreursChamps.comment}>
                 <textarea id="champ-comment" value={arbitrage.comment}
                   onChange={(e) => setArbitrage((a) => ({ ...a, comment: e.target.value }))}
                   placeholder="Motif de la décision, code substitué, pièce manquante…" />
               </Champ>
+              {erreur && (
+                <Message type="erreur" titre={erreur.message}>
+                  {erreur.details?.length > 0 &&
+                    erreur.details.map((d) => d.message).join(' ; ')}
+                </Message>
+              )}
               <div className="barre-actions">
                 <button type="button" className="bouton bouton--valider" disabled={envoi}
                   onClick={() => decider('VALIDEE')}>
@@ -250,8 +263,8 @@ export default function RequestDetailPage() {
             <div className="carte">
               <h2>Propositions du moteur</h2>
               <p className="champ__aide">
-                Codes proposés au moment de la soumission, classés par pertinence. Cliquez pour
-                les reporter dans l'arbitrage.
+                Codes proposés au moment de la soumission, classés par pertinence.
+                {arbitrable && ' Cliquez sur un code pour le reporter dans l’arbitrage.'}
               </p>
               <div className="mcc-liste">
                 {propositions.VISA.map((mcc) => (

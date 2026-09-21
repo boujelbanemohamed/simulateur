@@ -1,17 +1,35 @@
 import { Router } from 'express';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
+import { config } from '../config.js';
 import { query } from '../db/pool.js';
 import { asyncRoute, unauthorized, validate } from '../middleware/errors.js';
 import { authenticate, signToken } from '../middleware/auth.js';
 import { loginSchema } from '../services/requestSchema.js';
 import { changePasswordSchema } from '../services/adminSchema.js';
 import { changeOwnPassword } from '../services/admin.js';
+import { createRateLimiter } from '../middleware/rateLimit.js';
+
+/**
+ * Deux clés par tentative : l'adresse IP (freine un balayage de comptes depuis
+ * une même source) et le compte visé (freine une attaque distribuée sur un
+ * compte précis).
+ */
+export const loginLimiter = createRateLimiter({
+  windowMs: config.loginRateLimitWindowMs,
+  max: config.loginRateLimitMax,
+  message: 'Trop de tentatives de connexion. Réessayez dans quelques minutes.',
+  keyGenerator: (req) => [
+    `ip:${req.ip}`,
+    req.body?.email ? `compte:${String(req.body.email).toLowerCase()}` : null,
+  ],
+});
 
 export const authRouter = Router();
 
 authRouter.post(
   '/login',
   validate(loginSchema),
+  loginLimiter,
   asyncRoute(async (req, res) => {
     const { email, password } = req.body;
     const { rows } = await query(
@@ -27,6 +45,7 @@ authRouter.post(
     if (!(await bcrypt.compare(password, user.password_hash))) throw invalid;
 
     await query('UPDATE users SET last_login_at = now() WHERE id = $1', [user.id]);
+    loginLimiter.reset(req);
 
     res.json({
       token: signToken(user),

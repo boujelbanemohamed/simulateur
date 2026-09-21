@@ -69,10 +69,20 @@ const texte = (valeur) => {
   return propre === '' ? null : propre;
 };
 
+/**
+ * Découpe une cellule de mots-clés.
+ *
+ * Le retour à la ligne prime : c'est le séparateur produit à l'export, et
+ * certains mots-clés contiennent eux-mêmes une virgule (« local, suburban
+ * commuter »). Découper sur la virgule dans ce cas les scinderait en deux à
+ * chaque aller-retour. Sans retour à la ligne, on accepte la virgule et le
+ * point-virgule, que les équipes métier utilisent naturellement.
+ */
 const motsCles = (valeur) => {
   const brut = texte(valeur);
   if (!brut) return undefined;
-  return brut.split(/[,;\n]/).map((m) => m.trim()).filter(Boolean);
+  const separateur = /[\r\n]/.test(brut) ? /[\r\n]+/ : /[,;]/;
+  return brut.split(separateur).map((m) => m.trim()).filter(Boolean);
 };
 
 /**
@@ -206,7 +216,9 @@ export async function ecrireReferentiel(codes, format = 'xlsx') {
       code: mcc.code,
       label: mcc.label,
       description: mcc.description,
-      keywords: (mcc.keywords ?? []).join(', '),
+      // Un mot-clé par ligne : certains contiennent une virgule (« local, suburban
+      // commuter ») et un séparateur virgule les scinderait à la relecture.
+      keywords: (mcc.keywords ?? []).join('\n'),
       ecommerceRelevance: LIBELLE_PERTINENCE[mcc.ecommerceRelevance] ?? mcc.ecommerceRelevance,
       riskLevel: LIBELLE_VIGILANCE[mcc.riskLevel] ?? mcc.riskLevel,
       note: mcc.note ?? '',
@@ -216,6 +228,8 @@ export async function ecrireReferentiel(codes, format = 'xlsx') {
   }
   // Le code reste du texte : Excel ne doit pas transformer 5977 en nombre au réenregistrement.
   feuille.getColumn('code').numFmt = '@';
+  feuille.getColumn('keywords').alignment = { wrapText: true, vertical: 'top' };
+  feuille.getColumn('description').alignment = { wrapText: true, vertical: 'top' };
 
   return format === 'csv'
     ? Buffer.from(await classeur.csv.writeBuffer())

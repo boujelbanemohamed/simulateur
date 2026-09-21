@@ -102,17 +102,53 @@ Toutes ces actions alimentent le journal d'administration (onglet **Journal**).
 - Toute modification s'applique immédiatement aux propositions faites aux agents,
   sans redéploiement.
 
-### Import d'une nouvelle édition
+### Import en masse : Excel et CSV
 
-L'onglet **Import du référentiel** accepte un fichier JSON (tableau d'objets
-`code`, `label`, `description`, `keywords`, `ecommerceRelevance`, `riskLevel`).
-L'import se fait en deux temps :
+Pour un code isolé, aucun fichier n'est nécessaire : l'onglet **Référentiel MCC**
+écrit directement en base. L'onglet **Import du référentiel** ne sert qu'à
+répercuter plusieurs centaines de codes d'un coup, par exemple à la parution
+d'une nouvelle édition du manuel Visa.
 
-1. **Analyse** — un rapport d'écart liste les codes ajoutés, modifiés (champ par
-   champ, avant et après) et absents du fichier. Rien n'est écrit.
-2. **Application** — après confirmation. Les codes absents du fichier ne sont
-   désactivés que si la case correspondante est cochée, et ne sont jamais
-   supprimés. Chaque code touché est historisé avec le motif de l'import.
+Le cycle prévu est celui des équipes métier :
+
+1. **Télécharger** le référentiel courant en `.xlsx` ou en `.csv`.
+2. **Corriger dans Excel**, puis réimporter le même fichier.
+3. **Analyse** — un rapport d'écart liste les codes ajoutés, modifiés (champ par
+   champ, avant et après) et absents du fichier. Rien n'est écrit à ce stade.
+4. **Application** — après une confirmation explicite. Les codes absents du
+   fichier ne sont désactivés que si la case correspondante est cochée, et ne
+   sont jamais supprimés. Chaque code touché est historisé avec le motif.
+
+La lecture est faite pour des fichiers produits par des humains :
+
+- l'ordre des colonnes est libre et les colonnes supplémentaires sont ignorées ;
+- les en-têtes sont reconnus avec leurs variantes (`Code`, `Code MCC`, `MCC` ;
+  `Libellé`, `Intitulé`, `Désignation` ; `Vigilance`, `Niveau de risque`…) ;
+- les valeurs métier sont traduites (`Forte`/`Moyenne`/`Faible`,
+  `Standard`/`Sensible`/`Interdit`) ;
+- un code rendu en nombre par Excel est normalisé, les mots-clés se séparent par
+  virgule, point-virgule ou retour à la ligne ;
+- une ligne illisible, un code en doublon ou une valeur non reconnue **remontent
+  dans un rapport d'anomalies avec leur numéro de ligne**, jamais en silence.
+
+L'aller-retour export → réimport est vérifié sans perte sur les 279 codes, dans
+les deux formats. Un référentiel en JSON reste accepté pour un usage technique.
+
+## Recette
+
+L'application a été passée en revue par deux recettes indépendantes — une sur
+l'API, une pilotant un vrai navigateur. Les défauts trouvés sont corrigés et
+couverts par des tests. Deux points restent ouverts et relèvent d'une décision
+métier :
+
+- **Le profil `ADMIN` cumule les droits d'agent et de banquier**, sur toutes les
+  banques : il peut saisir une demande, la soumettre et l'arbitrer seul. C'est
+  pratique en exploitation, mais cela supprime le contrôle à quatre yeux. À
+  trancher avec la conformité.
+- **Le cache du référentiel est propagé par `LISTEN/NOTIFY`** entre instances.
+  C'est suffisant pour un cluster classique, mais une notification perdue
+  (redémarrage d'une instance pendant l'écriture) laisserait un cache périmé
+  jusqu'au prochain changement.
 
 ## Le référentiel MCC
 
@@ -217,19 +253,38 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 | POST | `/api/admin/mcc` | admin | Ajout d'un code |
 | PUT | `/api/admin/mcc/:code` | admin | Modification ou (dés)activation d'un code |
 | GET | `/api/admin/mcc/:code/history` | admin | Historique d'un code |
+| GET | `/api/admin/mcc/export` | admin | Référentiel courant en `.xlsx` ou `.csv` |
+| POST | `/api/admin/mcc/import-fichier` | admin | Lecture d'un fichier Excel/CSV : lignes, anomalies et rapport d'écart |
 | POST | `/api/admin/mcc/import` | admin | Rapport d'écart, puis application |
 | GET | `/api/admin/events` | admin | Journal d'administration |
 
 ## Règles de sécurité appliquées
 
-- Mots de passe hachés avec bcrypt ; message d'erreur identique que le compte
-  existe ou non, pour empêcher l'énumération.
+- Mots de passe hachés avec bcrypt (implémentation native, hors boucle
+  d'événements) ; message d'erreur identique que le compte existe ou non, pour
+  empêcher l'énumération.
+- **Limitation de débit sur la connexion** : 10 tentatives par fenêtre de
+  15 minutes, comptées par adresse IP *et* par compte visé, remises à zéro par
+  une authentification réussie. Réglable par `LOGIN_RATE_LIMIT_MAX`. En
+  déploiement multi-instances, ce compteur doit être déporté (Redis ou
+  répartiteur de charge) : il vit dans le processus.
+- **Les droits sont relus en base à chaque requête**, jamais déduits du jeton :
+  un compte désactivé, une banque désactivée, un changement de rôle ou une
+  mutation de banque prennent effet immédiatement, sans attendre l'expiration.
+- **Une réinitialisation de mot de passe ferme les sessions ouvertes** : tout
+  jeton émis avant le dernier changement est refusé.
 - Cloisonnement par banque : une demande n'est lisible que par les utilisateurs de
   la banque émettrice (l'`ADMIN` voit tout).
 - Rôles vérifiés côté serveur sur chaque route sensible, jamais uniquement dans
   l'interface.
 - Validation de tous les corps de requête par zod, avec retour d'erreur champ par
-  champ.
+  champ. **Aucune coercition permissive** : la chaîne `"false"` ne vaut pas
+  `true`, une date inexistante, un montant hors capacité de colonne ou un octet
+  NUL sont refusés en 400 plutôt que remontés en erreur 500.
+- **Garde-fous de concurrence** : les transitions de statut sont portées par la
+  clause `WHERE` de la mise à jour, et la population d'administrateurs est
+  protégée par un verrou consultatif. Deux décisions, deux soumissions ou deux
+  rétrogradations simultanées ne peuvent plus aboutir ensemble.
 - MCC `INTERDIT` ou désactivés refusés côté API, et pas seulement masqués dans
   l'interface.
 - Obligation de changer un mot de passe réinitialisé imposée par le serveur, pas
@@ -241,8 +296,8 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 
 ```bash
 cd server
-npm test      # 58 tests : authentification, référentiel, moteur, workflow,
-              # habilitations et administration
+npm test      # 84 tests : authentification, référentiel, moteur, workflow,
+              # habilitations, administration, robustesse et concurrence
 ```
 
 Les tests utilisent la base `clicktopay_test`, rejouée à chaque exécution. Ils
@@ -252,3 +307,11 @@ cycle complément requis → re-soumission, le blocage tant qu'un mot de passe
 réinitialisé n'est pas changé, la protection du dernier administrateur, l'effet
 immédiat d'un changement de vigilance sur le moteur, et le fait qu'un `db:seed`
 ne réécrit pas les ajustements de la conformité.
+
+`tests/robustesse.test.js` est une suite adversariale, écrite à partir des
+défauts relevés en recette : types hostiles (chaînes `"false"`, dates
+impossibles, montants hors bornes, octets NUL, identifiants non numériques),
+concurrence réelle (deux décisions, deux soumissions, deux rétrogradations
+d'administrateurs, deux créations du même MCC en parallèle), cycle de vie des
+jetons (désactivation, mutation de banque, réinitialisation) et aller-retour
+Excel/CSV du référentiel.

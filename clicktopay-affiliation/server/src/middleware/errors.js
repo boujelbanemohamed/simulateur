@@ -29,6 +29,26 @@ export function errorHandler(err, req, res, next) {
   });
 }
 
+/**
+ * Identifiant de route : `Number('abc')` vaut NaN et partait jusqu'à PostgreSQL,
+ * qui répondait par une erreur 500 au lieu d'un 400 explicite.
+ */
+export function idDeRoute(valeur, nom = 'identifiant') {
+  const nombre = Number(valeur);
+  if (!Number.isInteger(nombre) || nombre < 1 || nombre > 2147483647) {
+    throw badRequest(`${nom} invalide : « ${valeur} »`);
+  }
+  return nombre;
+}
+
+/** Entier de requête borné (pagination, limites) : jamais négatif, jamais NaN. */
+export function entierDeRequete(valeur, { defaut, min = 0, max }) {
+  if (valeur === undefined || valeur === '') return defaut;
+  const nombre = Number(valeur);
+  if (!Number.isFinite(nombre)) return defaut;
+  return Math.min(Math.max(Math.trunc(nombre), min), max);
+}
+
 /** Valide `req.body` avec un schéma zod et remplace le corps par la valeur typée. */
 export const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);

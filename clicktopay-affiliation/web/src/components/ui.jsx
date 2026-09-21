@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+
 /** Briques d'interface partagées par les écrans agent et banquier. */
 
 const STATUTS = {
@@ -40,6 +42,40 @@ export function Case({ label, name, checked, onChange }) {
   );
 }
 
+/** Libellés métier des champs, pour que les erreurs parlent à l'utilisateur. */
+const LIBELLES_CHAMPS = {
+  siteName: 'Nom du site', siteUrl: 'Adresse du site', siteLanguages: 'Langues du site',
+  companyName: 'Raison sociale', legalForm: 'Forme juridique', rne: 'RNE',
+  taxId: 'Matricule fiscal', companyCreatedOn: 'Date de création', shareCapital: 'Capital social',
+  contactFirstName: 'Prénom du contact', contactLastName: 'Nom du contact',
+  contactEmail: 'Adresse e-mail', contactPhone: 'Téléphone',
+  addressLine1: 'Adresse', addressLine2: "Complément d'adresse", city: 'Ville',
+  postalCode: 'Code postal', governorate: 'Gouvernorat', country: 'Pays',
+  activitySector: "Secteur d'activité", activityDescription: "Description de l'activité",
+  productTypes: 'Types de produits', deliveryMode: 'Mode de livraison',
+  hasSubscription: 'Paiement récurrent', isMarketplace: 'Place de marché',
+  sellsAbroad: "Vente à l'international", averageBasket: 'Panier moyen',
+  monthlyVolume: 'Volume mensuel', currency: 'Devise',
+  rib: 'RIB', accountHolder: 'Titulaire du compte', bankAgency: 'Agence',
+  proposedVisaMcc: 'MCC Visa', proposedMastercardMcc: 'MCC Mastercard',
+  proposedJustification: 'Justification', visaMcc: 'MCC Visa', mastercardMcc: 'MCC Mastercard',
+  comment: 'Commentaire', decision: 'Décision',
+  email: 'Adresse e-mail', firstName: 'Prénom', lastName: 'Nom', role: 'Rôle',
+  bankId: 'Banque', password: 'Mot de passe', currentPassword: 'Mot de passe actuel',
+  newPassword: 'Nouveau mot de passe', active: 'Statut', name: 'Raison sociale', code: 'Code',
+  label: 'Libellé', description: 'Description', keywords: 'Mots-clés',
+  ecommerceRelevance: 'Pertinence', riskLevel: 'Niveau de vigilance', note: 'Note',
+};
+
+export const libelleChamp = (champ) => {
+  // Les erreurs d'import sont indexées « entrees.12.riskLevel ».
+  const segments = String(champ ?? '').split('.');
+  const dernier = segments[segments.length - 1];
+  const libelle = LIBELLES_CHAMPS[dernier] ?? dernier;
+  const ligne = segments.length === 3 ? ` (ligne ${Number(segments[1]) + 1})` : '';
+  return `${libelle}${ligne}`;
+};
+
 export function Message({ type = 'info', titre, children }) {
   if (!children && !titre) return null;
   return (
@@ -50,22 +86,44 @@ export function Message({ type = 'info', titre, children }) {
   );
 }
 
-/** Restitue une ApiError : message principal + détail champ par champ. */
+/**
+ * Restitue une ApiError : message principal + détail champ par champ.
+ *
+ * Le bandeau s'amène dans le champ de vision : sur les écrans longs (arbitrage
+ * du banquier, formulaire en 5 étapes), il s'insérait en haut de page, hors de
+ * l'écran, et l'utilisateur ne voyait tout simplement rien se passer.
+ */
 export function ErreurApi({ erreur }) {
+  const bandeau = useRef(null);
+
+  useEffect(() => {
+    if (erreur && bandeau.current) {
+      bandeau.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      bandeau.current.focus({ preventScroll: true });
+    }
+  }, [erreur]);
+
   if (!erreur) return null;
   return (
-    <Message type="erreur" titre={erreur.message}>
-      {erreur.details?.length > 0 && (
-        <ul>
-          {erreur.details.map((d, i) => (
-            <li key={i}>
-              <strong>{d.champ}</strong> : {d.message}
-            </li>
-          ))}
-        </ul>
-      )}
-    </Message>
+    <div ref={bandeau} tabIndex={-1} style={{ outline: 'none' }}>
+      <Message type="erreur" titre={erreur.message}>
+        {erreur.details?.length > 0 && (
+          <ul>
+            {erreur.details.map((d, i) => (
+              <li key={i}>
+                <strong>{libelleChamp(d.champ)}</strong> : {d.message}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Message>
+    </div>
   );
+}
+
+/** Enveloppe un tableau pour qu'il défile seul sur petit écran. */
+export function Tableau({ children }) {
+  return <div className="tableau">{children}</div>;
 }
 
 const classeScore = (score) =>
@@ -115,6 +173,15 @@ export function CarteMcc({ mcc, choisi, onChoisir, montrerVo = true, action }) {
     </Balise>
   );
 }
+
+export const MODES_LIVRAISON = {
+  PHYSIQUE: 'Biens physiques livrés',
+  NUMERIQUE: 'Biens numériques téléchargés',
+  SERVICE: 'Prestation de service',
+  MIXTE: 'Mixte',
+};
+
+export const libelleLivraison = (mode) => MODES_LIVRAISON[mode] ?? mode;
 
 export const formaterDate = (valeur) =>
   valeur

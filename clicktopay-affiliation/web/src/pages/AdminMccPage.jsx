@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
-import { Champ, ErreurApi, Message, formaterDate } from '../components/ui.jsx';
+import { Champ, ErreurApi, Message, Tableau, formaterDate } from '../components/ui.jsx';
 
 const PERTINENCES = [
   { valeur: 'HIGH', libelle: 'Forte' },
@@ -45,7 +45,8 @@ const versPayload = (formulaire) => ({
 export default function AdminMccPage() {
   const [recherche, setRecherche] = useState('');
   const [codes, setCodes] = useState([]);
-  const [totaux, setTotaux] = useState({ total: 0, actifs: 0 });
+  const [totaux, setTotaux] = useState({ total: 0, actifs: 0, count: 0 });
+  const [limite, setLimite] = useState(60);
   const [formulaire, setFormulaire] = useState(null);
   const [creation, setCreation] = useState(false);
   const [historique, setHistorique] = useState(null);
@@ -55,14 +56,14 @@ export default function AdminMccPage() {
 
   const charger = useCallback(async () => {
     try {
-      const res = await api.admin.listMcc({ search: recherche, limit: 60 });
+      const res = await api.admin.listMcc({ search: recherche, limit: limite });
       setCodes(res.items);
-      setTotaux({ total: res.total, actifs: res.actifs });
+      setTotaux({ total: res.total, actifs: res.actifs, count: res.count });
       setErreur(null);
     } catch (err) {
       setErreur(err);
     }
-  }, [recherche]);
+  }, [recherche, limite]);
 
   useEffect(() => {
     const timer = setTimeout(charger, recherche ? 250 : 0);
@@ -71,10 +72,10 @@ export default function AdminMccPage() {
 
   const maj = (cle) => (e) => setFormulaire((f) => ({ ...f, [cle]: e.target.value }));
 
-  const ouvrir = async (code) => {
+  const ouvrir = async (code, { conserverMessage = false } = {}) => {
     setErreur(null);
     setCreation(false);
-    setInfo(null);
+    if (!conserverMessage) setInfo(null);
     try {
       const [mcc, histo] = await Promise.all([api.admin.getMcc(code), api.admin.mccHistory(code)]);
       setFormulaire(versFormulaire(mcc));
@@ -100,7 +101,8 @@ export default function AdminMccPage() {
       setFormulaire(null);
       setCreation(false);
       await charger();
-      if (!creation) await ouvrir(code);
+      // `ouvrir` réinitialise le bandeau : ici on veut que la confirmation reste.
+      if (!creation) await ouvrir(code, { conserverMessage: true });
     } catch (err) {
       setErreur(err);
     } finally {
@@ -117,7 +119,7 @@ export default function AdminMccPage() {
       });
       setInfo(`MCC ${mcc.code} ${mcc.active ? 'désactivé' : 'réactivé'}.`);
       await charger();
-      if (formulaire?.code === mcc.code) await ouvrir(mcc.code);
+      if (formulaire?.code === mcc.code) await ouvrir(mcc.code, { conserverMessage: true });
     } catch (err) {
       setErreur(err);
     }
@@ -234,13 +236,17 @@ export default function AdminMccPage() {
 
       <div className="carte">
         <div className="carte__entete">
-          <h2>{codes.length} code(s) affiché(s)</h2>
+          <h2>
+            {codes.length} code(s) affiché(s)
+            {codes.length >= limite && limite < totaux.total && ` sur ${totaux.total}`}
+          </h2>
           <div className="filtres">
             <Champ label="Recherche" name="recherche" value={recherche}
               onChange={(e) => setRecherche(e.target.value)} placeholder="Code ou activité…" />
           </div>
         </div>
 
+        <Tableau>
         <table>
           <thead>
             <tr>
@@ -286,6 +292,23 @@ export default function AdminMccPage() {
             ))}
           </tbody>
         </table>
+        </Tableau>
+
+        {codes.length >= limite && limite < totaux.total && (
+          <div className="barre-actions" style={{ marginTop: '0.9rem' }}>
+            <span className="champ__aide">
+              La liste est tronquée : {totaux.total - codes.length} code(s) ne sont pas affichés.
+            </span>
+            <button type="button" className="bouton bouton--secondaire bouton--petit"
+              onClick={() => setLimite((l) => l + 120)}>
+              Afficher 120 codes de plus
+            </button>
+            <button type="button" className="bouton bouton--secondaire bouton--petit"
+              onClick={() => setLimite(300)}>
+              Tout afficher
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
