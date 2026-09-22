@@ -72,15 +72,51 @@ export async function getUser(id) {
   return versUtilisateur(rows[0]);
 }
 
+/** Contrôle la banque de rattachement et rend son code, lisible dans le journal. */
 async function assertBanqueActive(client, bankId) {
-  const { rows } = await client.query('SELECT active FROM banks WHERE id = $1', [bankId]);
+  const { rows } = await client.query('SELECT code, active FROM banks WHERE id = $1', [bankId]);
   if (!rows[0]) throw badRequest(`Banque ${bankId} introuvable`);
   if (!rows[0].active) throw badRequest('Cette banque est désactivée : aucun compte ne peut y être rattaché.');
+  return rows[0].code;
+}
+
+/**
+ * Valeurs avant et après d'une modification, pour le journal d'administration.
+ *
+ * Ne consigner que les NOMS des champs touchés produit un accusé de réception,
+ * pas une piste d'audit : on savait qu'un rôle avait changé, jamais de quoi vers
+ * quoi. Un champ soumis avec sa valeur actuelle n'apparaît pas ; si rien ne
+ * change, la ligne reste écrite et porte `sansEffet`, car un appel doit rester
+ * traçable même lorsqu'il ne modifie rien.
+ */
+function tracerChamps(champs) {
+  const traces = {};
+  for (const [cle, { avant, apres }] of Object.entries(champs)) {
+    if (apres === undefined) continue;
+    if (JSON.stringify(avant ?? null) === JSON.stringify(apres)) continue;
+    traces[cle] = { avant: avant ?? null, apres };
+  }
+  return Object.keys(traces).length > 0 ? { champs: traces } : { champs: {}, sansEffet: true };
+}
+
+/**
+ * Traduit la violation de l'index unique sur `lower(email)`.
+ *
+ * Le contrôle applicatif qui précède l'écriture ne protège de rien en
+ * concurrence : deux créations simultanées de la même adresse le passent toutes
+ * les deux, et c'est la base qui tranche. Sans cette traduction, le perdant
+ * recevrait un 500 là où un 409 explicite est attendu.
+ */
+const CONTRAINTES_EMAIL = new Set(['idx_users_email_lower', 'users_email_key']);
+
+function traduireConflitEmail(err, message) {
+  if (err.code === '23505' && CONTRAINTES_EMAIL.has(err.constraint)) throw conflict(message);
+  throw err;
 }
 
 export async function createUser({ payload, user }) {
   const id = await withTransaction(async (client) => {
-    await assertBanqueActive(client, payload.bankId);
+    const codeBanque = await assertBanqueActive(client, payload.bankId);
     const existe = await client.query('SELECT 1 FROM users WHERE lower(email) = lower($1)', [payload.email]);
     if (existe.rowCount > 0) throw conflict(`Un compte existe déjà avec l'adresse ${payload.email}.`);
 
@@ -92,10 +128,12 @@ export async function createUser({ payload, user }) {
     );
     await journaliser(client, {
       userId: user.id, entity: 'USER', entityId: rows[0].id, action: 'CREATION',
-      payload: { email: payload.email, role: payload.role, bankId: payload.bankId },
+      // Le code de la banque, et pas seulement son identifiant : c'est lui qu'un
+      // contrôleur sait lire sans ouvrir une seconde table.
+      payload: { email: payload.email, role: payload.role, bankId: payload.bankId, bankCode: codeBanque },
     });
     return rows[0].id;
-  });
+  }).catch((err) => traduireConflitEmail(err, `Un compte existe déjà avec l'adresse ${payload.email}.`));
   // Relecture hors transaction : getUser passe par le pool et ne verrait pas
   // une écriture encore non validée.
   return getUser(id);
@@ -127,7 +165,10 @@ export async function updateUser({ id, payload, user }) {
     if (avant.role === 'ADMIN') {
       await assertResteUnAdmin(client, id, payload);
     }
-    if (payload.bankId !== undefined) await assertBanqueActive(client, payload.bankId);
+    let banqueApres = null;
+    if (payload.bankId !== undefined) {
+      banqueApres = { id: payload.bankId, code: await assertBanqueActive(client, payload.bankId) };
+    }
     if (payload.email !== undefined) {
       const existe = await client.query(
         'SELECT 1 FROM users WHERE lower(email) = lower($1) AND id <> $2',
@@ -153,9 +194,19 @@ export async function updateUser({ id, payload, user }) {
     }
     await journaliser(client, {
       userId: user.id, entity: 'USER', entityId: id, action: 'MODIFICATION',
-      payload: { champs: Object.keys(payload) },
+      payload: tracerChamps({
+        firstName: { avant: avant.firstName, apres: payload.firstName },
+        lastName: { avant: avant.lastName, apres: payload.lastName },
+        email: { avant: avant.email, apres: payload.email },
+        role: { avant: avant.role, apres: payload.role },
+        bankId: {
+          avant: { id: avant.bankId, code: avant.bankCode },
+          apres: banqueApres ?? undefined,
+        },
+        active: { avant: avant.active, apres: payload.active },
+      }),
     });
-  });
+  }).catch((err) => traduireConflitEmail(err, `Un autre compte utilise déjà l'adresse ${payload.email}.`));
   return getUser(id);
 }
 
@@ -207,7 +258,10 @@ export async function resetPassword({ id, password, user }) {
 
 /** Changement par l'utilisateur lui-même : l'ancien mot de passe est exigé. */
 export async function changeOwnPassword({ user, currentPassword, newPassword }) {
-  const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [user.id]);
+  const { rows } = await query(
+    'SELECT password_hash, must_change_password FROM users WHERE id = $1',
+    [user.id]
+  );
   if (!rows[0]) throw notFound('Compte introuvable');
   if (!(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
     throw badRequest('Le mot de passe actuel est incorrect.');
@@ -216,11 +270,23 @@ export async function changeOwnPassword({ user, currentPassword, newPassword }) 
     throw badRequest('Le nouveau mot de passe doit être différent de l’ancien.');
   }
   const hash = await bcrypt.hash(newPassword, SALT_ROUNDS);
-  await query(
-    `UPDATE users SET password_hash = $1, must_change_password = FALSE,
-            password_changed_at = now(), updated_at = now() WHERE id = $2`,
-    [hash, user.id]
-  );
+  // Écriture et trace dans la même transaction : un contrôle interne doit
+  // pouvoir établir qu'un compte a changé de mot de passe, et quand. Un journal
+  // qui peut manquer la ligne alors que l'empreinte a changé ne vaut rien.
+  await withTransaction(async (client) => {
+    await client.query(
+      `UPDATE users SET password_hash = $1, must_change_password = FALSE,
+              password_changed_at = now(), updated_at = now() WHERE id = $2`,
+      [hash, user.id]
+    );
+    // Le payload ne porte que la circonstance du changement : ni l'ancien mot de
+    // passe, ni le nouveau, ni leur empreinte n'ont rien à faire dans un journal
+    // consultable par tout administrateur.
+    await journaliser(client, {
+      userId: user.id, entity: 'USER', entityId: user.id, action: 'CHANGEMENT_MOT_DE_PASSE',
+      payload: { impose: Boolean(rows[0].must_change_password) },
+    });
+  });
   return { changed: true };
 }
 
@@ -266,6 +332,7 @@ export async function updateBank({ id, payload, user }) {
   await withTransaction(async (client) => {
     const { rows } = await client.query('SELECT * FROM banks WHERE id = $1', [id]);
     if (!rows[0]) throw notFound(`Banque ${id} introuvable`);
+    const avant = rows[0];
 
     // Désactiver une banque coupe l'accès à ses agents : on l'annonce explicitement.
     if (payload.active === false) {
@@ -293,7 +360,14 @@ export async function updateBank({ id, payload, user }) {
       await client.query(`UPDATE banks SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
     }
     await journaliser(client, {
-      userId: user.id, entity: 'BANK', entityId: id, action: 'MODIFICATION', payload,
+      userId: user.id, entity: 'BANK', entityId: id, action: 'MODIFICATION',
+      payload: tracerChamps({
+        // `code` ne peut pas être soumis aujourd'hui (le schéma de validation ne
+        // l'accepte pas) ; il est tracé pour que l'ouvrir un jour suffise.
+        code: { avant: avant.code, apres: payload.code },
+        name: { avant: avant.name, apres: payload.name },
+        active: { avant: avant.active, apres: payload.active },
+      }),
     });
   });
   const banques = await listBanks();
@@ -302,14 +376,85 @@ export async function updateBank({ id, payload, user }) {
 
 // ------------------------------------------------------------------ Journal
 
-export async function listAdminEvents({ limit = 100 } = {}) {
+const ENTITES_JOURNAL = ['USER', 'BANK', 'MCC'];
+
+/**
+ * Borne calendaire d'un filtre du journal.
+ *
+ * Le seul motif AAAA-MM-JJ laisse passer 2026-02-30, que PostgreSQL rejette
+ * ensuite par une erreur 500 : la date doit exister au calendrier.
+ */
+function jourDeFiltre(valeur) {
+  if (valeur === undefined || valeur === null || valeur === '') return null;
+  const jour = String(valeur);
+  const invalide = badRequest(`Date invalide : « ${jour} ». Format attendu : AAAA-MM-JJ.`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(jour)) throw invalide;
+  const [annee, mois, quantieme] = jour.split('-').map(Number);
+  const date = new Date(Date.UTC(annee, mois - 1, quantieme));
+  if (
+    date.getUTCFullYear() !== annee ||
+    date.getUTCMonth() !== mois - 1 ||
+    date.getUTCDate() !== quantieme
+  ) {
+    throw invalide;
+  }
+  return jour;
+}
+
+/**
+ * Journal d'administration, paginé et filtrable.
+ *
+ * Sans `offset`, les entrées au-delà de la 500e n'étaient plus atteignables par
+ * l'application : il fallait une requête SQL directe pour les lire. Une piste
+ * d'audit qu'on ne peut pas remonter n'en est pas une.
+ */
+export async function listAdminEvents({ limit = 100, offset = 0, entity, action, depuis, jusqua } = {}) {
+  const conditions = [];
+  const values = [];
+
+  if (entity) {
+    if (!ENTITES_JOURNAL.includes(entity)) {
+      throw badRequest(
+        `Entité inconnue : « ${entity} ». Valeurs acceptées : ${ENTITES_JOURNAL.join(', ')}.`
+      );
+    }
+    values.push(entity);
+    conditions.push(`e.entity = $${values.length}`);
+  }
+  if (action) {
+    values.push(action);
+    conditions.push(`e.action = $${values.length}`);
+  }
+
+  const debut = jourDeFiltre(depuis);
+  const fin = jourDeFiltre(jusqua);
+  if (debut && fin && debut > fin) throw badRequest('La date de début doit précéder la date de fin.');
+  if (debut) {
+    values.push(debut);
+    conditions.push(`e.created_at >= $${values.length}::date`);
+  }
+  if (fin) {
+    // Borne haute incluse : le lendemain exclu couvre la journée entière, heure
+    // de fin comprise, ce qu'un `<= jusqua::date` laisserait tomber.
+    values.push(fin);
+    conditions.push(`e.created_at < $${values.length}::date + 1`);
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+  const compte = await query(`SELECT count(*)::int AS total FROM admin_events e ${where}`, values);
+
+  values.push(Math.min(limit, 500), offset);
   const { rows } = await query(
     `SELECT e.*, (u.first_name || ' ' || u.last_name) AS user_name
        FROM admin_events e LEFT JOIN users u ON u.id = e.user_id
-      ORDER BY e.id DESC LIMIT $1`,
-    [Math.min(limit, 500)]
+      ${where}
+      -- L'identifiant départage les entrées du même horodatage : sans lui, deux
+      -- pages successives peuvent montrer deux fois la même ligne, ou en sauter une.
+      ORDER BY e.created_at DESC, e.id DESC
+      LIMIT $${values.length - 1} OFFSET $${values.length}`,
+    values
   );
-  return rows.map((r) => ({
+  const items = rows.map((r) => ({
     id: r.id,
     entity: r.entity,
     entityId: r.entity_id,
@@ -318,6 +463,7 @@ export async function listAdminEvents({ limit = 100 } = {}) {
     userName: r.user_name,
     createdAt: r.created_at,
   }));
+  return { count: items.length, total: compte.rows[0].total, items };
 }
 
 export { journaliser, getMcc, rechargerCatalogue };

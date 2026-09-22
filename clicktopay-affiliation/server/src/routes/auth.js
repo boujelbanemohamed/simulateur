@@ -26,10 +26,14 @@ export const loginLimiter = createRateLimiter({
 
 export const authRouter = Router();
 
+// La limitation passe AVANT la validation : un corps invalide était refusé en
+// 400 sans rien consommer du quota, si bien qu'un balayage d'adresses mal
+// formées ne laissait aucune trace de débit, et qu'alterner corps valides et
+// invalides diluait la consommation d'un attaquant.
 authRouter.post(
   '/login',
-  validate(loginSchema),
   loginLimiter,
+  validate(loginSchema),
   asyncRoute(async (req, res) => {
     const { email, password } = req.body;
     const { rows } = await query(

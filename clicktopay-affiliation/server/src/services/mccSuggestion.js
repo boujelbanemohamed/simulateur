@@ -145,8 +145,16 @@ export function suggestMcc(profile = {}, options = {}) {
 
   // Filet de sécurité : jamais de liste vide renvoyée à l'agent.
   if (scored.length === 0) {
-    const fallback = catalogueActif().find((m) => m.code === '5999');
-    return [{ ...fallback, score: 10, rawScore: 0, matchedTerms: ['aucune correspondance : code de repli'] }];
+    const repli = catalogueActif().find((m) => m.code === '5999');
+    // Le repli lui-même peut avoir été désactivé depuis l'écran du référentiel,
+    // ou retiré par un import. `{ ...undefined }` valant `{}`, l'agent recevait
+    // alors une proposition sans code ni libellé : une carte vide, inutilisable.
+    // Mieux vaut ne rien proposer et le dire.
+    if (!repli) {
+      console.error('Code de repli 5999 absent du référentiel actif');
+      return [];
+    }
+    return [{ ...repli, score: 10, rawScore: 0, matchedTerms: ['aucune correspondance : code de repli'] }];
   }
 
   return scored.slice(0, limit);

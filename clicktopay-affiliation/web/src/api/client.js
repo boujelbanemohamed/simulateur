@@ -125,7 +125,13 @@ export const api = {
     updateMcc: (code, payload) => request(`/admin/mcc/${code}`, { method: 'PUT', body: payload }),
     importMcc: (payload) => request('/admin/mcc/import', { method: 'POST', body: payload }),
 
-    events: (limit = 100) => request(`/admin/events?limit=${limit}`),
+    /** Journal paginé : `params` accepte limit, offset, entity, action, depuis, jusqua. */
+    events: (params = {}) => {
+      const qs = new URLSearchParams(
+        Object.entries({ limit: 100, ...params }).filter(([, v]) => v !== '' && v != null)
+      ).toString();
+      return request(`/admin/events?${qs}`);
+    },
   },
 
   listRequests: (params = {}) => {

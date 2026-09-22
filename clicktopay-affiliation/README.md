@@ -345,7 +345,9 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
   empêcher l'énumération.
 - **Limitation de débit sur la connexion** : 10 tentatives par fenêtre de
   15 minutes, comptées par adresse IP *et* par compte visé, remises à zéro par
-  une authentification réussie. Réglable par `LOGIN_RATE_LIMIT_MAX`. En
+  une authentification réussie. Le compteur est incrémenté **avant** la
+  validation du corps : un balayage d'adresses mal formées consomme le quota au
+  même titre qu'une tentative recevable. Réglable par `LOGIN_RATE_LIMIT_MAX`. En
   déploiement multi-instances, ce compteur doit être déporté (Redis ou
   répartiteur de charge) : il vit dans le processus.
 - **Les droits sont relus en base à chaque requête**, jamais déduits du jeton :

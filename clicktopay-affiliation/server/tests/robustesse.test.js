@@ -695,3 +695,258 @@ describe('Défauts relevés par la recette fonctionnelle (vague 2)', () => {
     }
   });
 });
+
+describe("Écoute du référentiel : reprise après coupure (EVO-07)", () => {
+  let catalogue;
+
+  before(async () => {
+    await resetDatabase();
+    catalogue = await import('../src/services/mccCatalog.js');
+  });
+
+  // La connexion d'écoute est empruntée au lot : sans ce retour, `pool.end()`
+  // attend indéfiniment et la suite ne se termine pas.
+  after(() => catalogue.arreterEcoute());
+
+  /** Attend qu'une condition devienne vraie, sans figer la suite si elle ne l'est jamais. */
+  const attendre = async (condition, limiteMs = 10000) => {
+    const echeance = Date.now() + limiteMs;
+    while (!condition()) {
+      if (Date.now() > echeance) throw new Error('condition jamais atteinte');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  };
+
+  test("une écoute perdue est rétablie, et le catalogue rechargé dans la foulée", async () => {
+    const client = await catalogue.ecouterModifications();
+    assert.equal(catalogue.etatCatalogue().ecoute, 'active');
+
+    // Coupure : c'est l'événement que pg émet quand la connexion tombe.
+    client.emit('error', new Error('connection terminated unexpectedly'));
+    assert.equal(catalogue.etatCatalogue().ecoute, 'perdue');
+
+    // Une écoute perdue ne rend pas l'instance indisponible.
+    const pendantLaCoupure = await request(app).get('/api/health').expect(200);
+    assert.ok(['perdue', 'active'].includes(pendantLaCoupure.body.ecoute));
+
+    // Modification faite pendant la coupure : aucun NOTIFY ne l'annoncera,
+    // puisque personne n'écoute. Seul le rechargement au rétablissement la voit.
+    await pool.query(
+      "UPDATE mcc_codes SET label_fr = 'Libellé posé pendant la coupure' WHERE code = '5999'"
+    );
+    assert.notEqual(catalogue.getMcc('5999').label, 'Libellé posé pendant la coupure');
+
+    await attendre(() => catalogue.etatCatalogue().ecoute === 'active');
+    await attendre(() => catalogue.getMcc('5999').label === 'Libellé posé pendant la coupure');
+
+    const apres = await request(app).get('/api/health').expect(200);
+    assert.equal(apres.body.ecoute, 'active');
+
+    // L'écoute rétablie porte bien sur une NOUVELLE connexion.
+    const repris = await catalogue.ecouterModifications();
+    assert.notEqual(repris, client);
+  });
+
+  test("l'arrêt de l'écoute annule les tentatives de reprise", async () => {
+    const client = await catalogue.ecouterModifications();
+    client.emit('error', new Error('coupure'));
+    assert.equal(catalogue.etatCatalogue().ecoute, 'perdue');
+
+    catalogue.arreterEcoute();
+    assert.equal(catalogue.etatCatalogue().ecoute, 'jamais_etablie');
+
+    // Aucune reprise ne doit survenir après l'arrêt.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    assert.equal(catalogue.etatCatalogue().ecoute, 'jamais_etablie');
+  });
+});
+
+describe('Aucune fuite par les erreurs (EVO-10)', () => {
+  let agent;
+
+  before(async () => {
+    await resetDatabase();
+    agent = { Authorization: `Bearer ${await login('agent')}` };
+  });
+
+  test('un corps JSON tronqué est refusé sans rien citer de ce qui a été reçu', async () => {
+    const res = await request(app)
+      .post('/api/requests')
+      .set(agent)
+      .set('Content-Type', 'application/json')
+      .send('{"siteName":')
+      .expect(400);
+
+    assert.equal(res.body.error, "Le corps de la requête n'est pas un JSON valide.");
+    assert.deepEqual(Object.keys(res.body), ['error'], 'rien d’autre que le message');
+    assert.ok(!JSON.stringify(res.body).includes('siteName'), 'aucun extrait du corps reçu');
+  });
+
+  test('un corps au-delà de la limite est refusé en 413', async () => {
+    const res = await request(app)
+      .post('/api/requests')
+      .set(agent)
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify({ activityDescription: 'x'.repeat(2 * 1024 * 1024) }))
+      .expect(413);
+    assert.equal(res.body.error, 'Le corps de la requête dépasse la taille autorisée (1 Mo).');
+  });
+
+  test('un type de contenu inattendu est refusé en 415', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .set('Content-Type', 'text/plain')
+      .send('email=agent@banque.tn&password=Agent#2026')
+      .expect(415);
+    assert.equal(res.body.error, 'Type de contenu non pris en charge : JSON attendu.');
+  });
+
+  test("une panne applicative ne sort que « Erreur interne du serveur »", async () => {
+    const { pool: lot } = await import('../src/db/pool.js');
+    const vraieRequete = lot.query.bind(lot);
+    // Panne de base au milieu d'une lecture : le détail part au journal serveur,
+    // jamais dans la réponse.
+    lot.query = async () => {
+      throw Object.assign(new Error('relation "affiliation_requests" does not exist'), { code: '42P01' });
+    };
+    try {
+      const res = await request(app).get('/api/requests').set(agent).expect(500);
+      assert.deepEqual(res.body, { error: 'Erreur interne du serveur' });
+    } finally {
+      lot.query = vraieRequete;
+    }
+  });
+
+  test('balayage des routes : aucune réponse en erreur ne porte de trace technique', async () => {
+    const appels = [
+      request(app).get('/api/inconnue'),
+      request(app).get('/api/requests'),
+      request(app).get('/api/requests/999999').set(agent),
+      request(app).get('/api/requests/abc').set(agent),
+      request(app).get('/api/mcc/0000').set(agent),
+      request(app).get('/api/admin/users').set(agent),
+      request(app).post('/api/requests').set(agent).send({}),
+      request(app).post('/api/mcc/suggest').set(agent).send({ limit: 'beaucoup' }),
+      request(app).post('/api/auth/login').send({ email: 'pas-une-adresse', password: '' }),
+      request(app).post('/api/auth/login').send({ email: { $ne: null }, password: [1, 2] }),
+      request(app).put('/api/requests/1').set(agent).send({ shareCapital: 'beaucoup' }),
+      request(app).post('/api/requests/1/submit').set(agent),
+      request(app).post('/api/requests').set(agent).set('Content-Type', 'application/json').send('{['),
+    ];
+
+    const interdits = [/\bat\s+\/?\w[\w./-]*:\d+/, /node_modules/, /\n\s+at\s/, /SELECT\s|INSERT\s|UPDATE\s/i];
+    for (const appel of appels) {
+      const res = await appel;
+      if (res.status < 400) continue;
+      const corps = JSON.stringify(res.body);
+      for (const motif of interdits) {
+        assert.ok(!motif.test(corps), `fuite technique (${motif}) dans : ${corps.slice(0, 200)}`);
+      }
+    }
+  });
+});
+
+describe("Diagnostic d'incident : conserver l'erreur d'origine (EVO-12)", () => {
+  let admin;
+
+  before(async () => {
+    await resetDatabase();
+    admin = { Authorization: `Bearer ${await login('admin')}` };
+  });
+
+  test("un retour arrière impossible n'efface pas l'erreur métier (C-04)", async () => {
+    const lot = await import('../src/db/pool.js');
+    const vraiConnect = lot.pool.connect.bind(lot.pool);
+    const relachements = [];
+
+    // Connexion qui meurt pendant la transaction : le ROLLBACK lève à son tour.
+    lot.pool.connect = async () => ({
+      query: async (sql) => {
+        if (sql === 'ROLLBACK') throw new Error('Connection terminated unexpectedly');
+        return { rows: [], rowCount: 0 };
+      },
+      release: (err) => relachements.push(err),
+    });
+
+    try {
+      await assert.rejects(
+        lot.withTransaction(async () => {
+          throw new Error('Cette demande vient d’être soumise par ailleurs.');
+        }),
+        /vient d’être soumise/
+      );
+      assert.equal(relachements.length, 1);
+      assert.match(relachements[0].message, /Connection terminated/,
+        'la connexion suspecte est retirée du lot');
+    } finally {
+      lot.pool.connect = vraiConnect;
+    }
+  });
+
+  test("un BEGIN en échec ne tente pas de retour arrière (C-04)", async () => {
+    const lot = await import('../src/db/pool.js');
+    const vraiConnect = lot.pool.connect.bind(lot.pool);
+    const requetes = [];
+    const relachements = [];
+
+    lot.pool.connect = async () => ({
+      query: async (sql) => {
+        requetes.push(sql);
+        throw new Error('Connection terminated unexpectedly');
+      },
+      release: (err) => relachements.push(err),
+    });
+
+    try {
+      await assert.rejects(lot.withTransaction(async () => 'jamais atteint'), /Connection terminated/);
+      assert.deepEqual(requetes, ['BEGIN'], 'aucun ROLLBACK sur une transaction jamais ouverte');
+      assert.ok(relachements[0], 'la connexion est relâchée avec son erreur');
+    } finally {
+      lot.pool.connect = vraiConnect;
+    }
+  });
+
+  test("une transaction saine ne détruit pas la connexion (C-04)", async () => {
+    const lot = await import('../src/db/pool.js');
+    // Un refus métier laisse la connexion utilisable : le lot doit la garder.
+    await assert.rejects(
+      lot.withTransaction(async (client) => {
+        await client.query('SELECT 1');
+        throw Object.assign(new Error('refus métier'), { status: 409 });
+      }),
+      /refus métier/
+    );
+    const { rows } = await lot.query('SELECT 1 AS un');
+    assert.equal(rows[0].un, 1, 'le lot continue de servir');
+  });
+
+  test('un fichier trop volumineux est refusé en 413, pas en 500 (C-09)', async () => {
+    const res = await request(app)
+      .post('/api/admin/mcc/import-fichier')
+      .set(admin)
+      .attach('fichier', Buffer.alloc(6 * 1024 * 1024, 'x'), 'trop-gros.csv')
+      .expect(413);
+    assert.equal(res.body.error, 'Le fichier dépasse la taille autorisée (5 Mo).');
+  });
+
+  test('un champ de fichier inattendu est refusé en 400, pas en 500 (C-09)', async () => {
+    const res = await request(app)
+      .post('/api/admin/mcc/import-fichier')
+      .set(admin)
+      .attach('document', Buffer.from('code\n5977\n'), 'referentiel.csv')
+      .expect(400);
+    assert.equal(
+      res.body.error,
+      'Champ de fichier inattendu : le fichier doit être transmis sous le nom « fichier ».'
+    );
+  });
+
+  test('une extension non acceptée conserve son message et son statut (C-09)', async () => {
+    const res = await request(app)
+      .post('/api/admin/mcc/import-fichier')
+      .set(admin)
+      .attach('fichier', Buffer.from('nimporte quoi'), 'referentiel.txt')
+      .expect(400);
+    assert.equal(res.body.error, 'Format non pris en charge : attendu .xlsx, .csv ou .json.');
+  });
+});

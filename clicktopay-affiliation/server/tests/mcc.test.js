@@ -113,6 +113,37 @@ describe('Référentiel et suggestion de MCC', () => {
       .send({ activityDescription: 'zzzz qqqq xxxx' })
       .expect(200);
     assert.ok(res.body.VISA.length >= 1);
+    assert.equal(res.body.VISA[0].code, '5999');
+  });
+
+  test('le repli 5999 désactivé ne produit pas une proposition mutilée (EVO-02)', async () => {
+    const admin = await request(app).post('/api/auth/login').send(CREDENTIALS.admin).expect(200);
+    const asAdmin = { Authorization: `Bearer ${admin.body.token}` };
+
+    await request(app)
+      .put('/api/admin/mcc/5999')
+      .set(asAdmin)
+      .send({ active: false, comment: 'Retrait du code fourre-tout' })
+      .expect(200);
+
+    const res = await request(app)
+      .post('/api/mcc/suggest')
+      .set(auth())
+      .send({ activityDescription: 'zzzz qqqq xxxx' })
+      .expect(200);
+
+    // Un référentiel qui ne permet aucune proposition n'est pas une erreur
+    // serveur : c'est une liste vide, que l'appelant sait traiter.
+    assert.deepEqual(res.body, { VISA: [], MASTERCARD: [] });
+
+    // Le rechargement du catalogue est déjà en place : pas de redémarrage.
+    await request(app).put('/api/admin/mcc/5999').set(asAdmin).send({ active: true }).expect(200);
+    const retabli = await request(app)
+      .post('/api/mcc/suggest')
+      .set(auth())
+      .send({ activityDescription: 'zzzz qqqq xxxx' })
+      .expect(200);
+    assert.equal(retabli.body.VISA[0].code, '5999');
   });
 
   after(async () => pool.end());

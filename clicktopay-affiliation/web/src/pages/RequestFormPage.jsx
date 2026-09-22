@@ -484,9 +484,13 @@ function SelectionMcc({
           </Message>
         )}
         {!erreurSuggestion && propositions.length === 0 ? (
+          // Le moteur a répondu, mais sans rien proposer : son code de repli est
+          // sorti du référentiel actif. Ce n'est pas une saisie incomplète, et
+          // inviter l'agent à compléter un champ déjà rempli l'enverrait dans le mur.
           <Message type="attention">
-            Complétez la description de l'activité à l'étape précédente pour obtenir des
-            propositions de MCC.
+            {suggestions
+              ? "Aucune proposition ne peut être faite : le code de repli 5999 est absent du référentiel actif. Recherchez un code manuellement ou prévenez l'administrateur."
+              : "Complétez la description de l'activité à l'étape précédente pour obtenir des propositions de MCC."}
           </Message>
         ) : (
           <Message type="info">

@@ -168,6 +168,14 @@ export function CarteMcc({ mcc, choisi, onChoisir, montrerVo = true, action }) {
           ))}
         </span>
         {mcc.note && <p className="mcc__vo">Note : {mcc.note}</p>}
+        {/* Écarts entre la photographie relue et le référentiel d'aujourd'hui :
+            le banquier doit savoir que ce qu'il lit n'est plus l'état courant. */}
+        {mcc.plusAuReferentiel && (
+          <p className="mcc__vo">Ce code a été désactivé du référentiel depuis la soumission.</p>
+        )}
+        {mcc.libelleActuel && (
+          <p className="mcc__vo">Libellé au référentiel aujourd'hui : {mcc.libelleActuel}.</p>
+        )}
       </span>
       {action}
     </Balise>

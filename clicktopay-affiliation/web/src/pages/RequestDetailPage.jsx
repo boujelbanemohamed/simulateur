@@ -93,6 +93,20 @@ export default function RequestDetailPage() {
     (demande.createdBy === user.id || user.role === 'ADMIN');
   const arbitrable = isBanquier && demande.status === 'SOUMISE';
   const erreursChamps = erreur?.fieldErrors ?? {};
+  /**
+   * Libellé d'un code retenu ou proposé, lu dans la photographie de la
+   * soumission : c'est l'intitulé qui a été servi, pas celui du référentiel
+   * d'aujourd'hui, et il porte la même mention si le code a été désactivé depuis.
+   */
+  const libelleDuCode = (code) => {
+    if (!code) return code;
+    const photographie = propositions?.VISA?.find((m) => m.code === code);
+    if (!photographie?.label) return code;
+    return `${code} — ${photographie.label}${
+      photographie.plusAuReferentiel ? ' (désactivé du référentiel depuis la soumission)' : ''
+    }`;
+  };
+
   const mccModifie =
     demande.status === 'VALIDEE' &&
     (demande.finalVisaMcc !== demande.proposedVisaMcc ||
@@ -205,10 +219,10 @@ export default function RequestDetailPage() {
           <div className="carte">
             <h2>Codes MCC</h2>
             <dl>
-              <Ligne libelle="Proposé par l'agent — Visa" valeur={demande.proposedVisaMcc} />
-              <Ligne libelle="Proposé par l'agent — Mastercard" valeur={demande.proposedMastercardMcc} />
-              <Ligne libelle="Retenu — Visa" valeur={demande.finalVisaMcc} />
-              <Ligne libelle="Retenu — Mastercard" valeur={demande.finalMastercardMcc} />
+              <Ligne libelle="Proposé par l'agent — Visa" valeur={libelleDuCode(demande.proposedVisaMcc)} />
+              <Ligne libelle="Proposé par l'agent — Mastercard" valeur={libelleDuCode(demande.proposedMastercardMcc)} />
+              <Ligne libelle="Retenu — Visa" valeur={libelleDuCode(demande.finalVisaMcc)} />
+              <Ligne libelle="Retenu — Mastercard" valeur={libelleDuCode(demande.finalMastercardMcc)} />
             </dl>
             {demande.proposedJustification && (
               <Message type="info" titre="Justification de l'agent">

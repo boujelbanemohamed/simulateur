@@ -45,6 +45,39 @@ const CANAL = 'mcc_catalogue_modifie';
 let ecoute = null;
 
 /**
+ * État de l'écoute, exposé par le contrôle de santé.
+ *
+ * Une écoute perdue ne rend pas l'instance indisponible — elle sert encore
+ * correctement les demandes — mais elle sert un référentiel FIGÉ, sans le savoir
+ * et sans le dire. L'exploitation doit pouvoir le voir.
+ */
+let etatEcoute = 'jamais_etablie';
+
+/**
+ * Délais de reprise, en millisecondes, puis palier à 30 s : inutile de marteler
+ * une base qui redémarre, inutile non plus d'abandonner — une instance qui
+ * n'écoute plus finit par accepter un code devenu interdit ailleurs.
+ */
+const DELAIS_REPRISE = [1000, 2000, 4000, 8000, 16000, 30000];
+let minuteurReprise = null;
+let tentatives = 0;
+
+function planifierReprise() {
+  if (minuteurReprise) return; // une seule reprise en vol à la fois
+  const delai = DELAIS_REPRISE[Math.min(tentatives, DELAIS_REPRISE.length - 1)];
+  tentatives += 1;
+  minuteurReprise = setTimeout(() => {
+    minuteurReprise = null;
+    // Chaque échec replanifie lui-même : le `catch` n'a rien à faire de plus
+    // que d'éviter un rejet non traité.
+    ecouterModifications().catch(() => {});
+  }, delai);
+  // Sans `unref`, le minuteur maintient la boucle d'événements en vie et le
+  // processus ne se termine jamais — les tests non plus.
+  minuteurReprise.unref();
+}
+
+/**
  * Poids des champs dans le score. Ils reproduisent la pondération historique du
  * moteur : un même mot présent dans le libellé ET dans les mots-clés compte deux
  * fois, d'où une somme et non un maximum.
@@ -188,6 +221,7 @@ export const etatCatalogue = () => ({
   codes: cache.items.length,
   chargeLe: etat.chargeLe,
   echec: etat.echec,
+  ecoute: etatEcoute,
 });
 
 /** Remet l'état de santé à zéro. Réservé aux tests, qui simulent des pannes. */
@@ -197,26 +231,85 @@ export const reinitialiserEtat = () => {
 
 /**
  * Ouvre une connexion dédiée qui écoute les modifications du référentiel.
+ *
  * Appelée au démarrage du serveur ; sans elle, le cache reste local au processus.
+ * À la moindre erreur, la connexion était relâchée et plus rien ne la rouvrait :
+ * après un redémarrage de PostgreSQL ou une coupure réseau, l'instance servait
+ * un référentiel figé jusqu'à son propre redémarrage. Elle se rétablit désormais
+ * d'elle-même, et recharge le catalogue dans la foulée.
  */
 export async function ecouterModifications() {
   if (ecoute) return ecoute;
-  const client = await pool.connect();
-  client.on('notification', (message) => {
-    if (message.channel === CANAL) {
-      rechargerCatalogue({ diffuser: false }).catch((err) =>
-        console.error('Rechargement du référentiel MCC impossible :', err.message)
-      );
-    }
-  });
-  client.on('error', (err) => {
-    console.error('Écoute du référentiel MCC interrompue :', err.message);
-    ecoute = null;
+
+  let client;
+  // pg refuse un second `release` : la perte de connexion peut déclencher à la
+  // fois l'événement d'erreur et l'échec du LISTEN.
+  let relache = false;
+  const relacher = (err) => {
+    if (relache) return;
+    relache = true;
     client.release(err);
-  });
-  await client.query(`LISTEN ${CANAL}`);
+  };
+
+  try {
+    client = await pool.connect();
+    client.on('notification', (message) => {
+      if (message.channel === CANAL) {
+        rechargerCatalogue({ diffuser: false }).catch((err) =>
+          console.error('Rechargement du référentiel MCC impossible :', err.message)
+        );
+      }
+    });
+    client.on('error', (err) => {
+      // Une ligne à la perte, pas une par tentative : un journal noyé ne se lit pas.
+      if (etatEcoute !== 'perdue') {
+        console.error('Écoute du référentiel MCC interrompue :', err.message);
+      }
+      etatEcoute = 'perdue';
+      ecoute = null;
+      relacher(err);
+      planifierReprise();
+    });
+    await client.query(`LISTEN ${CANAL}`);
+  } catch (err) {
+    if (client) relacher(err);
+    etatEcoute = etatEcoute === 'active' ? 'perdue' : etatEcoute;
+    planifierReprise();
+    throw err;
+  }
+
+  const estUneReprise = etatEcoute === 'perdue';
   ecoute = client;
+  etatEcoute = 'active';
+  tentatives = 0;
+
+  if (estUneReprise) {
+    console.log('Écoute du référentiel MCC rétablie.');
+    // Point essentiel : rouvrir l'écoute sans recharger laisserait l'instance
+    // sur la photographie d'avant la coupure, pendant laquelle le référentiel a
+    // pu changer — sans NOTIFY pour le dire, puisque personne n'écoutait.
+    await rechargerCatalogue({ diffuser: false }).catch((err) =>
+      console.error('Rechargement du référentiel MCC après reprise impossible :', err.message)
+    );
+  }
   return client;
+}
+
+/** Arrêt propre : annule la reprise en cours et rend la connexion d'écoute. */
+export function arreterEcoute() {
+  if (minuteurReprise) {
+    clearTimeout(minuteurReprise);
+    minuteurReprise = null;
+  }
+  tentatives = 0;
+  // L'arrêt est demandé : l'instance n'écoute plus, et n'a plus à le rétablir.
+  etatEcoute = 'jamais_etablie';
+  if (ecoute) {
+    const client = ecoute;
+    ecoute = null;
+    client.removeAllListeners('error');
+    client.release();
+  }
 }
 
 /** Tous les codes, y compris désactivés : vue de l'administrateur. */

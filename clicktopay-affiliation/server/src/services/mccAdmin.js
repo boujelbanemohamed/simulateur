@@ -239,6 +239,7 @@ export function compareImport(entrees) {
   const ajoutes = [];
   const modifies = [];
   const inchanges = [];
+  const reactives = [];
   const vus = new Set();
 
   for (const entree of entrees) {
@@ -270,16 +271,22 @@ export function compareImport(entrees) {
       differences.push({ champ: 'sectors', avant: existant.sectors ?? [], apres: secteursVoulus });
     }
 
+    // `active` ne figure pas dans les champs comparés, et c'est volontaire : un
+    // fichier ne désactive jamais un code. Mais un code désactivé qui y
+    // REPARAÎT était classé « inchangé » et restait hors service, alors que
+    // l'administrateur croyait l'avoir remis en circulation.
+    if (!existant.active) reactives.push({ code, label: existant.label });
+
     if (differences.length > 0) {
       modifies.push({ code, label: existant.label, champs: differences });
-    } else {
+    } else if (existant.active) {
       inchanges.push({ code });
     }
   }
 
   // `retires` est calculé par importCatalog, qui interroge la base : un code
   // absent du fichier n'est jamais supprimé, seulement désactivable.
-  return { ajoutes, modifies, inchanges, retires: [] };
+  return { ajoutes, modifies, inchanges, reactives, retires: [] };
 }
 
 export async function importCatalog({ entrees, apply, deactivateMissing, comment, user }) {
@@ -302,6 +309,7 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
   rapport.resume = {
     ajoutes: rapport.ajoutes.length,
     modifies: rapport.modifies.length,
+    reactives: rapport.reactives.length,
     inchanges: rapport.inchanges.length,
     retires: rapport.retires.length,
     muets: rapport.muets.length,
@@ -364,6 +372,19 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
       await historiser(client, {
         code: modification.code, userId: user.id, action: 'IMPORT_MODIFICATION',
         avant: instantane(avant), apres: entree, comment,
+      });
+    }
+
+    // Après les modifications : la remise en service est le dernier fait de
+    // l'import pour ce code, et c'est elle qu'on veut lire en tête d'historique.
+    for (const { code } of rapport.reactives) {
+      await client.query(
+        'UPDATE mcc_codes SET active = TRUE, updated_at = now(), updated_by = $1 WHERE code = $2',
+        [user.id, code]
+      );
+      await historiser(client, {
+        code, userId: user.id, action: 'IMPORT_REACTIVATION',
+        avant: { active: false }, apres: { active: true }, comment,
       });
     }
 

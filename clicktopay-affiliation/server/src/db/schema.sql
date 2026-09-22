@@ -228,3 +228,49 @@ CREATE INDEX IF NOT EXISTS idx_mcc_sectors_code ON mcc_sectors(mcc_code);
 ALTER TABLE request_events   ALTER COLUMN created_at SET DEFAULT clock_timestamp();
 ALTER TABLE mcc_code_history ALTER COLUMN created_at SET DEFAULT clock_timestamp();
 ALTER TABLE admin_events     ALTER COLUMN created_at SET DEFAULT clock_timestamp();
+
+-- ===========================================================================
+-- Unicité de l'adresse électronique, insensible à la casse.
+-- ===========================================================================
+
+-- La contrainte UNIQUE portée par la colonne `email` est sensible à la casse :
+-- « Agent@banque.tn » et « agent@banque.tn » pouvaient coexister, alors que la
+-- connexion compare en minuscules et se serait retrouvée devant deux lignes,
+-- dont une seule aurait été retenue, arbitrairement. Les contrôles applicatifs
+-- ne suffisent pas : deux créations concurrentes passent l'une et l'autre.
+-- La contrainte d'origine est conservée : redondante, mais la retirer
+-- demanderait un ALTER TABLE non rejouable.
+DO $$
+DECLARE doublons TEXT;
+BEGIN
+  SELECT string_agg(adresse, ', ') INTO doublons
+    FROM (SELECT lower(email) AS adresse FROM users GROUP BY lower(email) HAVING count(*) > 1) d;
+  IF doublons IS NOT NULL THEN
+    -- Échouer ici avec la liste des adresses en cause vaut mieux que de laisser
+    -- PostgreSQL refuser l'index sur une erreur brute, sans désigner le problème.
+    RAISE EXCEPTION 'Migration interrompue : ces adresses existent en plusieurs casses et doivent être corrigées avant la pose de l''index unique : %', doublons;
+  END IF;
+END $$;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email));
+
+-- Le journal se lit désormais page par page, trié par (created_at DESC, id DESC) :
+-- l'identifiant départage les entrées du même horodatage, faute de quoi deux
+-- pages successives montrent deux fois la même ligne. L'index à une seule
+-- colonne ne couvrait que la moitié de ce tri, et `CREATE INDEX IF NOT EXISTS`
+-- ne remplace pas un index déjà présent : il faut le retirer explicitement.
+DROP INDEX IF EXISTS idx_admin_events_date;
+CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC, id DESC);
+
+-- ===========================================================================
+-- Photographie autoportante des suggestions.
+-- ===========================================================================
+
+-- La relecture reconstituait le libellé depuis le catalogue VIVANT : un code
+-- renommé, corrigé ou désactivé depuis la soumission faisait relire au banquier
+-- une photographie retouchée — et un code disparu du cache, une entrée sans
+-- libellé. Les deux colonnes restent nullables : c'est ce qui distingue une
+-- photographie ancienne, à reconstituer faute de mieux, d'une photographie
+-- complète. Aucune valeur n'est inventée rétroactivement.
+ALTER TABLE mcc_suggestions ADD COLUMN IF NOT EXISTS label_at_submit       VARCHAR(255);
+ALTER TABLE mcc_suggestions ADD COLUMN IF NOT EXISTS description_at_submit TEXT;

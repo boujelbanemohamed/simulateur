@@ -297,5 +297,64 @@ describe("Demandes d'affiliation", () => {
     assert.equal(res.body[2].userRole, 'BANQUIER');
   });
 
+  test('la photographie des suggestions est autoportante (EVO-08)', async () => {
+    const admin = (await request(app).post('/api/auth/login').send(CREDENTIALS.admin).expect(200)).body.token;
+    const asAdmin = { Authorization: `Bearer ${admin}` };
+
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    const relire = async () =>
+      (await request(app).get(`/api/requests/${demande.id}/suggestions`).set(asBanquier()).expect(200)).body;
+
+    const origine = (await relire()).VISA.find((m) => m.code === '5977');
+    assert.equal(origine.label, 'Cosmétiques et parfumerie');
+    assert.equal(origine.libelleActuel, undefined);
+    assert.equal(origine.plusAuReferentiel, undefined);
+
+    // Le code est renommé APRÈS la soumission : la photographie ne bouge pas.
+    await request(app).put('/api/admin/mcc/5977').set(asAdmin)
+      .send({ label: 'Parfumerie, cosmétique et soins du corps', comment: 'Libellé revu' }).expect(200);
+
+    const renomme = (await relire()).VISA.find((m) => m.code === '5977');
+    assert.equal(renomme.label, 'Cosmétiques et parfumerie', "le libellé servi est celui d'époque");
+    assert.equal(renomme.libelleActuel, 'Parfumerie, cosmétique et soins du corps');
+    assert.equal(renomme.description, origine.description);
+
+    // Puis désactivé : la relecture reste complète, et le signale.
+    await request(app).put('/api/admin/mcc/5977').set(asAdmin)
+      .send({ active: false, comment: 'Code retiré du manuel' }).expect(200);
+
+    const desactive = (await relire()).VISA.find((m) => m.code === '5977');
+    assert.equal(desactive.code, '5977', 'jamais une entrée sans code');
+    assert.equal(desactive.label, 'Cosmétiques et parfumerie');
+    assert.equal(desactive.plusAuReferentiel, true);
+
+    await request(app).put('/api/admin/mcc/5977').set(asAdmin).send({ active: true }).expect(200);
+    await request(app).put('/api/admin/mcc/5977').set(asAdmin)
+      .send({ label: 'Cosmétiques et parfumerie' }).expect(200);
+  });
+
+  test('une demande antérieure à la migration se relit en repli (EVO-08)', async () => {
+    const demande = await creerDemande();
+    await request(app).post(`/api/requests/${demande.id}/submit`).set(asAgent()).expect(200);
+
+    // Photographie d'avant l'évolution : les libellés n'y figuraient pas.
+    await pool.query(
+      'UPDATE mcc_suggestions SET label_at_submit = NULL, description_at_submit = NULL WHERE request_id = $1',
+      [demande.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/requests/${demande.id}/suggestions`)
+      .set(asBanquier())
+      .expect(200);
+
+    const entree = res.body.VISA.find((m) => m.code === '5977');
+    assert.equal(entree.libelleReconstitue, true);
+    assert.equal(entree.label, 'Cosmétiques et parfumerie', 'repli sur le catalogue courant');
+    assert.ok(entree.description.length > 10);
+  });
+
   after(async () => pool.end());
 });

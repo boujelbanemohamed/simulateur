@@ -12,7 +12,7 @@ import {
 } from '../services/admin.js';
 import { createMcc, getMccHistory, importCatalog, updateMcc } from '../services/mccAdmin.js';
 import { catalogueComplet, getMcc, searchCatalog } from '../services/mccCatalog.js';
-import { badRequest, notFound } from '../middleware/errors.js';
+import { HttpError, badRequest, notFound } from '../middleware/errors.js';
 import { ecrireReferentiel, lireReferentiel } from '../services/mccImportFile.js';
 
 /**
@@ -27,6 +27,27 @@ const televersement = multer({
     callback(badRequest('Format non pris en charge : attendu .xlsx, .csv ou .json.'));
   },
 });
+
+/**
+ * Erreurs produites par multer lui-même (taille dépassée, champ inattendu).
+ *
+ * Elles portent un code propre mais aucun statut HTTP : elles tombaient dans le
+ * gestionnaire d'erreurs avec `status` indéfini, et sortaient en 500 là où un
+ * refus explicite est attendu. Les erreurs du filtre d'extension, elles, sont
+ * déjà des HttpError et traversent ce point sans être touchées.
+ */
+// eslint-disable-next-line no-unused-vars -- Express identifie le handler d'erreur à ses 4 arguments
+function erreursDeTeleversement(err, req, res, next) {
+  if (err?.code === 'LIMIT_FILE_SIZE') {
+    return next(new HttpError(413, 'Le fichier dépasse la taille autorisée (5 Mo).'));
+  }
+  if (err?.code === 'LIMIT_UNEXPECTED_FILE') {
+    return next(
+      badRequest('Champ de fichier inattendu : le fichier doit être transmis sous le nom « fichier ».')
+    );
+  }
+  return next(err);
+}
 
 export const adminRouter = Router();
 
@@ -165,6 +186,7 @@ adminRouter.put(
 adminRouter.post(
   '/mcc/import-fichier',
   televersement.single('fichier'),
+  erreursDeTeleversement,
   asyncRoute(async (req, res) => {
     if (!req.file) throw badRequest('Aucun fichier reçu.');
 
@@ -206,10 +228,17 @@ adminRouter.post(
 adminRouter.get(
   '/events',
   asyncRoute(async (req, res) =>
-    res.json({
-      items: await listAdminEvents({
+    res.json(
+      await listAdminEvents({
         limit: entierDeRequete(req.query.limit, { defaut: 100, min: 1, max: 500 }),
-      }),
-    })
+        // Sans décalage, les entrées les plus anciennes deviennent
+        // inatteignables par l'application dès la 500e ligne.
+        offset: entierDeRequete(req.query.offset, { defaut: 0, min: 0, max: 1000000 }),
+        entity: req.query.entity,
+        action: req.query.action,
+        depuis: req.query.depuis,
+        jusqua: req.query.jusqua,
+      })
+    )
   )
 );

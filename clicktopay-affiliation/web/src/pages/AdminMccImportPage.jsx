@@ -188,6 +188,12 @@ export default function AdminMccImportPage() {
                 <div className="compteur__valeur">{rapport.resume.modifies}</div>
                 <div className="compteur__libelle">Modifiés</div>
               </div>
+              {rapport.resume.reactives > 0 && (
+                <div className="compteur compteur--validee">
+                  <div className="compteur__valeur">{rapport.resume.reactives}</div>
+                  <div className="compteur__libelle">Réactivés</div>
+                </div>
+              )}
               <div className="compteur compteur--brouillon">
                 <div className="compteur__valeur">{rapport.resume.inchanges}</div>
                 <div className="compteur__libelle">Inchangés</div>
@@ -233,6 +239,7 @@ export default function AdminMccImportPage() {
                 {confirmation ? (
                   <Message type="attention" titre="Confirmer l'application">
                     {rapport.resume.ajoutes} ajout(s), {rapport.resume.modifies} modification(s)
+                    {rapport.resume.reactives > 0 ? `, ${rapport.resume.reactives} réactivation(s)` : ''}
                     {desactiverAbsents ? `, ${rapport.resume.retires} désactivation(s)` : ''} vont
                     être écrits dans le référentiel, avec effet immédiat sur les propositions
                     faites aux agents.
@@ -292,6 +299,26 @@ export default function AdminMccImportPage() {
                         </tr>
                       ))
                     )}
+                  </tbody>
+                </table>
+              </Tableau>
+            </div>
+          )}
+
+          {rapport.reactives?.length > 0 && (
+            <div className="carte">
+              <h2>Codes réactivés ({rapport.reactives.length})</h2>
+              <p className="champ__aide">
+                Ces codes étaient désactivés et figurent dans le fichier : ils seront remis
+                en service.
+              </p>
+              <Tableau>
+                <table>
+                  <thead><tr><th>Code</th><th>Libellé</th></tr></thead>
+                  <tbody>
+                    {rapport.reactives.map((r) => (
+                      <tr key={r.code}><td className="mono">{r.code}</td><td>{r.label}</td></tr>
+                    ))}
                   </tbody>
                 </table>
               </Tableau>

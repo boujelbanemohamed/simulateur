@@ -265,9 +265,10 @@ export async function submitRequest({ id, user }) {
       for (const s of suggestions) {
         rank += 1;
         await client.query(
-          `INSERT INTO mcc_suggestions (request_id, network, mcc_code, rank, score, matched_terms)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [id, network, s.code, rank, s.score, s.matchedTerms]
+          `INSERT INTO mcc_suggestions (request_id, network, mcc_code, rank, score, matched_terms,
+                                        label_at_submit, description_at_submit)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [id, network, s.code, rank, s.score, s.matchedTerms, s.label, s.description]
         );
       }
     }
@@ -355,24 +356,54 @@ export async function decideRequest({ id, decision, visaMcc, mastercardMcc, comm
   });
 }
 
+/**
+ * Photographie des propositions servies à la soumission.
+ *
+ * Ce que le banquier relit doit être ce qui a été servi, et non l'état du
+ * référentiel du jour : c'est la justification de la demande, donc une pièce de
+ * la piste d'audit. Le catalogue courant ne sert plus qu'à SIGNALER les écarts
+ * survenus depuis — jamais à réécrire la photographie.
+ */
 export async function getSuggestionsSnapshot(id, user) {
   await getRequest(id, user); // contrôle d'accès
   const { rows } = await query(
-    `SELECT network, mcc_code, rank, score, matched_terms
+    `SELECT network, mcc_code, rank, score, matched_terms, label_at_submit, description_at_submit
        FROM mcc_suggestions WHERE request_id = $1 ORDER BY network, rank`,
     [id]
   );
   const grouped = { VISA: [], MASTERCARD: [] };
   for (const row of rows) {
-    const mcc = getMcc(row.mcc_code);
-    grouped[row.network].push({
-      ...mcc,
-      rank: row.rank,
-      score: row.score,
-      matchedTerms: row.matched_terms,
-    });
+    grouped[row.network].push(photographier(row));
   }
   return grouped;
+}
+
+/** Une entrée de photographie, complétée des écarts constatés depuis la soumission. */
+function photographier(row) {
+  const actuel = getMcc(row.mcc_code);
+  // Une photographie antérieure à l'évolution ne porte pas les libellés : on
+  // retombe sur le catalogue courant, en le disant. On n'invente pas un libellé
+  // d'époque que personne n'a conservé.
+  const reconstitue = row.label_at_submit === null;
+
+  const entree = {
+    ...actuel,
+    // Le code vient toujours de la photographie : un code sorti du cache
+    // laissait auparavant une entrée sans code ni libellé.
+    code: row.mcc_code,
+    label: reconstitue ? actuel?.label ?? null : row.label_at_submit,
+    description: reconstitue ? actuel?.description ?? null : row.description_at_submit,
+    rank: row.rank,
+    score: row.score,
+    matchedTerms: row.matched_terms,
+  };
+
+  if (reconstitue) entree.libelleReconstitue = true;
+  if (!actuel || !actuel.active) entree.plusAuReferentiel = true;
+  if (!reconstitue && actuel && actuel.label !== row.label_at_submit) {
+    entree.libelleActuel = actuel.label;
+  }
+  return entree;
 }
 
 export async function getEvents(id, user) {
