@@ -98,6 +98,12 @@ consultation d'une demande soumise devenait impraticable.
 conteneur qui n'enveloppe que les champs ; la barre d'actions reste hors de son
 périmètre.
 
+**Vérification** (navigateur, demande soumise donc non modifiable) : le champ
+« Nom du site » reste bien inerte et son contenu inchangé après une tentative
+de saisie — le correctif d'origine n'est pas défait ; « Suivant » est cliquable
+et fait passer à l'étape suivante ; « Voir la demande » navigue vers la fiche.
+Aucune erreur JavaScript.
+
 ## DEF-A5-02 — bandeau « serveur injoignable » persistant — MINEUR
 
 **Constat.** Après une coupure réseau puis une reconnexion réussie, le bandeau
@@ -111,6 +117,10 @@ soit le code, car une réponse prouve que le serveur répond — et le contexte
 d'authentification efface l'avertissement sur ce signal
 (`web/src/api/client.js`, `web/src/auth/AuthContext.jsx`). La reprise est ainsi
 couverte en cours de session, pas seulement à la reconnexion.
+
+**Vérification** (navigateur) : coupure simulée sur `/api/auth/me`, le bandeau
+apparaît ; la coupure levée, une simple navigation interne le fait disparaître,
+sans rechargement de page.
 
 ## Point de méthode
 
