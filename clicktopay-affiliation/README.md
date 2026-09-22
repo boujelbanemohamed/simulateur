@@ -136,19 +136,53 @@ les deux formats. Un référentiel en JSON reste accepté pour un usage techniqu
 
 ## Recette
 
-L'application a été passée en revue par deux recettes indépendantes — une sur
-l'API, une pilotant un vrai navigateur. Les défauts trouvés sont corrigés et
-couverts par des tests. Deux points restent ouverts et relèvent d'une décision
-métier :
+L'application a fait l'objet d'une campagne de recette structurée, menée par huit
+agents sur quatre vagues. Tous les livrables sont dans `docs/` :
+
+| Fichier | Contenu |
+| --- | --- |
+| `plan-de-tests.md` | 147 cas de test : préconditions, étapes, résultat attendu vérifiable, critère d'acceptation binaire, et 10 jeux de données avec les MCC attendus et leurs scores exacts |
+| `revue-de-code.md` | 26 constats de revue, ancrés fichier et ligne |
+| `resultats-vague2-front.md` / `-back.md` | Exécution des cas, filière interface et filière API |
+| `resultats-vague3-front.md` / `-back.md` | Retest après correction, et recherche de régressions |
+| `recette-coordination.md` | Protocole d'isolation entre agents : un port et une base par intervenant |
+| `recette-tableau-de-bord.md` | Tableau de bord partagé et conventions de nommage |
+| `verifier-environnement.sh` | Contrôle de l'environnement de recette en une commande |
+
+### Ce que la campagne a corrigé
+
+Les défauts les plus structurants tenaient moins à la logique métier qu'à ce qui
+l'entoure :
+
+- **la configuration ne validait rien** : `required(nom, repli)` ne pouvait pas
+  lever, un repli étant toujours fourni. Une API démarrée en production sans
+  `JWT_SECRET` tournait avec le secret de développement publié dans le dépôt ;
+- **le cache du référentiel pouvait figer l'application** : une panne passagère
+  laissait une promesse rejetée que rien ne remplaçait, et le contrôle de santé
+  répondait « ok » pendant que toutes les routes échouaient ;
+- **le moteur proposait des codes sans justification** : le bonus de pertinence
+  e-commerce s'appliquant sans aucune correspondance, six codes remontaient avec
+  une liste de termes justificatifs vide, et le filet de sécurité était
+  inatteignable ;
+- **la péremption des jetons comparait deux horloges** (Node et PostgreSQL) avec
+  une précision à la seconde ; le jeton porte désormais l'empreinte du mot de
+  passe sous lequel il a été émis ;
+- **le journal d'audit pouvait mentir sur l'ordre des faits** : `now()` renvoie
+  l'heure de début de transaction, pas celle de l'écriture.
+
+### Points ouverts, à trancher avec la conformité
 
 - **Le profil `ADMIN` cumule les droits d'agent et de banquier**, sur toutes les
-  banques : il peut saisir une demande, la soumettre et l'arbitrer seul. C'est
-  pratique en exploitation, mais cela supprime le contrôle à quatre yeux. À
-  trancher avec la conformité.
-- **Le cache du référentiel est propagé par `LISTEN/NOTIFY`** entre instances.
-  C'est suffisant pour un cluster classique, mais une notification perdue
-  (redémarrage d'une instance pendant l'écriture) laisserait un cache périmé
-  jusqu'au prochain changement.
+  banques : il peut saisir une demande, la soumettre et l'arbitrer seul. Pratique
+  en exploitation, mais cela supprime le contrôle à quatre yeux.
+- **Le garde-fou du dernier administrateur n'est atteignable qu'en concurrence** :
+  séquentiellement, c'est la règle « on ne modifie pas son propre compte » qui
+  protège la plateforme. Assouplir cette règle rouvrirait le risque.
+- **La limitation de débit vit dans le processus** : en déploiement
+  multi-instances, elle doit être déportée (Redis ou répartiteur de charge).
+- **Le cache du référentiel est propagé par `LISTEN/NOTIFY`** : une notification
+  perdue pendant le redémarrage d'une instance laisserait un cache périmé
+  jusqu'au changement suivant.
 
 ## Le référentiel MCC
 
@@ -342,7 +376,7 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 
 ```bash
 cd server
-npm test      # 94 tests : authentification, référentiel, moteur, workflow,
+npm test      # 106 tests : authentification, référentiel, moteur, workflow,
               # habilitations, administration, robustesse, concurrence et indexation
 ```
 
@@ -360,7 +394,8 @@ reconstruction de l'index au changement de libellé, et signalement des codes sa
 lexique métier.
 
 `tests/robustesse.test.js` est une suite adversariale, écrite à partir des
-défauts relevés en recette : types hostiles (chaînes `"false"`, dates
+défauts réellement relevés en recette — chaque correctif y a son test de
+non-régression : types hostiles (chaînes `"false"`, dates
 impossibles, montants hors bornes, octets NUL, identifiants non numériques),
 concurrence réelle (deux décisions, deux soumissions, deux rétrogradations
 d'administrateurs, deux créations du même MCC en parallèle), cycle de vie des
