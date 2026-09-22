@@ -41,10 +41,15 @@ La campagne a comporté quatre vagues : rédaction d'un plan de 147 cas et revue
 **137 des 147 cas du plan ont été exécutés au moins une fois** ; 10 ne l'ont jamais été,
 dont quatre classés bloquants, tous dans le domaine de l'import du référentiel (§ 2.2).
 
-Vingt défauts ont été relevés en exécution et dix-huit sont aujourd'hui corrigés. Les
-corrections ont été vérifiées, selon les cas, par reproduction du scénario d'origine par un
-agent de recette indépendant, ou par un test automatisé ajouté avec le correctif. La suite
-automatisée compte **113 tests, tous verts** (`cd server && npm test`, exécuté le 2026-09-22).
+Dix-sept défauts ont été relevés en exécution au cours des vagues 2 et 3 ; **tous sont
+aujourd'hui clos**. Les corrections ont été vérifiées, selon les cas, par reproduction du
+scénario d'origine par un agent de recette indépendant (9 défauts), ou par un test automatisé
+ajouté avec le correctif (6 défauts) ; deux corrections mineures, toutes deux sur l'interface,
+ont été rejouées à l'écran par l'intervenant qui les a écrites, sans agent de recette
+indépendant. Le présent rapport ouvre un
+dix-huitième défaut, mineur (§ 5.2, DEF-A7-01). **Aucun défaut bloquant n'a été relevé au
+cours de la campagne.** La suite automatisée compte **113 tests, tous verts**
+(`cd server && npm test`, exécuté le 2026-09-22).
 
 Le chemin nominal est solide : le parcours complet — saisie, brouillon, reprise, soumission,
 demande de complément, re-soumission, validation avec substitution de codes — a été joué de
@@ -899,7 +904,7 @@ Statuts : **satisfait** · **non satisfait** · **non vérifié**.
 | CA-A-04 | Aucune zone cliquable ne mesure moins de 32 × 32 px en largeur de 375 px. | Mesure de toutes les zones interactives sur onze écrans. | satisfait | `DEF-A2-04` corrigé, vérifié en vague 3 : 0 zone sous 32 px sur 144 mesurées, et aucun défilement horizontal de page. |
 | CA-A-05 | Un bandeau d'erreur est annoncé aux technologies d'assistance et la page est ramenée sur lui. | Défilement en bas de page, soumission invalide, lecture du rôle et de la position. | satisfait | CAS-ERGO-01 : bandeau `role="alert"`, page ramenée sur lui, focus porté sur son conteneur. |
 | CA-A-06 | Les messages d'erreur emploient des intitulés métier, jamais des noms techniques. | Lecture du bandeau sur une saisie invalide. | satisfait | CAS-ERGO-02 : « Adresse du site », « RNE », « Description de l'activité », « Téléphone » ; aucun nom technique. |
-| CA-A-07 | Un formulaire annoncé en lecture seule est réellement non saisissable, sans rendre inutilisables les commandes de navigation et de retour. | Clic, saisie forcée et prise de focus par script ; puis usage des boutons de navigation. | satisfait pour la neutralisation ; **non vérifié** pour la correction de l'effet de bord | Neutralisation : `DEF-A2-01` corrigé, vérifié en vague 3 (clic, saisie et focus tous sans effet). Effet de bord `DEF-A5-01` corrigé après la dernière vague de retest ; présence du correctif vérifiée par lecture de `web/src/pages/RequestFormPage.jsx` ligne 255, **comportement non rejoué à l'écran**. |
+| CA-A-07 | Un formulaire annoncé en lecture seule est réellement non saisissable, sans rendre inutilisables les commandes de navigation et de retour. | Clic, saisie forcée et prise de focus par script ; puis usage des boutons de navigation. | satisfait | Neutralisation : `DEF-A2-01` corrigé, vérifié en vague 3 (clic, saisie et focus tous sans effet). Effet de bord `DEF-A5-01` corrigé puis rejoué à l'écran sur une demande soumise : le champ reste inerte et sa valeur inchangée après une saisie forcée, « Suivant » fait passer à l'étape suivante, « Voir la demande » navigue vers la fiche, sans erreur JavaScript (`docs/corrections-vague3.md`). |
 | CA-A-08 | Le produit est utilisable au lecteur d'écran. | Parcours complet sous NVDA ou VoiceOver. | **non vérifié** | Aucun essai au lecteur d'écran dans la campagne (§ 2.2 B). |
 | CA-A-09 | Le produit est utilisable sur un navigateur mobile réel et sur un autre moteur que Chromium. | Recette sur téléphone, puis sur Firefox et Safari. | **non vérifié** | Toute la recette front s'est faite sous Chromium piloté, en fenêtre réduite (§ 2.2 B). |
 
@@ -926,3 +931,317 @@ Statuts : **satisfait** · **non satisfait** · **non vérifié**.
 | CA-E-07 | L'amorçage de la base ne réactive pas de comptes désactivés ni ne réinitialise de mots de passe en silence. | Désactivation d'un compte, amorçage, relecture. | **non vérifié** | Constat de revue `C-20`, non corrigé et jamais joué en exécution. À vérifier avant toute réexécution de l'amorçage sur un environnement en service. |
 | CA-E-08 | Aucune erreur JavaScript ne se produit au cours d'un parcours métier complet. | Écouteurs d'erreurs branchés sur chaque page pendant toute la campagne front. | satisfait | Vague 3 front, § 5 : aucune erreur JavaScript sur l'ensemble de la campagne ; les seules traces relevées correspondent à des réponses HTTP provoquées volontairement par les tests. |
 | CA-E-09 | Le comportement constaté en recette se retrouve sur le paquet de production de l'interface. | Recette sur un paquet construit. | **non vérifié** | Toute la recette front s'est faite sur le serveur de développement. L'agent 5 signale lui-même que le double envoi de chaque appel d'API, propre au mode de développement, est à revérifier sur un paquet construit. |
+
+---
+
+## 5. Bilan des défauts
+
+### 5.1 Nomenclature et méthode de classement
+
+Trois sources distinctes ont produit des constats, et elles ne se confondent pas :
+
+- la **revue de code** de la vague 1 a produit 26 constats `C-01` à `C-26`. Ce sont des
+  constats **de lecture** : le protocole de la campagne prévoit qu'ils ne deviennent des
+  défauts qu'une fois confirmés en exécution ;
+- la **lecture croisée du README et du code** a produit 7 divergences `D1` à `D7`, chacune
+  rattachée à un cas de test destiné à trancher ;
+- l'**exécution** des vagues 2 et 3 a produit 17 défauts, et le présent rapport en ouvre un
+  dix-huitième.
+
+Le statut final distingue trois niveaux de preuve, volontairement séparés :
+
+- **corrigé et vérifié** — le scénario d'origine a été rejoué par un agent de recette qui n'a
+  pas écrit le correctif, et le défaut ne se reproduit plus ;
+- **corrigé et couvert par un test** — le correctif est accompagné d'un test automatisé qui
+  échoue sans lui, mais aucun agent de recette indépendant ne l'a rejoué ;
+- **corrigé et rejoué par l'intervenant du correctif** — le scénario d'origine a été rejoué et
+  le défaut ne se reproduit plus, mais la vérification n'est pas croisée : celui qui a écrit le
+  correctif est celui qui l'a éprouvé.
+
+### 5.2 Défauts relevés en exécution
+
+| Réf. | Gravité | Objet | Statut final | Correctif |
+| --- | --- | --- | --- | --- |
+| DEF-A2-01 | MINEUR | Un formulaire annoncé « en lecture seule » restait saisissable (CAS-HAB-09). | **corrigé et vérifié** (vague 3 : clic, saisie forcée et prise de focus tous sans effet) | Attribut de neutralisation posé sur le formulaire (`web/src/pages/RequestFormPage.jsx`). A produit l'effet de bord DEF-A5-01. |
+| DEF-A2-02 | MAJEUR | Le message « le serveur est injoignable » était produit mais affiché par aucun composant : l'utilisateur était renvoyé à la connexion sans explication (CAS-ERGO-04). | **corrigé et vérifié** (vague 3 : message rendu, jeton conservé, reprise automatique au retour du réseau) | Consommation de l'état d'erreur de session dans l'interface. A produit l'effet de bord DEF-A5-02. |
+| DEF-A2-03 | MINEUR | L'erreur d'arbitrage sans commentaire était affichée deux fois (CAS-WF-06). | **corrigé et vérifié** (vague 3 : une seule restitution) | Suppression de la restitution redondante (`RequestDetailPage.jsx`). |
+| DEF-A2-04 | MINEUR | Plusieurs zones cliquables mesuraient moins de 32 px en largeur de 375 px (CAS-ERGO-05). | **corrigé et vérifié** (vague 3 : 0 zone sous 32 px sur 144 mesurées, onze écrans) | Hauteurs portées à 32,9 px ; étiquette cliquable associée à la case du référentiel. |
+| DEF-A2-05 | MINEUR | Trois couples de couleurs sous 4,5:1 (CAS-ERGO-07). | **corrigé et vérifié** (vague 3 : 6,34 à 7,82:1 ; plus bas des 75 éléments mesurés à 5,58:1) | Assombrissement des teintes verte et ambre (`web/src/styles/app.css`). |
+| DEF-A3-01 | MAJEUR | **Défaut de plan** : le § 4 « jeux de données JD-01 à JD-06 » était absent du plan de tests, rendant CAS-MCC-04 et CAS-MCC-05 inexécutables. | **résolu** | Le § 4 a été déposé le 2026-09-21 à 16 h 10 (commit `2d48118`), après le début de la vague 2. Il définit dix jeux et leurs résultats attendus. La vague 3 l'a ignoré et a maintenu les deux cas « bloqués » à tort ; ils ont été joués en vague 4 (§ 3, SC-05). |
+| DEF-A3-02 | MINEUR | Un jeton émis dans la même seconde qu'une réinitialisation du mot de passe restait accepté (CAS-AUTH-10). | **corrigé et vérifié** (vague 3 : 401 avec un écart de 76 ms) | Le jeton porte l'empreinte du mot de passe sous lequel il a été émis, comparée à l'identique, sans notion de temps (`server/src/middleware/auth.js`). |
+| DEF-A3-03 | MAJEUR | Le repli sur le code 5999 était inatteignable, et un descriptif sans correspondance rendait six codes à 31 % sans aucune justification (CAS-MCC-11, divergence D4). | **corrigé** en deux temps : partiellement en vague 2 (repli atteignable), complètement en vague 3 sous DEF-A6-01 | Les ajustements de modèle de vente modulent une pertinence au lieu de la créer (`mccSuggestion.js`). |
+| DEF-A3-04 | MINEUR | Les messages de validation des bornes, des types et des énumérations n'étaient pas traduits (CAS-MCC-13, CAS-ROB-13, CAS-ROB-15). | **corrigé et vérifié** (vague 3 : 25 messages distincts examinés sur 6 routes, aucun anglais résiduel) | Carte de messages français extraite dans son propre module, importée par tous les schémas. Réserve mineure subsistante : un champ rend « Format invalide » là où une autre route sait dire « Un MCC est composé de 4 chiffres ». |
+| DEF-A3-05 | MAJEUR | Un code remonté par une variante dérivée d'un mot-clé arrivait sans justification et perdait quatre rangs (CAS-INDEX-03). | **corrigé et vérifié** (vague 3) | Les mots-clés dérivés alimentent les termes justificatifs. Couvert par le test « un code remonté par un mot-clé dérivé est justifié ». |
+| DEF-A5-01 | MINEUR | Effet de bord de DEF-A2-01 : en lecture seule, « Précédent », « Suivant » et « Voir la demande » devenaient inutilisables, au clic comme au clavier. | **corrigé et vérifié** | L'attribut de neutralisation descend sur un conteneur qui n'enveloppe que les champs ; la barre d'actions reste hors de son périmètre. Rejoué à l'écran sur une demande soumise : champ toujours inerte et valeur inchangée après saisie forcée, « Suivant » et « Voir la demande » opérants, 0 erreur JavaScript. |
+| DEF-A5-02 | MINEUR | Effet de bord de DEF-A2-02 : le bandeau « Session non vérifiée » survivait à une reconnexion réussie et ne disparaissait qu'au rechargement de la page. | **corrigé et vérifié** | Le client d'API émet un signal dès qu'une réponse est reçue, quel qu'en soit le code, et le contexte d'authentification efface l'avertissement (`web/src/api/client.js`, `web/src/auth/AuthContext.jsx`). Rejoué à l'écran : coupure simulée sur `/api/auth/me`, le bandeau apparaît ; la coupure levée, une simple navigation interne le fait disparaître, sans rechargement de page. |
+| DEF-A5-03 | MAJEUR | Une carte de proposition était rendue sans aucun terme justificatif, sur le **profil de référence du plan** : les termes tirés du nom et de l'adresse du site échappaient au correctif de DEF-A3-03. Mesure : 30 suggestions sans justification sur 504 profils. | **corrigé et couvert par un test** | Même correctif que DEF-A6-01 ci-dessous : tout jeton qui entre dans le score est ajouté aux termes justificatifs, et le filtre final pose l'invariant en dur. |
+| DEF-A6-01 | MAJEUR | Même défaut que DEF-A5-03, atteint par l'API : un code ne correspondant que par sa description française ou ses champs anglais sortait avec une liste de termes vide. Mesure : 10 propositions sur 272. | **corrigé et couvert par un test** | `server/src/services/mccSuggestion.js` : filtre `rawScore > 0 && matchedTerms.length > 0`. Vérifié sur 11 profils de formes différentes à la correction ; recoupé en vague 4 sur 12 propositions (JD-04 et JD-06), toutes justifiées. |
+| DEF-A6-02 | MAJEUR | **Régression** introduite par le correctif D3 : l'aller-retour « exporter → relire → appliquer » échouait en 400 sur le référentiel livré, sans aucune modification, le code `5817` portant deux secteurs dont la concaténation fait 42 caractères pour une borne de 40. Le défaut traversait la simulation et n'échouait qu'à l'application confirmée. | **corrigé et couvert par un test** | `server/src/services/adminSchema.js` : borne portée à 400 caractères. Le cycle complet est désormais rejoué en Excel et en CSV par deux tests automatisés — le seul défaut de la vague qu'un test de bout en bout aurait arrêté, et il n'existait pas. |
+| DEF-A6-03 | MAJEUR | Correction incomplète de `C-01` : en production, le secret publié dans le dépôt était accepté s'il était fourni explicitement, et aucune longueur minimale n'était imposée. Un jeton administrateur forgé avec ce secret était accepté. | **corrigé et couvert par un test** | `server/src/config.js` : refus du secret de développement et de toute valeur de moins de 32 caractères, en plus du refus de l'absence. Vérifié par trois démarrages en production. |
+| DEF-A6-04 | MAJEUR | Correction incomplète de `C-12` : le contrôle de santé répondait 200 alors que toutes les routes métier rendaient 500 — le répartiteur de charge continuait d'alimenter une instance morte. | **corrigé et couvert par un test** | `mccCatalog.js` et `app.js` : mémorisation de l'issue du **dernier** chargement et sonde réelle de la base à chaque appel ; trois états distincts. |
+| DEF-A7-01 | MINEUR | Ouvert par le présent rapport. Avec `isMarketplace` à faux, le code `5262` reste en rang 1 (84 %) alors que le plan exige son déclassement : la pénalité de −25 s'applique au score brut (188,5 → 118,5) et ne suffit pas à le faire reculer (CAS-MCC-05). | **ouvert** | Aucun. Le comportement est inchangé depuis la vague 2 ; il avait été masqué par le classement « bloqué » de DEF-A3-01. |
+
+### 5.3 Décompte
+
+| Statut | Nombre | Références |
+| --- | --- | --- |
+| Corrigé **et vérifié** par un agent de recette indépendant | 9 | DEF-A2-01 à 05, DEF-A3-02, DEF-A3-04, DEF-A3-05, et DEF-A3-03 sur sa partie « repli atteignable » |
+| Corrigé **et couvert par un test automatisé**, sans retest indépendant | 6 | DEF-A5-03, DEF-A6-01, DEF-A6-02, DEF-A6-03, DEF-A6-04, et DEF-A3-03 sur sa partie finale |
+| Corrigé **et rejoué à l'écran** par l'intervenant du correctif, sans agent indépendant | 2 | DEF-A5-01, DEF-A5-02 (tous deux front, tous deux mineurs) |
+| Résolu sans correctif de code | 1 | DEF-A3-01 (défaut de plan) |
+| **Ouvert** | 1 | DEF-A7-01 (mineur) |
+
+Par gravité, sur les 18 références : 9 majeures, 8 mineures, 1 majeure de plan. **Aucun défaut
+bloquant n'a été relevé en exécution au cours de la campagne.**
+
+Deux régressions ont été introduites par des correctifs et détectées par la vague suivante :
+`DEF-A5-01` et `DEF-A5-02` (effets de bord des correctifs front), et une troisième,
+`DEF-A6-02`, qui cassait une fonction annoncée du produit. Toutes trois sont corrigées.
+Aucune régression n'a été constatée sur le périmètre fonctionnel rejoué : 27 cas front et
+45 cas back rejoués en vague 3 sans écart, hors les écarts **attendus** produits par les
+correctifs du moteur.
+
+### 5.4 Constats de la revue de code
+
+Sur les 26 constats, **4 ont été corrigés** et 22 restent ouverts. Aucun des 22 n'a été
+confirmé en exécution par un cas dédié, sauf mention contraire ci-dessous ; leur statut est
+donc « constat de lecture, non traité ».
+
+| Constat | Gravité (revue) | Objet | Statut |
+| --- | --- | --- | --- |
+| C-01 | CRITIQUE | Secret d'authentification en dur, jamais exigé en production. | **corrigé** en deux temps (vague 1 puis DEF-A6-03), couvert par deux tests. |
+| C-12 | CRITIQUE | Une erreur passagère de base figeait l'API entière jusqu'au redémarrage, pendant que le contrôle de santé annonçait « ok ». | **corrigé** en deux temps (vague 1 puis DEF-A6-04), couvert par trois tests. |
+| C-02 | MAJEUR | Fenêtre de concurrence sur la modification d'une demande. | **corrigé et vérifié** : 45 itérations en parallèle, 4 conflits correctement rendus en 409, zéro écriture sur une demande déjà soumise. |
+| C-14 | MAJEUR | Un code MCC réenregistré était silencieusement relégué en fin de priorité de son secteur. | **corrigé et vérifié** : rangs inchangés après modification ; un nouveau rattachement prend la fin de file et y reste. Voir la réserve D1 au § 3, SC-13. |
+| C-03 | MAJEUR | La photographie des suggestions perd son sens si un MCC quitte le référentiel. | ouvert, non confirmé en exécution. |
+| C-04 | MAJEUR | Un retour arrière de transaction en échec masque l'erreur d'origine. | ouvert, non confirmé. Coûte du temps de diagnostic le jour d'un incident. |
+| C-05 | MAJEUR | Un changement de mot de passe par l'utilisateur ne laisse aucune trace. | ouvert, vérifié par lecture (§ 4.2, CA-T-07). |
+| C-06 | MAJEUR | Le journal d'administration des comptes n'enregistre pas les valeurs modifiées. | ouvert, effet observé en exécution (CAS-ADM-06) sans cas dédié (§ 4.2, CA-T-06). |
+| C-07 | MAJEUR | L'authentification s'exécute deux fois par requête : deux allers-retours en base inutiles. | ouvert, non confirmé. Effet de performance, jamais mesuré. |
+| C-08 | MAJEUR (latent) | La péremption des jetons comparait deux horloges différentes. | **traité indirectement** par le correctif de DEF-A3-02, qui supprime la notion de temps de la comparaison. Non recensé comme corrigé faute de vérification portant explicitement sur ce constat. |
+| C-13 | MAJEUR | L'écoute des modifications du référentiel ne se rétablit jamais après une coupure. | ouvert, jamais joué (§ 4.6, CA-E-03). |
+| C-15 | MAJEUR | Un import qui réintroduit un code désactivé ne le réactive pas et l'annonce « inchangé ». | ouvert, non confirmé. Le cas d'import correspondant fait partie des sept non exécutés. |
+| C-16 | MAJEUR | L'unicité des adresses électroniques n'est garantie que par le code applicatif. | ouvert, vérifié par lecture du schéma (§ 4.3, CA-S-12). |
+| C-17 | MAJEUR | Le repli sur le code 5999 produit un objet vide si ce code est absent ou désactivé. | ouvert, vérifié par lecture (`mccSuggestion.js` ligne 148 : la recherche du code de repli n'est pas défendue contre une absence). Jamais joué. |
+| C-09, C-10, C-11, C-18 à C-26 | MINEUR | Erreurs d'envoi de fichier en 500 ; administrateur au-dessus des séparations de fonction ; blocage d'un compte tiers ; index de recherche exposé ; paramètre répété provoquant une erreur interne ; amorçage réactivant les comptes ; import quadratique ; rechargement complet des banques ; tri non indexé ; journal non paginable ; jeton dans le stockage local ; conventions de journalisation divergentes. | ouverts. `C-10` est confirmé en exécution par CAS-HAB-05 (divergence D6) et assumé par le README. Les autres n'ont pas de cas dédié. |
+
+### 5.5 Divergences README / code
+
+| Div. | Cas | Statut final |
+| --- | --- | --- |
+| D1 | CAS-INDEX-06 | **partiellement close.** La conséquence dommageable est corrigée (C-14) ; la promesse « le rang suit l'ordre fourni » n'est toujours pas tenue. Écart de documentation. |
+| D2 | CAS-IMPORT-11 | **close.** Un fichier ne modifiant que le rattachement sectoriel est désormais détecté et appliqué. |
+| D3 | CAS-IMPORT-12 | **close.** L'export porte tous les secteurs et l'aller-retour ne les perd plus. A produit la régression DEF-A6-02, corrigée. |
+| D4 | CAS-MCC-11 | **close.** Le repli sur 5999 est atteignable et annoncé. |
+| D5 | CAS-AUTH-17 | **confirmée, ouverte.** Un corps invalide n'alimente pas le compteur de limitation (§ 4.3, CA-S-07). |
+| D6 | CAS-HAB-05 | **confirmée, assumée.** L'administrateur cumule les droits d'agent et de banquier (§ 4.3, CA-S-14). À arbitrer. |
+| D7 | CAS-MCC-02 | **confirmée, mineure.** Le total affiché du référentiel baisse après une désactivation sans que l'écran le signale (CAS-ADM-14 : 279 codes, 278 actifs). |
+
+### 5.6 Attentes du plan de tests devenues inexactes
+
+Plusieurs résultats attendus du plan ne correspondent plus au produit, soit parce qu'ils
+étaient erronés à la rédaction, soit parce qu'un correctif les a rendus caducs. Ils sont
+recensés ici pour que le plan soit corrigé avant sa prochaine exécution — aucun n'est un
+défaut du produit.
+
+| Attente | Constat |
+| --- | --- |
+| CAS-MCC-01 : six propositions dont `5960` à 31 % | Caduque. Le correctif du moteur écarte la sixième, qui ne portait aucune justification. Cinq propositions désormais. |
+| CAS-MCC-03 : quatre codes à 31 % dans l'appel sans secteur | Caduque, même raison. |
+| JD-10 (§ 4.3 du plan) : six codes à 31 %, « pas de repli sur 5999 » | Caduque. C'était la description de la divergence D4, désormais corrigée : une seule proposition, le repli. |
+| CAS-INDEX-01 : le terme `bornes recharge` attendu parmi les justificatifs | Inexacte. La description écrit « bornes **de** recharge » : le couple de mots n'y est pas contigu. |
+| CAS-INDEX-04 (1) et CAS-INDEX-08 (3) | Inexactes, et CAS-INDEX-08 (3) se contredit avec son propre point (4). |
+| CAS-ERGO-08 : six compteurs sur la liste des demandes | Inexacte. Le produit en expose cinq, volontairement. Constat identique en vagues 2 et 3. |
+
+---
+
+## 6. Couverture par les tests automatisés
+
+### 6.1 État constaté
+
+`cd /home/user/simulateur/clicktopay-affiliation/server && npm test`, exécuté le 2026-09-22 :
+**113 tests, 113 réussis, 0 échec, 14 suites**, en 19 secondes, sur la base `clicktopay_test`
+remise à zéro à chaque exécution.
+
+Répartition par fichier :
+
+| Fichier | Tests | Ce qu'il couvre |
+| --- | --- | --- |
+| `server/tests/auth.test.js` | 5 | Connexion, refus sans jeton, profil du porteur, contrôle de santé. |
+| `server/tests/requests.test.js` | 20 | Cycle de vie complet d'une demande : saisie, contrôle champ par champ, brouillon, soumission et gel des propositions, arbitrage sous ses quatre issues, cloisonnement, filtres, compteurs, journal. |
+| `server/tests/mcc.test.js` | 10 | Catalogue à 279 codes, recherche, secteurs, parité Visa/Mastercard, explicabilité des propositions, activité numérique, place de marché, refus des codes interdits, repli. |
+| `server/tests/admin.test.js` | 23 | Comptes, politique de mot de passe, banques, journalisation des actions, référentiel administrateur, historique des codes, rapport d'écart et application de l'import, amorçage non destructeur. |
+| `server/tests/indexation.test.js` | 10 | Indexation immédiate d'un code importé, dérivation des mots-clés, variantes singulier/pluriel, rattachement sectoriel, refus d'un secteur inconnu, reconstruction de l'index. |
+| `server/tests/robustesse.test.js` | 39 | Types hostiles et coercitions, concurrence (quatre situations), cycle de vie des jetons, limitation de débit, import Excel et CSV, et les six tests ajoutés avec les correctifs de la revue de code. |
+| `server/tests/vague3.test.js` | 7 | Les six défauts de la dernière vague : justification systématique des propositions, repli seul, aller-retour d'import complet en deux formats, refus d'un secret faible ou laissé par défaut, deux états du contrôle de santé. |
+
+### 6.2 Ce que les 113 tests garantissent réellement
+
+Ils garantissent, à chaque exécution et sans intervention humaine :
+
+- **le cycle de vie complet d'une demande**, y compris les quatre issues de l'arbitrage, le gel
+  des propositions à la soumission et le journal nominatif ;
+- **les quatre situations de concurrence** : deux soumissions, deux décisions, deux
+  rétrogradations d'administrateur, deux créations du même code — chacune jouée en parallèle
+  réel, pas simulée ;
+- **le cycle de vie des droits** : un compte désactivé, muté ou changé de rôle voit ses accès
+  suivre immédiatement, sans reconnexion, et une réinitialisation ferme les sessions ouvertes ;
+- **le cloisonnement entre banques** et la séparation des rôles sur les routes couvertes ;
+- **le refus des codes interdits** et la justification systématique de toute proposition —
+  l'invariant `matchedTerms.length > 0` est désormais un test, pas une intention ;
+- **l'aller-retour export → import du référentiel complet**, en Excel et en CSV, avec
+  l'application confirmée : c'est le test qui manquait et qui aurait arrêté DEF-A6-02 ;
+- **le refus de démarrer en production** avec un secret absent, faible ou laissé à la valeur
+  du dépôt ;
+- **les trois états du contrôle de santé**, dont l'état dégradé sur référentiel périmé ;
+- **la résistance aux types hostiles** : la chaîne « false », les booléens indevinables, les
+  dates inexistantes, les montants hors capacité de colonne, l'octet nul, les identifiants non
+  numériques.
+
+### 6.3 Ce qu'ils ne garantissent pas
+
+C'est le point important de cette section.
+
+**A. L'interface n'est couverte par aucun test automatisé.** Les 113 tests portent tous sur
+l'API Node. Le répertoire `web/` n'a aucune suite de tests. Tout ce qui a été établi sur
+l'interface — la neutralisation du formulaire en lecture seule, l'affichage du message de
+panne réseau, les contrastes, les tailles de zones cliquables, l'association des étiquettes,
+la restitution des erreurs, l'écran d'import et sa double confirmation — l'a été **une fois,
+à la main, par un agent de recette**. Aucune régression d'écran ne sera détectée autrement
+que par une nouvelle recette manuelle. Les deux défauts front corrigés en dernière vague
+(`DEF-A5-01`, `DEF-A5-02`) illustrent le risque : ils ont été rejoués à l'écran, mais aucun
+test automatisé ne les retiendra si une évolution future les rouvre.
+
+**B. Sept des seize cas d'import ne sont couverts ni par un test ni par une exécution.** Les
+tests couvrent l'aller-retour, un fichier désordonné, un fichier sans colonne de code, un
+format non pris en charge et la réservation à l'administrateur. Ils ne couvrent pas les
+anomalies avec numéro de ligne (CAS-IMPORT-06), la garantie que le rapport d'écart ne modifie
+rien prise pour elle-même (CAS-IMPORT-08), l'application après confirmation explicite
+(CAS-IMPORT-09), le caractère strictement optionnel de la désactivation des codes absents
+(CAS-IMPORT-10), la traduction des valeurs métier (CAS-IMPORT-05), les codes normalisés par
+le tableur (CAS-IMPORT-07) ni l'ordre libre des colonnes avec variantes d'en-tête
+(CAS-IMPORT-04).
+
+**C. Zones qui ne reposent que sur une vérification manuelle, faite une fois.** Outre
+l'interface entière : les six jeux de données du plan jamais joués (JD-02, JD-03, JD-05,
+JD-07, JD-08, JD-09), la limitation de débit sur la route réelle — un seul test automatisé
+l'exerce, alors que le plan classait ce point n° 5 de ses priorités —, la résilience du
+référentiel sous panne de base réelle (les tests simulent, la vague 3 a joué la panne à la
+main), et les scénarios d'exploitation du § 4.6 marqués non vérifiés.
+
+**D. Ce qu'aucun test ne peut garantir ici.** La performance, la charge, le comportement
+multi-instances, le rendu sur un navigateur mobile réel, la restitution au lecteur d'écran et
+le comportement du paquet de production de l'interface (§ 2.2).
+
+### 6.4 Une remarque de méthode
+
+Les six tests de `vague3.test.js` et les six tests ajoutés avec les correctifs de la revue de
+code ont une caractéristique commune : ils ont été écrits **après** le défaut, par la personne
+qui posait le correctif. C'est utile — ils empêchent le retour du défaut — mais ce n'est pas
+une couverture conçue à l'avance. Trois des correctifs de la vague 2 ont dû être repris parce
+qu'ils traitaient le cas constaté plutôt que la règle ; les tests de la vague 3, eux, énoncent
+l'invariant (« aucune proposition n'est servie sans terme justificatif », « la production
+refuse un secret faible ou laissé par défaut »). C'est la bonne formulation, et elle mérite
+d'être la règle pour la suite.
+
+---
+
+## 7. Réserves et recommandations avant mise en service
+
+Classées par priorité. L'effort est estimé en jours-personne pour une équipe qui connaît le
+code ; il couvre la réalisation, le test et la vérification.
+
+### 7.1 À traiter avant toute mise à disposition
+
+| N° | Réserve | Action | Effort |
+| --- | --- | --- | --- |
+| R-01 | **Sept cas d'import jamais exécutés, dont quatre bloquants** (§ 2.2 C). C'est la fonction qui modifie le référentiel réglementaire de toutes les banques, et la garantie « rien n'est écrit sans confirmation explicite » n'est pas formellement acquise. | Exécuter CAS-IMPORT-04 à 10 et 14 sur une instance dédiée, et ajouter un test automatisé pour CAS-IMPORT-08, 09 et 10, qui portent sur des invariants et non sur des cas. | 2 à 3 j |
+| R-02 | **Les deux correctifs front de la dernière vague ont été rejoués par l'intervenant qui les a écrits**, non par un agent de recette indépendant (`DEF-A5-01`, `DEF-A5-02`). Le comportement est établi, la revérification croisée ne l'est pas. | Faire rejouer les deux scénarios par un agent de recette distinct, et les porter en test automatisé d'interface (voir R-05). | 0,25 j |
+| R-03 | **Deux cas majeurs jamais exécutés hors import** : CAS-ROB-12 (les erreurs internes ne fuient pas) et CAS-WF-15 (la photographie précédente est remplacée, pas cumulée). Le premier touche la sécurité, le second l'intégrité de la piste d'audit. | Exécuter les deux cas. Traiter au passage la réserve consignée en vague 2 : un corps JSON tronqué renvoie le message brut de l'analyseur. | 0,5 j |
+| R-04 | **Arbitrer la divergence D6** : le profil administrateur peut saisir **et** arbitrer le même dossier, et voit les dossiers de toutes les banques (§ 4.3, CA-S-14 ; constat `C-10`). C'est une décision métier, pas un défaut technique. | Soit restreindre le profil administrateur aux fonctions d'administration, soit acter par écrit que ce cumul est accepté et le documenter à destination du contrôle interne. | 0,5 j pour la décision, 1 j si restriction |
+
+### 7.2 À traiter avant une ouverture large
+
+| N° | Réserve | Action | Effort |
+| --- | --- | --- | --- |
+| R-05 | **L'interface n'a aucun test automatisé** (§ 6.3 A). Toute régression d'écran passera inaperçue jusqu'à la prochaine recette manuelle. | Poser une suite de bout en bout sur les cinq parcours les plus coûteux à reprendre à la main : connexion et changement imposé de mot de passe, saisie en cinq étapes jusqu'à la soumission, arbitrage sous ses trois issues, cloisonnement par URL forcée, écran d'import en simulation. | 4 à 6 j |
+| R-06 | **Traçabilité incomplète pour un contrôle interne** : le changement de mot de passe par l'utilisateur n'est pas tracé (`C-05`), le journal des comptes n'enregistre pas les valeurs modifiées (`C-06`), et il n'est pas consultable au-delà de 500 entrées (`C-24`). | Tracer le changement de mot de passe, journaliser les valeurs avant et après sur les modifications de compte — comme cela se fait déjà pour les codes MCC —, et paginer le journal. | 2 j |
+| R-07 | **Invariants portés par le code applicatif et non par la base** : l'unicité des adresses électroniques n'est pas insensible à la casse en base (`C-16`). | Poser un index unique sur l'adresse en minuscules. La revue signale ce point comme l'une des deux corrections au meilleur rapport risque écarté / effort de tout son rapport. | 0,5 j |
+| R-08 | **Résilience du référentiel** : l'écoute des modifications ne se rétablit pas après une coupure (`C-13`), le repli sur le code 5999 n'est pas défendu contre l'absence de ce code (`C-17`), et la photographie des suggestions perd son sens si un code quitte le référentiel (`C-03`). | Reconnecter l'écoute avec rechargement au retour, défendre le repli, et rendre les lectures d'historique indépendantes du catalogue vivant. | 2 à 3 j |
+| R-09 | **Aucune mesure de performance ni de charge** (§ 4.5). Trois points de la revue portent précisément sur des coûts non mesurés : double authentification par requête (`C-07`), import quadratique (`C-21`), tri non indexé de la liste des demandes (`C-23`). | Établir un palier de charge représentatif — nombre de banques, d'agents simultanés et de demandes — et mesurer la liste des demandes, le moteur de proposition et l'import complet. | 3 à 4 j |
+| R-10 | **Recette mobile et multi-navigateurs absente**, et le paquet de production de l'interface n'a jamais été recetté (§ 2.2 B). | Rejouer les cas d'ergonomie sur un téléphone réel et sur un second moteur de rendu, contre un paquet construit. Vérifier au passage le support de l'attribut de neutralisation du formulaire, dont le support est inégal. | 1 à 2 j |
+| R-11 | **DEF-A7-01 ouvert** : la pénalité de place de marché ne déclasse pas le code 5262 comme le prévoit le plan. | Trancher : soit la règle métier est bien celle du plan et la pénalité doit s'appliquer au score final, soit l'attente du plan est excessive et il faut la corriger. En l'état, ni l'un ni l'autre n'est établi. | 0,5 j |
+
+### 7.3 À traiter au fil de l'eau
+
+| N° | Réserve | Action | Effort |
+| --- | --- | --- | --- |
+| R-12 | Limitation de débit non alimentée par un corps invalide (divergence D5, `CA-S-07`). | Monter la limitation avant la validation du corps, ou corriger la documentation. | 0,5 j |
+| R-13 | Jeton d'authentification conservé dans le stockage local du navigateur (`C-25`). | Décision d'architecture à acter ou à revoir. Aucun test d'intrusion n'ayant été mené, le risque n'est pas quantifié. | à arbitrer |
+| R-14 | Diagnostic d'incident dégradé : un retour arrière de transaction en échec masque l'erreur d'origine (`C-04`), et les erreurs d'envoi de fichier remontent en erreur interne (`C-09`). | Deux corrections courtes, sans effet fonctionnel, qui feront gagner du temps le jour d'un incident. | 1 j |
+| R-15 | Le plan de tests contient six attentes devenues inexactes ou caduques (§ 5.6), et la vague 3 a maintenu deux cas « bloqués » alors que les jeux de données existaient. | Mettre le plan à jour avant sa prochaine exécution, sans quoi la campagne suivante rejouera les mêmes faux écarts. | 0,5 j |
+| R-16 | Écarts d'homogénéité mineurs : la validation du champ « Banque » passe par la bulle native du navigateur ; le total affiché du référentiel baisse silencieusement après une désactivation (divergence D7) ; un message de validation rend « Format invalide » là où une autre route sait nommer la règle. | À traiter avec les autres retouches d'interface. | 1 j |
+
+### 7.4 Ce que l'agent 7 recommande
+
+La plateforme tient sur ce qui compte : le parcours métier, le cloisonnement entre banques,
+le refus des codes non éligibles, l'explicabilité des propositions et la piste d'audit des
+dossiers. Ces points ont été éprouvés, corrigés quand il le fallait, et sont désormais tenus
+par des tests qui énoncent des règles et non des cas.
+
+Ce qui manque n'est pas dans le produit mais **autour** : une fonction d'administration
+insuffisamment recettée (l'import), une interface sans filet automatisé, et une série de
+constats de revue laissés de côté qui touchent la traçabilité et la résilience. Ce sont des
+sujets d'exploitation et de contrôle, pas de fonctionnement.
+
+D'où l'avis : **apte sous réserve**. Une mise en service **pilote** — une ou deux banques,
+volume connu, import du référentiel réservé à l'équipe projet — est envisageable dès que les
+quatre points du § 7.1 sont traités, soit environ **quatre jours de travail**. Une ouverture
+large demande en plus le § 7.2, soit une douzaine de jours supplémentaires, dont la moitié
+pour poser les tests d'interface qui manquent.
+
+---
+
+## 8. Tableau de bord — vague 4
+
+Valeurs demandées par `recette-tableau-de-bord.md` § « Vague 4 — synthèse ».
+
+| Indicateur | Valeur |
+| --- | --- |
+| Cas prévus au plan | 147 |
+| Cas joués au moins une fois | 137 |
+| Cas jamais joués | 10 (7 IMPORT, 1 ROBUSTESSE, 1 WORKFLOW, plus CAS-MCC-05 joué mais non satisfait) |
+| Défauts ouverts par criticité | 1 mineur (DEF-A7-01). Aucun bloquant, aucun majeur. |
+| Défauts corrigés et confirmés par un agent indépendant | 9 |
+| Défauts corrigés et couverts par un test, sans retest indépendant | 6 |
+| Défauts corrigés et rejoués par l'intervenant du correctif, sans agent indépendant | 2 |
+| Constats de revue confirmés en exécution | 3 sur 26 (`C-01`, `C-12`, `C-10`), auxquels s'ajoutent `C-02` et `C-14` confirmés par la vérification de leur correctif |
+| Constats de revue corrigés | 4 sur 26 (`C-01`, `C-02`, `C-12`, `C-14`) |
+| Régressions introduites par les correctifs | 3, toutes détectées par la vague suivante et corrigées (`DEF-A5-01`, `DEF-A5-02`, `DEF-A6-02`) |
+| Régressions subsistantes | 0 |
+| Suite automatisée | 113 tests, 113 réussis (2026-09-22) |
+| Avis de mise en production | **Apte sous réserve** — voir § 1 et § 7 |
+
+---
+
+*Rapport établi par l'agent 7 le 2026-09-22. Aucun fichier du projet n'a été modifié, hors le
+présent document. Les seules actions exécutées ont été des lectures : `npm test` sur la base
+`clicktopay_test`, et quatre appels à `POST /api/mcc/suggest` sur l'instance de démonstration
+du port 4000, qui n'écrivent rien.*
+
+---
+
+## Amendement du 2026-09-22
+
+Le tableau des défauts classait `DEF-A5-01` et `DEF-A5-02` « corrigés, non revérifiés » sur
+la foi d'une lecture du code. Ces deux correctifs avaient en réalité été rejoués à l'écran le
+jour même, avant la remise du rapport, et le compte rendu de cette vérification figure dans
+`docs/corrections-vague3.md` (commit `cbceb13`) : formulaire d'une demande soumise, champ
+resté inerte et valeur inchangée après saisie forcée, boutons « Suivant » et « Voir la
+demande » redevenus opérants, bandeau de panne effacé par une navigation interne après la
+levée de la coupure, aucune erreur JavaScript.
+
+Les statuts, le critère `CA-A-07` et la recommandation `R-02` ont été rectifiés en
+conséquence. La réserve qui subsiste n'est pas l'absence de vérification mais son absence de
+croisement : c'est l'auteur des correctifs qui les a éprouvés, non un agent de recette
+indépendant. L'avis d'aptitude et les autres réserves du rapport sont inchangés.
