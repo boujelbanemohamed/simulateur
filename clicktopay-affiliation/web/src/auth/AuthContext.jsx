@@ -34,8 +34,16 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const onUnauthorized = () => setUser(null);
+    // Dès qu'une requête aboutit, le serveur est joignable : l'avertissement
+    // posé pendant la coupure n'a plus lieu d'être. Le remettre à zéro ici plutôt
+    // qu'à la seule connexion couvre aussi la reprise en cours de session.
+    const onJoignable = () => setErreurSession((actuelle) => (actuelle ? null : actuelle));
     window.addEventListener('clicktopay:unauthorized', onUnauthorized);
-    return () => window.removeEventListener('clicktopay:unauthorized', onUnauthorized);
+    window.addEventListener('clicktopay:serveur-joignable', onJoignable);
+    return () => {
+      window.removeEventListener('clicktopay:unauthorized', onUnauthorized);
+      window.removeEventListener('clicktopay:serveur-joignable', onJoignable);
+    };
   }, []);
 
   const login = useCallback(async (email, password) => {

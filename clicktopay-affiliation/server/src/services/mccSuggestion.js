@@ -87,7 +87,12 @@ export function suggestMcc(profile = {}, options = {}) {
         const poidsChamp = tokens.get(token);
         if (poidsChamp === undefined) continue;
         raw += poidsChamp * tokenWeight * 0.5;
-        if (tokensForts.has(token)) matched.add(token);
+        // Tout jeton qui crédite le score est montré à l'agent, y compris s'il
+        // ne correspond qu'à la description ou à la définition anglaise. Ne
+        // retenir que les champs « forts » laissait sortir des propositions sans
+        // aucune justification affichée : le terme est celui que l'agent a
+        // lui-même saisi, il lui parle donc toujours.
+        matched.add(token);
       }
 
       // 3. Amorçage par le secteur déclaré : le premier MCC du secteur prime.
@@ -133,7 +138,9 @@ export function suggestMcc(profile = {}, options = {}) {
         matchedTerms: [...matched].slice(0, 8),
       };
     })
-    .filter((mcc) => mcc.rawScore > 0)
+    // Invariant du produit : une proposition que le banquier ne peut pas
+    // justifier n'a pas sa place dans la liste.
+    .filter((mcc) => mcc.rawScore > 0 && mcc.matchedTerms.length > 0)
     .sort((a, b) => b.rawScore - a.rawScore || a.code.localeCompare(b.code));
 
   // Filet de sécurité : jamais de liste vide renvoyée à l'agent.

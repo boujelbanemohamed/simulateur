@@ -128,7 +128,11 @@ const entreeImportSchema = z.object({
   note: texte(1000).optional(),
   networks: z.array(z.enum(['VISA', 'MASTERCARD'])).min(1).optional(),
   source: texte(160).optional(),
-  sector: texte(40).optional(),
+  // La colonne porte TOUS les secteurs d'un code, séparés par une virgule :
+  // 40 caractères suffisaient pour une clé, pas pour la liste. Le code 5817 du
+  // référentiel d'amorçage en produit 42, ce qui cassait l'aller-retour
+  // export/import que le passage au multi-secteurs devait justement préserver.
+  sector: texte(400).optional(),
 });
 
 export const importMccSchema = z.object({

@@ -20,6 +20,21 @@ let cache = { items: [], byCode: new Map(), secteurs: [] };
 let chargement = null;
 
 /**
+ * Issue de la DERNIÈRE tentative de chargement.
+ *
+ * « Un catalogue est en mémoire » et « le référentiel est à jour » sont deux
+ * choses différentes : après un rechargement raté, le cache continue de servir
+ * une photo périmée. Le contrôle de santé doit voir l'échec, sinon un
+ * répartiteur de charge laisse l'instance en rotation pendant une panne.
+ */
+let etat = { chargeLe: null, echec: null };
+
+/** Mémorise l'échec sans vider le cache : servir une photo périmée reste mieux que rien. */
+function noterEchec(err) {
+  etat = { ...etat, echec: { message: err.message, le: new Date().toISOString() } };
+}
+
+/**
  * Canal PostgreSQL de propagation.
  *
  * Le cache vit dans le processus : une modification faite par une instance
@@ -122,6 +137,7 @@ async function chargerCatalogue() {
   for (const mcc of items) mcc.index = construireIndex(mcc);
 
   cache = { items, byCode, secteurs: [...parSecteur.values()] };
+  etat = { chargeLe: new Date().toISOString(), echec: null };
   return cache;
 }
 
@@ -129,6 +145,7 @@ async function chargerCatalogue() {
 export function assurerCatalogueCharge() {
   chargement ??= chargerCatalogue().catch((err) => {
     chargement = null; // un échec ne doit pas figer un cache vide
+    noterEchec(err);
     throw err;
   });
   return chargement;
@@ -142,6 +159,7 @@ export async function rechargerCatalogue({ diffuser = true } = {}) {
   // répondraient alors 500 jusqu'au redémarrage du processus.
   const tentative = chargerCatalogue().catch((err) => {
     chargement = null;
+    noterEchec(err);
     throw err;
   });
   chargement = tentative;
@@ -158,8 +176,24 @@ export async function rechargerCatalogue({ diffuser = true } = {}) {
   return resultat;
 }
 
-/** Le catalogue est-il chargé et exploitable ? Sert au contrôle de santé. */
+/** Le catalogue est-il chargé et exploitable ? */
 export const catalogueEstCharge = () => cache.items.length > 0;
+
+/**
+ * État détaillé pour le contrôle de santé : présence d'un catalogue, date du
+ * dernier chargement réussi, et échec de la dernière tentative s'il y en a eu un.
+ */
+export const etatCatalogue = () => ({
+  charge: catalogueEstCharge(),
+  codes: cache.items.length,
+  chargeLe: etat.chargeLe,
+  echec: etat.echec,
+});
+
+/** Remet l'état de santé à zéro. Réservé aux tests, qui simulent des pannes. */
+export const reinitialiserEtat = () => {
+  etat = { chargeLe: null, echec: null };
+};
 
 /**
  * Ouvre une connexion dédiée qui écoute les modifications du référentiel.

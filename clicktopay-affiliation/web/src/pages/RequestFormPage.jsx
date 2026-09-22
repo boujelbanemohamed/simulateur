@@ -247,11 +247,13 @@ export default function RequestFormPage() {
       <ErreurApi erreur={erreur} />
       {info && <Message type="succes">{info}</Message>}
 
-      {/* `inert` neutralise réellement la saisie : le bandeau annonçait une
-          lecture seule que les champs ne respectaient pas. */}
-      <form className="carte" onSubmit={(e) => e.preventDefault()}
-        {...(modifiable ? {} : { inert: '' })}
-        style={modifiable ? undefined : { opacity: 0.85 }}>
+      <form className="carte" onSubmit={(e) => e.preventDefault()}>
+        {/* `inert` neutralise réellement la saisie : le bandeau annonçait une
+            lecture seule que les champs ne respectaient pas. Il ne couvre que les
+            champs : posé sur le <form>, il emportait aussi les boutons de
+            navigation, et la consultation d'une demande devenait impossible. */}
+        <div {...(modifiable ? {} : { inert: '' })}
+          style={modifiable ? undefined : { opacity: 0.85 }}>
         {etape === 0 && (
           <>
             <fieldset>
@@ -423,6 +425,8 @@ export default function RequestFormPage() {
           <Recapitulatif formulaire={formulaire} secteurs={secteurs}
             suggestions={suggestions} resultatsMcc={resultatsMcc} />
         )}
+
+        </div>
 
         <div className="barre-actions barre-actions--fin" style={{ marginTop: '1.25rem' }}>
           {etape > 0 && (

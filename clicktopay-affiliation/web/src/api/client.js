@@ -29,6 +29,11 @@ async function request(path, { method = 'GET', body, signal } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
+  // Une réponse reçue — quel que soit son code — prouve que le serveur répond.
+  // Sans ce signal, le bandeau « serveur injoignable » restait affiché après le
+  // rétablissement du réseau, et ne disparaissait qu'au rechargement de la page.
+  window.dispatchEvent(new Event('clicktopay:serveur-joignable'));
+
   if (res.status === 401) {
     clearToken();
     // Laisse le routeur renvoyer vers la page de connexion au prochain rendu.
