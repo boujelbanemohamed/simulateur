@@ -274,10 +274,14 @@ describe('Cycle de vie des jetons : les droits sont relus, pas figés', () => {
   });
 
   test('un changement de rôle s’applique sans reconnexion', async () => {
+    // L'observable est l'accès à l'administration : depuis la décision D-3, le
+    // banquier administre sa banque, l'agent n'administre rien. La saisie de
+    // demandes ne départage plus les deux rôles, elle leur est commune.
+    await request(app).get('/api/admin/users').set(asAgent()).expect(403);
     await request(app).put('/api/admin/users/1').set(asAdmin()).send({ role: 'BANQUIER' }).expect(200);
-    await request(app).post('/api/requests').set(asAgent()).send(DEMANDE_VALIDE).expect(403);
+    await request(app).get('/api/admin/users').set(asAgent()).expect(200);
     await request(app).put('/api/admin/users/1').set(asAdmin()).send({ role: 'AGENT' }).expect(200);
-    await request(app).post('/api/requests').set(asAgent()).send(DEMANDE_VALIDE).expect(201);
+    await request(app).get('/api/admin/users').set(asAgent()).expect(403);
   });
 });
 

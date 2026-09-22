@@ -7,7 +7,7 @@ import {
   resetPasswordSchema, updateBankSchema, updateMccSchema, updateUserSchema,
 } from '../services/adminSchema.js';
 import {
-  createBank, createUser, getUser, listAdminEvents, listBanks, listUsers,
+  createBank, createUser, getUserAdministrable, listAdminEvents, listBanks, listUsers,
   resetPassword, updateBank, updateUser,
 } from '../services/admin.js';
 import { createMcc, getMccHistory, importCatalog, updateMcc } from '../services/mccAdmin.js';
@@ -51,19 +51,40 @@ function erreursDeTeleversement(err, req, res, next) {
 
 export const adminRouter = Router();
 
-// Tout /api/admin est réservé au profil ADMIN.
-adminRouter.use(authenticate, requireRole('ADMIN'));
+// L'administration est ouverte au banquier, qui tient sa banque, et à
+// l'administrateur, qui tient la plateforme. Le partage se fait ensuite : les
+// routes marquées `reserveAAdministrateur` portent sur des ressources communes à
+// toutes les banques, et n'appartiennent donc à aucun banquier.
+adminRouter.use(authenticate, requireRole('ADMIN', 'BANQUIER'));
+
+/**
+ * Réserve une route au seul administrateur.
+ *
+ * Le référentiel MCC est partagé par toutes les banques : un banquier qui
+ * désactiverait un code le retirerait à ses concurrents. La création de banques
+ * relève de la même logique.
+ */
+const reserveAAdministrateur = requireRole('ADMIN');
 
 // ---------------------------------------------------------------- Utilisateurs
 
 adminRouter.get(
   '/users',
   asyncRoute(async (req, res) =>
-    res.json({ items: await listUsers({ search: req.query.search, bankId: req.query.bankId, role: req.query.role }) })
+    res.json({
+      items: await listUsers({
+        search: req.query.search, bankId: req.query.bankId, role: req.query.role, user: req.user,
+      }),
+    })
   )
 );
 
-adminRouter.get('/users/:id', asyncRoute(async (req, res) => res.json(await getUser(idDeRoute(req.params.id, 'Identifiant')))));
+adminRouter.get(
+  '/users/:id',
+  asyncRoute(async (req, res) =>
+    res.json(await getUserAdministrable(idDeRoute(req.params.id, 'Identifiant'), req.user))
+  )
+);
 
 adminRouter.post(
   '/users',
@@ -91,10 +112,11 @@ adminRouter.post(
 
 // --------------------------------------------------------------------- Banques
 
-adminRouter.get('/banks', asyncRoute(async (req, res) => res.json({ items: await listBanks() })));
+adminRouter.get('/banks', asyncRoute(async (req, res) => res.json({ items: await listBanks(req.user) })));
 
 adminRouter.post(
   '/banks',
+  reserveAAdministrateur,
   validate(createBankSchema),
   asyncRoute(async (req, res) =>
     res.status(201).json(await createBank({ payload: req.body, user: req.user }))
@@ -112,7 +134,7 @@ adminRouter.put(
 // ------------------------------------------------------------------ Référentiel
 
 /** Vue administrateur : inclut les codes désactivés et interdits. */
-adminRouter.get('/mcc', (req, res) => {
+adminRouter.get('/mcc', reserveAAdministrateur, (req, res) => {
   const { search = '', limit = 50 } = req.query;
   const items = searchCatalog(search, {
     limit: entierDeRequete(limit, { defaut: 50, min: 1, max: 300 }),
@@ -131,6 +153,7 @@ adminRouter.get('/mcc', (req, res) => {
 /** Export du référentiel courant : point de départ du cycle télécharger → corriger → réimporter. */
 adminRouter.get(
   '/mcc/export',
+  reserveAAdministrateur,
   asyncRoute(async (req, res) => {
     const format = req.query.format === 'csv' ? 'csv' : 'xlsx';
     const codes = req.query.actifsSeuls === 'true'
@@ -151,7 +174,7 @@ adminRouter.get(
 );
 
 // Déclaré après /mcc/export : sinon « export » serait capturé comme un code.
-adminRouter.get('/mcc/:code', (req, res) => {
+adminRouter.get('/mcc/:code', reserveAAdministrateur, (req, res) => {
   const mcc = getMcc(req.params.code);
   if (!mcc) throw notFound(`MCC ${req.params.code} introuvable`);
   res.json(mcc);
@@ -159,11 +182,13 @@ adminRouter.get('/mcc/:code', (req, res) => {
 
 adminRouter.get(
   '/mcc/:code/history',
+  reserveAAdministrateur,
   asyncRoute(async (req, res) => res.json(await getMccHistory(req.params.code)))
 );
 
 adminRouter.post(
   '/mcc',
+  reserveAAdministrateur,
   validate(createMccSchema),
   asyncRoute(async (req, res) =>
     res.status(201).json(await createMcc({ payload: req.body, user: req.user }))
@@ -172,6 +197,7 @@ adminRouter.post(
 
 adminRouter.put(
   '/mcc/:code',
+  reserveAAdministrateur,
   validate(updateMccSchema),
   asyncRoute(async (req, res) =>
     res.json(await updateMcc({ code: req.params.code, payload: req.body, user: req.user }))
@@ -185,6 +211,7 @@ adminRouter.put(
  */
 adminRouter.post(
   '/mcc/import-fichier',
+  reserveAAdministrateur,
   televersement.single('fichier'),
   erreursDeTeleversement,
   asyncRoute(async (req, res) => {
@@ -219,6 +246,7 @@ function lireJson(buffer) {
  */
 adminRouter.post(
   '/mcc/import',
+  reserveAAdministrateur,
   validate(importMccSchema),
   asyncRoute(async (req, res) => res.json(await importCatalog({ ...req.body, user: req.user })))
 );
@@ -238,6 +266,7 @@ adminRouter.get(
         action: req.query.action,
         depuis: req.query.depuis,
         jusqua: req.query.jusqua,
+        user: req.user,
       })
     )
   )

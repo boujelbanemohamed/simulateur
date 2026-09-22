@@ -79,6 +79,11 @@ export function AuthProvider({ children }) {
       isAgent: user?.role === 'AGENT' || user?.role === 'ADMIN',
       isBanquier: user?.role === 'BANQUIER' || user?.role === 'ADMIN',
       isAdmin: user?.role === 'ADMIN',
+      // Depuis la décision D-3, le banquier administre sa banque et y saisit des
+      // dossiers. Ces deux droits ne se déduisent plus d'un rôle unique : on les
+      // nomme pour ce qu'ils permettent, et non pour qui les détient.
+      peutSaisir: Boolean(user),
+      peutAdministrer: user?.role === 'BANQUIER' || user?.role === 'ADMIN',
       mustChangePassword: Boolean(user?.mustChangePassword),
     }),
     [user, loading, login, logout, changePassword, erreurSession]

@@ -44,7 +44,9 @@ requestsRouter.get(
 
 requestsRouter.post(
   '/',
-  requireRole('AGENT'),
+  // Le banquier administre sa banque : il saisit aussi bien qu'il arbitre. Le
+  // cloisonnement entre banques reste assuré plus bas, par `getRequest`.
+  requireRole('AGENT', 'BANQUIER'),
   validate(affiliationRequestSchema),
   asyncRoute(async (req, res) => {
     const created = await createRequest({ payload: req.body, user: req.user });
@@ -59,17 +61,17 @@ requestsRouter.get(
 
 requestsRouter.put(
   '/:id',
-  requireRole('AGENT'),
+  requireRole('AGENT', 'BANQUIER'),
   validate(affiliationRequestUpdateSchema),
   asyncRoute(async (req, res) =>
     res.json(await updateRequest({ id: idDeRoute(req.params.id, 'Demande'), payload: req.body, user: req.user }))
   )
 );
 
-/** L'agent transmet la demande au banquier. */
+/** L'agent transmet la demande au banquier, qui peut aussi soumettre les siennes. */
 requestsRouter.post(
   '/:id/submit',
-  requireRole('AGENT'),
+  requireRole('AGENT', 'BANQUIER'),
   asyncRoute(async (req, res) =>
     res.json(await submitRequest({ id: idDeRoute(req.params.id, 'Demande'), user: req.user }))
   )

@@ -14,7 +14,14 @@ const libelleRole = (role) => ROLES.find((r) => r.valeur === role)?.libelle ?? r
 const COMPTE_VIDE = { email: '', firstName: '', lastName: '', role: 'AGENT', bankId: '', password: '' };
 
 export default function AdminUsersPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
+  // Le banquier n'administre que des agents, et seulement dans sa banque. Le
+  // serveur l'impose déjà ; l'écran l'annonce, pour ne pas laisser proposer un
+  // choix qui finirait en refus après coup.
+  const rolesProposables = isAdmin ? ROLES : ROLES.filter((r) => r.valeur === 'AGENT');
+  // La banque est pré-remplie pour le banquier : son champ étant figé, un
+  // formulaire ouvert à vide ne serait jamais soumissible.
+  const compteVide = () => ({ ...COMPTE_VIDE, bankId: isAdmin ? '' : String(user.bankId ?? '') });
   const [utilisateurs, setUtilisateurs] = useState([]);
   const [banques, setBanques] = useState([]);
   const [recherche, setRecherche] = useState('');
@@ -108,7 +115,7 @@ export default function AdminUsersPage() {
           <h1>Comptes utilisateurs</h1>
           <p>Création, habilitation et désactivation des agents, banquiers et administrateurs.</p>
         </div>
-        <button type="button" className="bouton" onClick={() => { setFormulaire({ ...COMPTE_VIDE }); setErreur(null); }}>
+        <button type="button" className="bouton" onClick={() => { setFormulaire(compteVide()); setErreur(null); }}>
           + Nouveau compte
         </button>
       </div>
@@ -127,18 +134,28 @@ export default function AdminUsersPage() {
             <Champ label="Adresse e-mail" name="email" type="email" requis value={formulaire.email}
               onChange={maj('email')} erreur={erreursChamps.email} />
             <Champ label="Rôle" name="role" erreur={erreursChamps.role}
-              aide={estMonCompte ? 'Votre propre rôle ne peut pas être modifié.' : undefined}>
+              aide={
+                estMonCompte
+                  ? 'Votre propre rôle ne peut pas être modifié.'
+                  : isAdmin
+                    ? undefined
+                    : 'Vous administrez les comptes agents de votre banque.'
+              }>
               {/* Le serveur refuse l'auto-rétrogradation : proposer le choix ne
                   menait qu'à un 403 après coup. */}
               <select id="champ-role" value={formulaire.role} onChange={maj('role')}
-                disabled={estMonCompte}>
-                {ROLES.map((r) => (
+                disabled={estMonCompte || rolesProposables.length === 1}>
+                {rolesProposables.map((r) => (
                   <option key={r.valeur} value={r.valeur}>{r.libelle}</option>
                 ))}
               </select>
             </Champ>
-            <Champ label="Banque" name="bankId" requis erreur={erreursChamps.bankId}>
-              <select id="champ-bankId" value={formulaire.bankId} onChange={maj('bankId')} required>
+            {/* Le banquier ne voit que sa banque : la liste n'en propose qu'une,
+                et le champ ne se laisse pas changer. */}
+            <Champ label="Banque" name="bankId" requis erreur={erreursChamps.bankId}
+              aide={isAdmin ? undefined : 'Les comptes que vous créez rejoignent votre banque.'}>
+              <select id="champ-bankId" value={formulaire.bankId} onChange={maj('bankId')} required
+                disabled={!isAdmin && banques.length === 1}>
                 <option value="">— Sélectionner —</option>
                 {banques.filter((b) => b.active || Number(formulaire.bankId) === b.id).map((b) => (
                   <option key={b.id} value={b.id}>{b.code} — {b.name}</option>

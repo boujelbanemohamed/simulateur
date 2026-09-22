@@ -75,8 +75,19 @@ describe("Demandes d'affiliation", () => {
     assert.match(res.body.error, /pas éligible/);
   });
 
-  test('un banquier ne saisit pas de demande', async () => {
-    await request(app).post('/api/requests').set(asBanquier()).send(DEMANDE_VALIDE).expect(403);
+  test('un banquier saisit des demandes dans sa banque (D-3)', async () => {
+    // Décision du commanditaire : le banquier administre sa banque et y gère les
+    // dossiers, il ne fait plus seulement arbitrer. L'ancienne règle — « un
+    // banquier ne saisit pas » — est volontairement levée.
+    const res = await request(app)
+      .post('/api/requests')
+      .set(asBanquier())
+      .send({ ...DEMANDE_VALIDE, siteName: 'Saisie du banquier' })
+      .expect(201);
+    assert.equal(res.body.siteName, 'Saisie du banquier');
+    // Le dossier reste rattaché à SA banque, pas à une autre.
+    const fiche = await request(app).get(`/api/requests/${res.body.id}`).set(asBanquier()).expect(200);
+    assert.equal(fiche.body.bankId, 1);
   });
 
   test('une demande est modifiable tant qu’elle est au brouillon', async () => {

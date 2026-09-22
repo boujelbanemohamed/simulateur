@@ -114,6 +114,34 @@ Si ce n'est pas l'intention, la variante à demander est simple : le banquier g�
 dossiers de ses agents, mais ne peut pas arbitrer un dossier qu'il a lui-même saisi.
 Le coût est le même.
 
+### Mise en œuvre — livrée le 2026-09-22
+
+| Règle | Où elle est écrite |
+| --- | --- |
+| Périmètre d'administration de l'appelant | `server/src/services/admin.js`, `perimetreAdministration()` — une seule définition, dont dépendent toutes les routes de comptes |
+| Le banquier administre les comptes de sa banque | `routes/admin.js` : `requireRole('ADMIN', 'BANQUIER')` |
+| Le référentiel MCC et la création de banques restent à l'administrateur | `routes/admin.js` : `reserveAAdministrateur` sur toutes les routes `/mcc` et sur `POST /banks` |
+| Le banquier ne crée que des agents, dans sa banque | `createUser` : la banque de l'appelant écrase celle du corps de la requête, le rôle est contrôlé |
+| Une modification ne peut pas faire sortir un compte du périmètre | `updateUser` : ni promotion, ni changement de banque |
+| Le banquier saisit, modifie et soumet des dossiers | `routes/requests.js` : `requireRole('AGENT', 'BANQUIER')` |
+| Le banquier ne voit que sa banque : comptes, banques, journal | `listUsers`, `listBanks`, `listAdminEvents` |
+| L'interface suit le même découpage | `web/src/App.jsx` (`peutAdministrer`, `referentielSeul`), `AdminLayout.jsx`, `AdminUsersPage.jsx` |
+
+**Vérification.** Dix-huit cas automatisés dans `server/tests/habilitations.test.js`,
+écrits autour des bornes plutôt que des permissions : une habilitation élargie se
+prouve par ce qu'elle refuse encore. Suite portée de 147 à **165 tests, tous verts**.
+Vérifié aussi à l'écran : le banquier voit trois onglets d'administration sur cinq,
+le référentiel MCC atteint par l'URL le renvoie aux comptes, le rôle proposé à la
+création est figé sur « Agent », sa banque est pré-remplie et figée, il accède au
+formulaire de saisie ; l'agent, lui, est renvoyé hors de l'administration. Aucune
+erreur JavaScript.
+
+Deux tests affirmaient l'ancienne règle et ont été réécrits sur la nouvelle :
+« un banquier ne saisit pas de demande » devient « un banquier saisit des demandes
+dans sa banque », et le test qui prouvait la prise d'effet immédiate d'un changement
+de rôle s'appuie désormais sur l'accès à l'administration, la saisie ne départageant
+plus les deux profils.
+
 ### Question ouverte : la visibilité entre agents
 
 La décision dit qu'un agent ne peut pas **gérer** les dossiers des autres agents de

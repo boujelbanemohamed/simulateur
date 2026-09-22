@@ -14,8 +14,8 @@ import AdminMccPage from './pages/AdminMccPage.jsx';
 import AdminMccImportPage from './pages/AdminMccImportPage.jsx';
 import AdminEventsPage from './pages/AdminEventsPage.jsx';
 
-function Protege({ children, adminSeul = false, agentSeul = false }) {
-  const { user, loading, isAdmin, isAgent, mustChangePassword } = useAuth();
+function Protege({ children, administrationSeule = false, referentielSeul = false }) {
+  const { user, loading, isAdmin, peutAdministrer, mustChangePassword } = useAuth();
   const location = useLocation();
   if (loading) return <p className="vide">Chargement de la session…</p>;
   if (!user) return <Navigate to="/connexion" state={{ from: location }} replace />;
@@ -24,15 +24,18 @@ function Protege({ children, adminSeul = false, agentSeul = false }) {
   if (mustChangePassword && location.pathname !== '/mot-de-passe') {
     return <Navigate to="/mot-de-passe" replace />;
   }
-  if (adminSeul && !isAdmin) return <Navigate to="/demandes" replace />;
-  // Sans ce filtre, un banquier atteignait le formulaire de saisie par l'URL et
-  // ne découvrait le refus qu'au moment d'enregistrer.
-  if (agentSeul && !isAgent) return <Navigate to="/demandes" replace />;
+  // L'administration est ouverte au banquier, qui tient sa banque, et à
+  // l'administrateur. La saisie d'un dossier ne distingue plus les profils :
+  // tous les trois y ont droit, il n'y a donc plus de filtre à poser dessus.
+  if (administrationSeule && !peutAdministrer) return <Navigate to="/demandes" replace />;
+  // Le référentiel MCC est commun à toutes les banques : seul l'administrateur
+  // y touche. Masquer l'onglet ne suffit pas, l'URL reste tapable.
+  if (referentielSeul && !isAdmin) return <Navigate to="/administration/comptes" replace />;
   return children;
 }
 
 function Entete() {
-  const { user, logout, isAgent, isAdmin, mustChangePassword } = useAuth();
+  const { user, logout, peutSaisir, peutAdministrer, mustChangePassword } = useAuth();
   const lien = ({ isActive }) => (isActive ? 'actif' : undefined);
 
   return (
@@ -51,7 +54,7 @@ function Entete() {
             Demandes
           </NavLink>
         )}
-        {!mustChangePassword && isAgent && (
+        {!mustChangePassword && peutSaisir && (
           <NavLink to="/demandes/nouvelle" className={lien}>
             Nouvelle demande
           </NavLink>
@@ -61,7 +64,7 @@ function Entete() {
             Référentiel MCC
           </NavLink>
         )}
-        {!mustChangePassword && isAdmin && (
+        {!mustChangePassword && peutAdministrer && (
           <NavLink to="/administration" className={lien}>
             Administration
           </NavLink>
@@ -98,17 +101,17 @@ export default function App() {
         <Routes>
           <Route path="/connexion" element={user ? <Navigate to="/demandes" replace /> : <LoginPage />} />
           <Route path="/demandes" element={<Protege><DashboardPage /></Protege>} />
-          <Route path="/demandes/nouvelle" element={<Protege agentSeul><RequestFormPage /></Protege>} />
+          <Route path="/demandes/nouvelle" element={<Protege><RequestFormPage /></Protege>} />
           <Route path="/demandes/:id" element={<Protege><RequestDetailPage /></Protege>} />
-          <Route path="/demandes/:id/modifier" element={<Protege agentSeul><RequestFormPage /></Protege>} />
+          <Route path="/demandes/:id/modifier" element={<Protege><RequestFormPage /></Protege>} />
           <Route path="/referentiel" element={<Protege><CatalogPage /></Protege>} />
           <Route path="/mot-de-passe" element={<Protege><PasswordPage /></Protege>} />
-          <Route path="/administration" element={<Protege adminSeul><AdminLayout /></Protege>}>
+          <Route path="/administration" element={<Protege administrationSeule><AdminLayout /></Protege>}>
             <Route index element={<Navigate to="comptes" replace />} />
             <Route path="comptes" element={<AdminUsersPage />} />
             <Route path="banques" element={<AdminBanksPage />} />
-            <Route path="referentiel" element={<AdminMccPage />} />
-            <Route path="import" element={<AdminMccImportPage />} />
+            <Route path="referentiel" element={<Protege referentielSeul><AdminMccPage /></Protege>} />
+            <Route path="import" element={<Protege referentielSeul><AdminMccImportPage /></Protege>} />
             <Route path="journal" element={<AdminEventsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/demandes" replace />} />

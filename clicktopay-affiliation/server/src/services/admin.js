@@ -16,6 +16,52 @@ async function journaliser(client, { userId, entity, entityId, action, payload =
   );
 }
 
+/** Les trois profils de la plateforme, du moins au plus étendu. */
+const ROLES = ['AGENT', 'BANQUIER', 'ADMIN'];
+
+/**
+ * Périmètre d'administration de l'appelant.
+ *
+ * L'administrateur tient toute la plateforme. Le banquier administre SA banque et
+ * rien d'autre : il y crée et gère des comptes agents, mais ne peut ni se donner
+ * des pairs, ni toucher une autre banque. La règle est écrite ici, une seule fois :
+ * toutes les routes d'administration des comptes s'y ramènent, faute de quoi elle
+ * finirait recopiée dans chacune et oubliée dans l'une d'elles.
+ */
+export function perimetreAdministration(user) {
+  if (user?.role === 'ADMIN') {
+    return { banqueImposee: null, rolesAutorises: ROLES, estAdministrateur: true };
+  }
+  if (user?.role === 'BANQUIER') {
+    return { banqueImposee: user.bankId, rolesAutorises: ['AGENT'], estAdministrateur: false };
+  }
+  throw forbidden("L'administration est réservée aux banquiers et aux administrateurs.");
+}
+
+/**
+ * Refuse d'agir sur un compte hors du périmètre.
+ *
+ * Deux barrières distinctes, et il faut les deux : la banque, pour qu'un banquier
+ * ne touche pas au personnel d'une autre ; le rôle, pour qu'il ne s'attribue pas
+ * un pair ni ne rétrograde un administrateur.
+ */
+function assertCibleAutorisee(cible, perimetre) {
+  if (perimetre.estAdministrateur) return;
+  if (cible.bankId !== perimetre.banqueImposee) {
+    throw forbidden('Ce compte appartient à une autre banque.');
+  }
+  if (!perimetre.rolesAutorises.includes(cible.role)) {
+    throw forbidden('Vous n’administrez que les comptes agents de votre banque.');
+  }
+}
+
+/** Charge un compte et vérifie qu'il est administrable par l'appelant. */
+export async function getUserAdministrable(id, user) {
+  const cible = await getUser(id);
+  assertCibleAutorisee(cible, perimetreAdministration(user));
+  return cible;
+}
+
 // ---------------------------------------------------------------- Utilisateurs
 
 const versUtilisateur = (row) => ({
@@ -39,15 +85,25 @@ const SELECT_UTILISATEURS = `
     FROM users u JOIN banks b ON b.id = u.bank_id
 `;
 
-export async function listUsers({ search, bankId, role } = {}) {
+export async function listUsers({ search, bankId, role, user } = {}) {
   const conditions = [];
   const values = [];
+
+  // Le banquier ne voit que le personnel de sa banque. Le filtre est posé ici et
+  // non dans la requête appelante : un filtre d'affichage se contourne, celui-ci
+  // non. Il voit tous les rôles de sa banque — savoir qu'un collègue banquier
+  // existe est utile — mais n'agit que sur les agents (assertCibleAutorisee).
+  const perimetre = perimetreAdministration(user);
+  if (perimetre.banqueImposee !== null) {
+    values.push(perimetre.banqueImposee);
+    conditions.push(`u.bank_id = $${values.length}`);
+  }
   if (search) {
     values.push(`%${search}%`);
     const p = `$${values.length}`;
     conditions.push(`(u.email ILIKE ${p} OR u.first_name ILIKE ${p} OR u.last_name ILIKE ${p})`);
   }
-  if (bankId) {
+  if (bankId && perimetre.banqueImposee === null) {
     // Un filtre illisible ne doit pas remonter en erreur PostgreSQL.
     const identifiant = Number(bankId);
     if (!Number.isInteger(identifiant)) throw badRequest(`Banque invalide : « ${bankId} »`);
@@ -115,6 +171,17 @@ function traduireConflitEmail(err, message) {
 }
 
 export async function createUser({ payload, user }) {
+  // Le banquier crée dans SA banque, et seulement des agents. On corrige la
+  // banque plutôt que de refuser : l'écran ne la lui demande pas, et un identifiant
+  // venu d'ailleurs dans le corps de la requête ne doit pas décider pour lui.
+  const perimetre = perimetreAdministration(user);
+  if (perimetre.banqueImposee !== null) {
+    payload = { ...payload, bankId: perimetre.banqueImposee };
+    if (!perimetre.rolesAutorises.includes(payload.role)) {
+      throw forbidden('Vous ne pouvez créer que des comptes agents dans votre banque.');
+    }
+  }
+
   const id = await withTransaction(async (client) => {
     const codeBanque = await assertBanqueActive(client, payload.bankId);
     const existe = await client.query('SELECT 1 FROM users WHERE lower(email) = lower($1)', [payload.email]);
@@ -150,6 +217,20 @@ const CHAMPS_UTILISATEUR = {
 
 export async function updateUser({ id, payload, user }) {
   const avant = await getUser(id);
+
+  // Le compte visé doit être dans le périmètre, ET la modification ne doit pas
+  // l'en faire sortir : sans ce second contrôle, un banquier promouvrait son
+  // agent au rang de banquier, ou le déplacerait dans une autre banque.
+  const perimetre = perimetreAdministration(user);
+  assertCibleAutorisee(avant, perimetre);
+  if (perimetre.banqueImposee !== null) {
+    if (payload.role !== undefined && !perimetre.rolesAutorises.includes(payload.role)) {
+      throw forbidden('Vous ne pouvez pas changer le rôle de ce compte.');
+    }
+    if (payload.bankId !== undefined && payload.bankId !== perimetre.banqueImposee) {
+      throw forbidden('Vous ne pouvez pas rattacher ce compte à une autre banque.');
+    }
+  }
 
   // Un administrateur ne peut ni se retirer son propre rôle, ni se désactiver :
   // c'est la protection minimale contre le verrouillage de la plateforme.
@@ -241,7 +322,7 @@ async function assertResteUnAdmin(client, id, payload) {
 
 /** Réinitialisation par l'administrateur : le mot de passe devra être changé à la connexion. */
 export async function resetPassword({ id, password, user }) {
-  await getUser(id);
+  assertCibleAutorisee(await getUser(id), perimetreAdministration(user));
   await withTransaction(async (client) => {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     await client.query(
@@ -302,12 +383,27 @@ const versBanque = (row) => ({
   requestCount: row.request_count ?? undefined,
 });
 
-export async function listBanks() {
+/**
+ * Les banques visibles par l'appelant : toutes pour l'administrateur, la sienne
+ * seulement pour le banquier. Appelée sans `user`, elle rend tout : c'est le cas
+ * des usages internes (relecture après écriture), jamais d'une route.
+ */
+export async function listBanks(user = null) {
+  const conditions = [];
+  const values = [];
+  if (user) {
+    const perimetre = perimetreAdministration(user);
+    if (perimetre.banqueImposee !== null) {
+      values.push(perimetre.banqueImposee);
+      conditions.push(`b.id = $${values.length}`);
+    }
+  }
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
   const { rows } = await query(`
     SELECT b.*,
            (SELECT COUNT(*)::int FROM users u WHERE u.bank_id = b.id) AS user_count,
            (SELECT COUNT(*)::int FROM affiliation_requests r WHERE r.bank_id = b.id) AS request_count
-      FROM banks b ORDER BY b.name`);
+      FROM banks b ${where} ORDER BY b.name`, values);
   return rows.map(versBanque);
 }
 
@@ -329,6 +425,17 @@ export async function createBank({ payload, user }) {
 }
 
 export async function updateBank({ id, payload, user }) {
+  // Le banquier corrige la fiche de sa banque ; il ne touche à aucune autre, et
+  // ne la désactive pas — se couper l'accès à soi-même n'est pas une opération
+  // qu'on laisse faire sans administrateur.
+  const perimetre = perimetreAdministration(user);
+  if (perimetre.banqueImposee !== null) {
+    if (id !== perimetre.banqueImposee) throw forbidden('Vous ne gérez que votre propre banque.');
+    if (payload.active !== undefined) {
+      throw forbidden('Seul un administrateur peut activer ou désactiver une banque.');
+    }
+  }
+
   await withTransaction(async (client) => {
     const { rows } = await client.query('SELECT * FROM banks WHERE id = $1', [id]);
     if (!rows[0]) throw notFound(`Banque ${id} introuvable`);
@@ -408,9 +515,18 @@ function jourDeFiltre(valeur) {
  * l'application : il fallait une requête SQL directe pour les lire. Une piste
  * d'audit qu'on ne peut pas remonter n'en est pas une.
  */
-export async function listAdminEvents({ limit = 100, offset = 0, entity, action, depuis, jusqua } = {}) {
+export async function listAdminEvents({ limit = 100, offset = 0, entity, action, depuis, jusqua, user } = {}) {
   const conditions = [];
   const values = [];
+
+  // Le banquier lit le journal de sa banque : les actions de son personnel, et
+  // les siennes. Pas celles des autres banques, ni celles de l'administrateur
+  // sur le référentiel commun.
+  const perimetre = perimetreAdministration(user);
+  if (perimetre.banqueImposee !== null) {
+    values.push(perimetre.banqueImposee);
+    conditions.push(`e.user_id IN (SELECT id FROM users WHERE bank_id = $${values.length})`);
+  }
 
   if (entity) {
     if (!ENTITES_JOURNAL.includes(entity)) {
