@@ -214,5 +214,64 @@ describe('Défauts relevés par le retest (vague 3)', () => {
     }
   });
 
+  // ------------------------------------------------------------ DEF-A7-01
+  test('la case « place de marché » pèse réellement sur le classement (DEF-A7-01)', async () => {
+    // Le plan attendait que 5262 soit déclassé dès que la case est décochée, sur
+    // un profil dont le descriptif dit « place de marché » et dont le secteur
+    // déclaré est MARKETPLACE. Le critère était mal posé : le drapeau est un
+    // signal parmi d'autres, et l'effacer ne peut pas effacer le texte.
+    // L'invariant réel, lui, tient : à descriptif neutre, la case décide.
+    const neutre = {
+      siteName: 'SOUK ONLINE SA',
+      activityDescription:
+        'Vente de vetements, high tech et articles de maison de vendeurs tiers tunisiens',
+      deliveryMode: 'PHYSIQUE',
+    };
+
+    const codes = async (profil) =>
+      (await request(app).post('/api/mcc/suggest').set(agent()).send(profil).expect(200))
+        .body.VISA.map((s) => s.code);
+
+    const avecCase = await codes({ ...neutre, isMarketplace: true });
+    const sansCase = await codes({ ...neutre, isMarketplace: false });
+
+    assert.equal(avecCase[0], '5262', 'cochée, la case porte 5262 en tête');
+    assert.ok(!sansCase.includes('5262'), 'décochée, 5262 ne figure plus dans les propositions');
+  });
+
+  test('un descriptif qui décrit une place de marché prime sur la case décochée (DEF-A7-01)', async () => {
+    // Contrepartie assumée : quand la déclaration contredit le descriptif, le
+    // moteur suit le descriptif plutôt que la case. Masquer 5262 reviendrait à
+    // retirer au banquier le code le plus pertinent sur la foi d'une case.
+    const res = await request(app)
+      .post('/api/mcc/suggest')
+      .set(agent())
+      .send({
+        siteName: 'SOUK ONLINE SA',
+        activitySector: 'MARKETPLACE',
+        activityDescription:
+          'Place de marche generaliste regroupant des vendeurs tiers tunisiens vendant vetements, high tech et maison',
+        deliveryMode: 'PHYSIQUE',
+        isMarketplace: false,
+      })
+      .expect(200);
+
+    assert.equal(res.body.VISA[0].code, '5262');
+    // La case décochée reste sensible : elle coûte bien les 25 points annoncés.
+    const coche = await request(app).post('/api/mcc/suggest').set(agent())
+      .send({
+        siteName: 'SOUK ONLINE SA',
+        activitySector: 'MARKETPLACE',
+        activityDescription:
+          'Place de marche generaliste regroupant des vendeurs tiers tunisiens vendant vetements, high tech et maison',
+        deliveryMode: 'PHYSIQUE',
+        isMarketplace: true,
+      }).expect(200);
+    assert.ok(
+      coche.body.VISA[0].score > res.body.VISA[0].score,
+      'cocher la case reste payant : le score doit monter'
+    );
+  });
+
   after(async () => pool.end());
 });

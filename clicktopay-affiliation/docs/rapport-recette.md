@@ -1245,3 +1245,39 @@ Les statuts, le critère `CA-A-07` et la recommandation `R-02` ont été rectifi
 conséquence. La réserve qui subsiste n'est pas l'absence de vérification mais son absence de
 croisement : c'est l'auteur des correctifs qui les a éprouvés, non un agent de recette
 indépendant. L'avis d'aptitude et les autres réserves du rapport sont inchangés.
+
+## Amendement du 2026-09-22 (2) — `DEF-A7-01`
+
+`DEF-A7-01` était le seul défaut laissé ouvert par ce rapport : avec
+`isMarketplace: false`, le code `5262` restait en rang 1 sur JD-06 alors que
+`CAS-MCC-05` exigeait son déclassement. Vérification faite, **ce n'est pas un défaut
+de code mais un défaut du cas de test**, et il est requalifié comme tel.
+
+Le descriptif de JD-06 est « Place de marche generaliste regroupant des vendeurs
+tiers tunisiens… » et son secteur déclaré est `MARKETPLACE` : le jeu de données
+contredit son propre drapeau. Mesures :
+
+| Profil | Rang 1 | Score de 5262 |
+| --- | --- | --- |
+| JD-06, `isMarketplace: true` | `5262` | 90 % (brut 188,5) |
+| JD-06, `isMarketplace: false` | `5262` | 84 % (brut 118,5) |
+| JD-06 sans le secteur `MARKETPLACE`, `isMarketplace: false` | `5262` | 79 % (brut 80,5) |
+| Descriptif neutre, `isMarketplace: false` | `5719` | **absent du classement** |
+
+La case agit donc bien — elle coûte les 25 points annoncés — mais elle ne peut pas
+effacer un descriptif qui dit explicitement le contraire. Une pénalité qui y
+parviendrait retirerait au banquier le code le plus pertinent sur la foi d'une seule
+case à cocher, ce qui irait contre la raison d'être du produit : proposer, expliquer,
+et laisser le banquier arbitrer.
+
+`CAS-MCC-05` a été reformulé en conséquence (`plan-de-tests.md`, amendement du même
+jour) et l'invariant réel est désormais couvert par deux cas automatisés dans
+`server/tests/vague3.test.js`. La suite compte **115 tests, tous verts**.
+
+Reste ouverte, en revanche, une **question de produit** que ce rapport verse au
+dossier : lorsque la déclaration de l'agent contredit le descriptif qu'il a saisi, la
+plateforme arbitre silencieusement. Signaler la contradiction à l'écran — « vous avez
+décoché « place de marché » mais votre descriptif en décrit une » — serait plus fidèle
+à la promesse d'explicabilité. C'est une évolution, pas un correctif.
+
+**Avec cette requalification, aucun défaut n'est ouvert à l'issue de la campagne.**

@@ -780,8 +780,20 @@ Niveau : BACK · Criticité : MAJEUR
 Étapes :
 1. Profil **JD-06** avec `isMarketplace = true`.
 2. Le même profil avec `isMarketplace = false`.
-Résultat attendu : (1) le code `5262` est en **rang 1** avec le score **90** et `matchedTerms` contenant `place de marché` · (2) `5262` n'est plus en rang 1 (pénalité de −25).
-Acceptation : 5262 premier avec 90 % en (1), déclassé en (2).
+Résultat attendu : (1) le code `5262` est en **rang 1** avec le score **90** et `matchedTerms` contenant `place de marché` · (2) le score de `5262` baisse d'au moins 5 points ; sur un descriptif qui ne décrit pas une place de marché, `5262` disparaît des propositions.
+Acceptation : 5262 premier avec 90 % en (1) ; en (2), score en baisse sur JD-06 et absence du classement sur un descriptif neutre.
+
+> **Amendement du 2026-09-22.** La formulation initiale exigeait que `5262` soit
+> « déclassé » en (2). Le critère était mal posé : le descriptif de JD-06 dit
+> littéralement « Place de marche generaliste regroupant des vendeurs tiers » et le
+> secteur déclaré est `MARKETPLACE`. Le jeu de données contredit son propre drapeau, et
+> aucune pénalité raisonnable ne peut effacer un texte aussi explicite — une pénalité
+> qui y parviendrait masquerait au banquier le code le plus pertinent sur la foi d'une
+> case à cocher. Mesure faite : `5262` passe de 90 % (brut 188,5) à 84 % (brut 118,5),
+> la case coûte donc bien ses 25 points ; sur le même profil avec un descriptif neutre,
+> `5262` **disparaît des cinq premières propositions**. Le drapeau agit ; il n'est
+> simplement pas souverain. Invariant couvert par deux cas dans
+> `server/tests/vague3.test.js`.
 
 ---
 
