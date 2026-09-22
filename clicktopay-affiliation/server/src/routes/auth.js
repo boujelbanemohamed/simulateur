@@ -108,7 +108,8 @@ authRouter.post(
       newPassword: req.body.newPassword,
     });
     const { rows } = await query(
-      'SELECT id, email, role, bank_id, must_change_password FROM users WHERE id = $1',
+      `SELECT id, email, role, bank_id, must_change_password, password_changed_at
+         FROM users WHERE id = $1`,
       [req.user.id]
     );
     res.json({ token: signToken(rows[0]), changed: true });

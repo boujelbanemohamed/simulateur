@@ -224,9 +224,9 @@ export async function ecrireReferentiel(codes, format = 'xlsx') {
       ecommerceRelevance: LIBELLE_PERTINENCE[mcc.ecommerceRelevance] ?? mcc.ecommerceRelevance,
       riskLevel: LIBELLE_VIGILANCE[mcc.riskLevel] ?? mcc.riskLevel,
       note: mcc.note ?? '',
-      // Un seul secteur à l'export : la colonne sert à rattacher un code importé,
-      // le rattachement multiple se gère depuis l'écran d'administration.
-      sector: (mcc.sectors ?? [])[0] ?? '',
+      // Tous les secteurs, séparés par une virgule : n'exporter que le premier
+      // puis réimporter le fichier effacerait les autres rattachements.
+      sector: (mcc.sectors ?? []).join(', '),
       labelEn: mcc.labelEn ?? '',
       descriptionEn: mcc.descriptionEn ?? '',
     });

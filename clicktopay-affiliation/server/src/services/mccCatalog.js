@@ -47,16 +47,20 @@ function construireIndex(mcc) {
   const tokens = new Map();
   const tokensForts = new Set();
 
-  const ajouter = (texte, poids) => {
+  // `justifiant` marque les jetons qui méritent d'être montrés à l'agent comme
+  // raison de la proposition. Les mots-clés dérivés en font partie : sans cela,
+  // un code remonté par une variante (« borne » pour « bornes ») arrivait dans la
+  // liste sans aucun terme correspondant affiché, donc sans justification.
+  const ajouter = (texte, poids, justifiant = false) => {
     for (const jeton of tokenize(texte)) {
       tokens.set(jeton, (tokens.get(jeton) ?? 0) + poids);
-      if (poids >= POIDS.label) tokensForts.add(jeton);
+      if (justifiant) tokensForts.add(jeton);
     }
   };
 
-  ajouter(mcc.label, POIDS.label);
-  ajouter(mcc.keywords.join(' '), POIDS.keywords);
-  ajouter(mcc.keywordsAuto.join(' '), POIDS.keywordsAuto);
+  ajouter(mcc.label, POIDS.label, true);
+  ajouter(mcc.keywords.join(' '), POIDS.keywords, true);
+  ajouter(mcc.keywordsAuto.join(' '), POIDS.keywordsAuto, true);
   ajouter(mcc.description, POIDS.description);
   ajouter(`${mcc.labelEn} ${mcc.descriptionEn}`, POIDS.en);
 

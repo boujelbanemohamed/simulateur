@@ -247,7 +247,11 @@ export default function RequestFormPage() {
       <ErreurApi erreur={erreur} />
       {info && <Message type="succes">{info}</Message>}
 
-      <form className="carte" onSubmit={(e) => e.preventDefault()}>
+      {/* `inert` neutralise réellement la saisie : le bandeau annonçait une
+          lecture seule que les champs ne respectaient pas. */}
+      <form className="carte" onSubmit={(e) => e.preventDefault()}
+        {...(modifiable ? {} : { inert: '' })}
+        style={modifiable ? undefined : { opacity: 0.85 }}>
         {etape === 0 && (
           <>
             <fieldset>

@@ -97,6 +97,16 @@ export function suggestMcc(profile = {}, options = {}) {
       }
 
       // 4. Ajustements liés au modèle de vente.
+      //
+      // Ils MODULENT une pertinence, ils ne la créent pas. Appliqués à un code
+      // sans la moindre correspondance, le bonus de pertinence e-commerce (+8
+      // pour « forte ») suffisait à lui donner un score : le moteur renvoyait
+      // alors des propositions sans aucun terme justificatif, et le filet de
+      // sécurité plus bas devenait inatteignable.
+      if (raw <= 0) {
+        return { ...mcc, score: 0, rawScore: 0, matchedTerms: [] };
+      }
+
       raw += RELEVANCE_BONUS[mcc.ecommerceRelevance] ?? 0;
 
       if (deliveryMode === 'NUMERIQUE') {

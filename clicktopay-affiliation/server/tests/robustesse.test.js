@@ -563,3 +563,135 @@ describe('Défauts relevés par la revue de code', () => {
     assert.equal(mode[mode.length - 1], '5995', 'le nouveau rattachement arrive en fin de file');
   });
 });
+
+describe('Défauts relevés par la recette fonctionnelle (vague 2)', () => {
+  let admin;
+  let agent;
+
+  before(async () => {
+    await resetDatabase();
+    const jeton = async (cle) =>
+      (await request(app).post('/api/auth/login').send(CREDENTIALS[cle]).expect(200)).body.token;
+    admin = { Authorization: `Bearer ${await jeton('admin')}` };
+    agent = { Authorization: `Bearer ${await jeton('agent')}` };
+  });
+
+  test('un descriptif sans correspondance retombe sur le code de repli (DEF-A3-03)', async () => {
+    const res = await request(app).post('/api/mcc/suggest').set(agent)
+      .send({ activityDescription: 'zzzz qqqq xxxx wwww yyyy', limit: 10 }).expect(200);
+
+    assert.equal(res.body.VISA.length, 1, 'une seule proposition : le code de repli');
+    assert.equal(res.body.VISA[0].code, '5999');
+    assert.ok(res.body.VISA[0].matchedTerms.length > 0, 'le repli est explicitement justifié');
+  });
+
+  test('aucune proposition n’est servie sans justification (DEF-A3-03)', async () => {
+    for (const description of [
+      'Vente en ligne de cosmetiques naturels et de parfums',
+      'Livraison de pizzas et de sandwichs a domicile',
+      'Reparation de telephones portables et de tablettes',
+    ]) {
+      const res = await request(app).post('/api/mcc/suggest').set(agent)
+        .send({ activityDescription: description, limit: 10 }).expect(200);
+      for (const suggestion of res.body.VISA) {
+        assert.ok(
+          suggestion.matchedTerms.length > 0,
+          `${suggestion.code} proposé pour « ${description} » sans aucun terme justificatif`
+        );
+      }
+    }
+  });
+
+  test('un code remonté par un mot-clé dérivé est justifié (DEF-A3-05)', async () => {
+    await request(app).post('/api/admin/mcc').set(admin).send({
+      code: '9201',
+      label: 'Bornes de recharge pour trottinettes électriques',
+      description: 'Exploitants de bornes de recharge en libre-service.',
+      ecommerceRelevance: 'HIGH',
+    }).expect(201);
+
+    // « borne » au singulier : le libellé porte le pluriel, seule une variante
+    // dérivée peut faire remonter le code.
+    const res = await request(app).post('/api/mcc/suggest').set(agent)
+      .send({ activityDescription: 'Installation d une borne de recharge en libre service', limit: 10 })
+      .expect(200);
+
+    const propose = res.body.VISA.find((m) => m.code === '9201');
+    assert.ok(propose, 'le code est proposé grâce à la variante dérivée');
+    assert.ok(propose.matchedTerms.length > 0, 'et le terme qui l’a fait remonter est affiché');
+  });
+
+  test('un jeton émis avant une réinitialisation est refusé, même à la seconde près (DEF-A3-02)', async () => {
+    const compte = (await request(app).post('/api/admin/users').set(admin).send({
+      email: 'fenetre@banque.tn', firstName: 'Fe', lastName: 'Netre',
+      role: 'AGENT', bankId: 1, password: 'Provisoire2026',
+    }).expect(201)).body;
+
+    const premier = (await request(app).post('/api/auth/login')
+      .send({ email: 'fenetre@banque.tn', password: 'Provisoire2026' }).expect(200)).body.token;
+    const jeton = (await request(app).post('/api/auth/password')
+      .set({ Authorization: `Bearer ${premier}` })
+      .send({ currentPassword: 'Provisoire2026', newPassword: 'MonMotDePasse2026' })
+      .expect(200)).body.token;
+    await request(app).get('/api/requests').set({ Authorization: `Bearer ${jeton}` }).expect(200);
+
+    // Sans attente : la réinitialisation suit immédiatement l'émission du jeton.
+    await request(app).post(`/api/admin/users/${compte.id}/password`).set(admin)
+      .send({ password: 'Reinitialise2026' }).expect(200);
+
+    await request(app).get('/api/requests').set({ Authorization: `Bearer ${jeton}` }).expect(401);
+  });
+
+  test('le secteur est compare a l’import et n’est plus perdu (D2 et D3)', async () => {
+    await request(app).put('/api/admin/mcc/9201').set(admin)
+      .send({ sectors: ['TRANSPORT_LIVRAISON', 'AUTOMOBILE'] }).expect(200);
+
+    // Un fichier qui ne change que le secteur ne doit plus être classé « inchangé ».
+    const simulation = await request(app).post('/api/admin/mcc/import').set(admin)
+      .send({ entrees: [{ code: '9201', sector: 'TRANSPORT_LIVRAISON' }] }).expect(200);
+    assert.equal(simulation.body.resume.modifies, 1, 'l’écart de secteur est détecté');
+    assert.ok(simulation.body.modifies[0].champs.some((c) => c.champ === 'sectors'));
+
+    // Un aller-retour export/import conserve les deux rattachements.
+    const { catalogueComplet } = await import('../src/services/mccCatalog.js');
+    const { ecrireReferentiel } = await import('../src/services/mccImportFile.js');
+    const fichier = await ecrireReferentiel(catalogueComplet(), 'xlsx');
+    const relecture = await request(app).post('/api/admin/mcc/import-fichier').set(admin)
+      .attach('fichier', fichier, 'referentiel.xlsx').expect(200);
+
+    // L'ordre des secteurs d'un code n'a pas de sens (le rang se compte DANS un
+    // secteur) : c'est l'ensemble qui doit être préservé.
+    const ligne = relecture.body.entrees.find((e) => e.code === '9201');
+    assert.deepEqual(
+      ligne.sector.split(',').map((x) => x.trim()).sort(),
+      ['AUTOMOBILE', 'TRANSPORT_LIVRAISON'],
+      'les deux secteurs sont exportés'
+    );
+    const ecart = relecture.body.rapport.modifies.find((m) => m.code === '9201');
+    assert.equal(ecart, undefined, 'l’aller-retour ne signale aucun écart de secteur');
+  });
+
+  test('les messages de validation sont en français (DEF-A3-04)', async () => {
+    const trop = await request(app).put('/api/admin/mcc/5977').set(admin)
+      .send({ label: 'x'.repeat(300) }).expect(400);
+    assert.match(trop.body.details[0].message, /caractères au maximum/);
+
+    const enumeration = await request(app).put('/api/admin/mcc/5977').set(admin)
+      .send({ riskLevel: 'PIRATE' }).expect(400);
+    assert.match(enumeration.body.details[0].message, /Valeur non autorisée/);
+
+    const type = await request(app).put('/api/admin/mcc/5977').set(admin)
+      .send({ keywords: [123] }).expect(400);
+    assert.match(type.body.details[0].message, /Format attendu : texte/);
+
+    // Aucun message ne doit rester en anglais.
+    for (const reponse of [trop, enumeration, type]) {
+      for (const detail of reponse.body.details) {
+        assert.ok(
+          !/must contain|Expected .* received|Invalid enum/.test(detail.message),
+          `message non traduit : ${detail.message}`
+        );
+      }
+    }
+  });
+});

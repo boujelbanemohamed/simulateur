@@ -217,6 +217,20 @@ const COMPARABLES = ['label', 'description', 'labelEn', 'descriptionEn', 'keywor
                      'similar', 'ecommerceRelevance', 'riskLevel', 'note'];
 
 /**
+ * Secteurs d'une ligne importée. La colonne du fichier en accepte plusieurs,
+ * séparés par une virgule : n'en exporter qu'un puis le réimporter effacerait
+ * silencieusement les autres rattachements du code.
+ */
+const secteursDeLEntree = (entree) => {
+  if (entree.sector === undefined || entree.sector === null) return undefined;
+  const liste = String(entree.sector)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return liste;
+};
+
+/**
  * Compare une nouvelle édition du référentiel à la base.
  * Toujours appelé une première fois en simulation : l'administrateur voit le
  * rapport d'écart avant de décider d'appliquer.
@@ -243,17 +257,21 @@ export function compareImport(entrees) {
     const differences = COMPARABLES.filter(
       (champ) => entree[champ] !== undefined &&
         JSON.stringify(entree[champ]) !== JSON.stringify(existant[champ])
-    );
+    ).map((champ) => ({ champ, avant: existant[champ], apres: entree[champ] }));
+
+    // Le secteur ne figurait pas dans les champs comparés : un fichier qui ne
+    // changeait que le rattachement d'un code existant était classé « inchangé »
+    // et n'écrivait rien, sans que rien ne le signale.
+    const secteursVoulus = secteursDeLEntree(entree);
+    if (
+      secteursVoulus !== undefined &&
+      JSON.stringify([...secteursVoulus].sort()) !== JSON.stringify([...(existant.sectors ?? [])].sort())
+    ) {
+      differences.push({ champ: 'sectors', avant: existant.sectors ?? [], apres: secteursVoulus });
+    }
+
     if (differences.length > 0) {
-      modifies.push({
-        code,
-        label: existant.label,
-        champs: differences.map((champ) => ({
-          champ,
-          avant: existant[champ],
-          apres: entree[champ],
-        })),
-      });
+      modifies.push({ code, label: existant.label, champs: differences });
     } else {
       inchanges.push({ code });
     }
@@ -310,7 +328,8 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
           entree.source ?? 'Import référentiel', user.id,
         ]
       );
-      if (entree.sector) await ecrireSecteurs(client, code, [entree.sector]);
+      const secteurs = secteursDeLEntree(entree);
+      if (secteurs?.length) await ecrireSecteurs(client, code, secteurs);
       await historiser(client, {
         code, userId: user.id, action: 'IMPORT_AJOUT', avant: null, apres: entree, comment,
       });
@@ -340,7 +359,8 @@ export async function importCatalog({ entrees, apply, deactivateMissing, comment
           entree.note ?? avant.note, user.id, modification.code,
         ]
       );
-      if (entree.sector) await ecrireSecteurs(client, modification.code, [entree.sector]);
+      const secteurs = secteursDeLEntree(entree);
+      if (secteurs !== undefined) await ecrireSecteurs(client, modification.code, secteurs);
       await historiser(client, {
         code: modification.code, userId: user.id, action: 'IMPORT_MODIFICATION',
         avant: instantane(avant), apres: entree, comment,

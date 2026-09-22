@@ -1,17 +1,7 @@
 import { z } from 'zod';
 import { clesSecteurs } from './mccCatalog.js';
 import { MONTANT_MAX, booleen, dateCalendaire, sansCaracteresDeControle } from './zodHelpers.js';
-
-// Messages génériques en français (zod répond en anglais par défaut).
-z.setErrorMap((issue, ctx) => {
-  if (issue.code === z.ZodIssueCode.invalid_type) {
-    return { message: issue.received === 'undefined' ? 'Champ obligatoire' : 'Format attendu : ' + issue.expected };
-  }
-  if (issue.code === z.ZodIssueCode.invalid_enum_value) {
-    return { message: 'Valeur non autorisée' };
-  }
-  return { message: ctx.defaultError };
-});
+import './zodMessages.js';
 
 const trimmed = (max) => sansCaracteresDeControle(z.string().trim().max(max));
 const requiredText = (max, champ) =>

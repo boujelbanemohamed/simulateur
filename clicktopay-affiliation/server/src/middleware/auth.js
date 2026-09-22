@@ -10,6 +10,12 @@ export function signToken(user) {
       email: user.email,
       role: user.role,
       bankId: user.bank_id,
+      // Empreinte du mot de passe sous lequel le jeton a été émis. Comparer des
+      // horodatages ne convenait pas : `iat` est arrondi à la seconde (un jeton
+      // émis dans la même seconde qu'une réinitialisation passait au travers) et
+      // il mêlait l'horloge de Node à celle de PostgreSQL, deux référentiels qui
+      // dérivent. Cette empreinte est comparée à l'identique, sans notion de temps.
+      pwd: user.password_changed_at ? new Date(user.password_changed_at).toISOString() : null,
     },
     config.jwtSecret,
     { expiresIn: config.jwtExpiresIn }
@@ -50,10 +56,10 @@ export const authenticate = asyncRoute(async (req, res, next) => {
   if (!utilisateur.active) throw unauthorized('Compte désactivé');
   if (!utilisateur.bank_active) throw unauthorized('Banque désactivée');
 
-  // Un jeton émis avant le dernier changement de mot de passe est périmé : c'est
-  // ce qui ferme les sessions déjà ouvertes après une réinitialisation.
-  const changeLe = Math.floor(new Date(utilisateur.password_changed_at).getTime() / 1000);
-  if (typeof charge.iat === 'number' && charge.iat < changeLe) {
+  // Le mot de passe a-t-il changé depuis l'émission du jeton ? C'est ce qui ferme
+  // les sessions déjà ouvertes lors d'une réinitialisation.
+  const empreinteActuelle = new Date(utilisateur.password_changed_at).toISOString();
+  if (charge.pwd !== empreinteActuelle) {
     throw unauthorized('Mot de passe modifié : reconnectez-vous');
   }
 

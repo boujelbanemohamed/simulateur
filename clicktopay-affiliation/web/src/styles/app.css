@@ -102,8 +102,14 @@ a { color: var(--bleu-500); }
 .champ__aide { font-size: 0.8rem; color: var(--gris-700); }
 .champ__erreur { font-size: 0.8rem; color: var(--rouge); font-weight: 600; }
 .champ--case { flex-direction: row; align-items: center; gap: 0.5rem; }
-.champ--case label { font-weight: 500; color: var(--gris-900); font-size: 0.9rem; }
-.champ--case input { width: 1rem; height: 1rem; }
+/* Le libellé est la vraie zone d'activation de la case : il doit donc offrir une
+   cible confortable, la case elle-même ne faisant que 18 px. */
+.champ--case label {
+  font-weight: 500; color: var(--gris-900); font-size: 0.9rem;
+  display: flex; align-items: center; min-height: 32px; cursor: pointer;
+}
+.champ--case input { width: 1.15rem; height: 1.15rem; }
+.champ--case { min-height: 32px; }
 
 fieldset { border: none; padding: 0; margin: 0 0 0.5rem; }
 legend {
@@ -127,7 +133,9 @@ legend {
 .bouton--valider:hover:not(:disabled) { background: #156546; }
 .bouton--danger { background: var(--rouge); }
 .bouton--danger:hover:not(:disabled) { background: #8f1e17; }
-.bouton--petit { padding: 0.3rem 0.65rem; font-size: 0.82rem; }
+/* 32 px de haut au minimum : plusieurs actions tombaient à 31 px, sous le seuil
+   recommandé pour une cible tactile. */
+.bouton--petit { padding: 0.35rem 0.65rem; font-size: 0.82rem; min-height: 32px; }
 .barre-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
 .barre-actions--fin { justify-content: flex-end; }
 
@@ -140,7 +148,7 @@ legend {
 .etiquette--brouillon { background: var(--gris-100); color: var(--gris-700); border-color: var(--gris-300); }
 .etiquette--soumise { background: var(--bleu-100); color: var(--bleu-700); border-color: #b8d3e8; }
 .etiquette--complement { background: var(--ambre-clair); color: #7d4e04; border-color: #eccb92; }
-.etiquette--validee { background: var(--vert-clair); color: var(--vert); border-color: #a9dcc6; }
+.etiquette--validee { background: var(--vert-clair); color: #11543b; border-color: #a9dcc6; }
 .etiquette--rejetee { background: var(--rouge-clair); color: var(--rouge); border-color: #f0b8b3; }
 
 /* ---------- Tableaux ---------- */
@@ -199,13 +207,13 @@ button.mcc:hover { border-color: var(--bleu-500); background: var(--gris-050); }
   font-weight: 700; font-size: 0.78rem; color: #11543b;
   background: var(--vert-clair); border-radius: 999px; padding: 0.1rem 0.55rem;
 }
-.mcc__score--moyen { color: var(--ambre); background: var(--ambre-clair); }
+.mcc__score--moyen { color: #7d4e04; background: var(--ambre-clair); }
 .mcc__score--faible { color: var(--gris-700); background: var(--gris-100); }
 .jeton {
   font-size: 0.75rem; background: var(--gris-100); color: var(--gris-700);
   border: 1px solid var(--gris-300); border-radius: 999px; padding: 0.05rem 0.5rem;
 }
-.jeton--risque { background: var(--ambre-clair); color: var(--ambre); border-color: #eccb92; }
+.jeton--risque { background: var(--ambre-clair); color: #7d4e04; border-color: #eccb92; }
 .jeton--interdit { background: var(--rouge-clair); color: var(--rouge); border-color: #f0b8b3; }
 
 /* ---------- Messages ---------- */

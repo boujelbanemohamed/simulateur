@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { booleen, entier } from './zodHelpers.js';
+import './zodMessages.js';
 
 const texte = (max) => z.string().trim().max(max);
 // L'ordre compte : `.optional()` doit envelopper la transformation, sinon un

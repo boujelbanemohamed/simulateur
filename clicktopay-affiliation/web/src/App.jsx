@@ -1,5 +1,6 @@
 import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext.jsx';
+import { Message } from './components/ui.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import RequestFormPage from './pages/RequestFormPage.jsx';
@@ -83,12 +84,17 @@ function Entete() {
 }
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, erreurSession } = useAuth();
 
   return (
     <div className="app">
       {user && <Entete />}
       <main className="contenu">
+        {/* `erreurSession` était produit par AuthProvider et consommé par aucun
+            composant : l'utilisateur voyait la page de connexion sans savoir que
+            le serveur était simplement injoignable, et ressaisissait ses
+            identifiants pour rien. */}
+        {erreurSession && <Message type="attention">{erreurSession}</Message>}
         <Routes>
           <Route path="/connexion" element={user ? <Navigate to="/demandes" replace /> : <LoginPage />} />
           <Route path="/demandes" element={<Protege><DashboardPage /></Protege>} />

@@ -128,7 +128,10 @@ export default function RequestDetailPage() {
         </div>
       </div>
 
-      <ErreurApi erreur={erreur} />
+      {/* Hors arbitrage seulement : la carte d'arbitrage affiche déjà l'erreur à
+          l'endroit où l'action a lieu, et la doubler ici la faisait apparaître
+          deux fois à l'écran. */}
+      {!arbitrable && <ErreurApi erreur={erreur} />}
 
       {demande.status === 'COMPLEMENT_REQUIS' && demande.decisionComment && (
         <Message type="attention" titre="Complément demandé par le banquier">
