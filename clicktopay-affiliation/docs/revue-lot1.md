@@ -127,8 +127,19 @@ classe de défaut et que le résidu s'y rattache.
 
 ### RL1-01 — La migration est tout ou rien : un seul doublon de casse laisse l'API servir un schéma d'avant le lot
 
-**Gravité** bloquant. **Fichiers** `server/src/db/schema.sql:233-249` (le
+**Gravité** bloquant. **Fichiers** `server/src/db/schema.sql:275-287` (le
 garde-fou) et `server/src/db/migrate.js:9` (`pool.query(sql)`).
+
+> **Revérifié sur l'arbre d'aujourd'hui (`ca06470`).** Base `revue_lot1` amorcée
+> par le code d'avant le lot (`154edba`), donc au schéma d'avant, puis un doublon
+> `agent@banque.tn` / `Agent@banque.tn` inséré, puis migration avec le
+> `schema.sql` d'aujourd'hui. Le refus est bien rendu, **et rien n'est appliqué** :
+> `admin_events` n'a pas `bank_id`, `mcc_suggestions` n'a ni `label_at_submit` ni
+> `description_at_submit`, `idx_admin_events_bank` est absent, et
+> `idx_admin_events_date` reste `btree (created_at DESC)` — l'index à une seule
+> colonne d'avant EVO-06, puisque le `DROP`/`CREATE` qui le reconstruit
+> (`schema.sql:294-295`) est **postérieur** au garde-fou dans le fichier et tombe
+> donc avec lui. Le constat est inchangé.
 
 **Constat.** `migrate()` envoie le fichier entier en une seule requête simple :
 PostgreSQL l'exécute dans **une transaction implicite unique**. Le
@@ -721,6 +732,51 @@ if (ecoute) {
 
 Test à ajouter : après `arreterEcoute()`, reprendre un client du lot et asserter
 que `pg_listening_channels()` est vide.
+
+---
+
+### RL1-13 — Le garde-fou des doublons de casse n'est exercé par aucun test : sa seule épreuve est la migration d'une base vierge
+
+**Gravité** mineur (la gravité du défaut qu'il laisse passer est, elle,
+bloquante : voir RL1-01). **Fichiers** `server/src/db/schema.sql:275-287`,
+`server/tests/admin.test.js:277-287`.
+
+**Constat.** Le seul test qui touche à la migration est « la migration du schéma
+est rejouable (EVO-03) » : il appelle `migrate()` deux fois sur la base de test
+et vérifie que `idx_users_email_lower` existe. La base de test **ne comporte
+jamais de doublon de casse** — `resetDatabase` la ramène aux quatre comptes
+d'amorçage. Le bloc `DO $$ … RAISE EXCEPTION`, qui est la pièce délicate de la
+migration, n'est donc jamais exécuté dans la branche qui lève.
+
+Ce qui n'est éprouvé par aucun test n'est pas protégé : ni le message rendu (que
+l'exploitant lira à trois heures du matin), ni la liste des adresses qu'il nomme,
+ni surtout le fait que l'échec laisse la base **cohérente avec elle-même**. Et
+c'est bien ce dernier point qui est faux, RL1-01 le montre.
+
+**Scénario qui casse.** Une régression qui rendrait le `RAISE` silencieux — par
+exemple un `HAVING count(*) > 1` devenu `> 2` lors d'un remaniement — passerait
+la suite entière au vert, et l'échec se produirait en production, sur l'erreur
+brute de PostgreSQL au moment de poser l'index unique, sans nommer les adresses.
+
+**Correction proposée.** Un cas de test dans `admin.test.js`, dans la suite
+d'administration, qui n'a pas besoin de base dédiée :
+
+```js
+test('la migration refuse de s’appliquer sur des adresses en doublon de casse (EVO-03)', async () => {
+  // La contrainte unique insensible à la casse existe déjà sur la base de test :
+  // on la retire le temps du cas, faute de quoi le doublon ne peut pas être posé.
+  await pool.query('DROP INDEX idx_users_email_lower');
+  await pool.query(`INSERT INTO users (bank_id, email, password_hash, first_name, last_name, role)
+                    VALUES (1, 'Agent@banque.tn', 'x', 'Doublon', 'Casse', 'AGENT')`);
+  const { migrate } = await import('../src/db/migrate.js');
+  await assert.rejects(migrate(), /plusieurs casses.*agent@banque\.tn/s);
+  await pool.query("DELETE FROM users WHERE email = 'Agent@banque.tn'");
+  await migrate();   // la base est remise d'aplomb pour la suite
+});
+```
+
+Il verrouille à la fois le refus, le nommage des adresses, et la rejouabilité
+après correction du doublon.
 
 ---
 

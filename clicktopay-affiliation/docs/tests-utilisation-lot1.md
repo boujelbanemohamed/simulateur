@@ -51,10 +51,11 @@ Gravités : **bloquant** · **majeur** · **moyen** · **mineur**.
 | D-3 — le banquier administrateur de sa banque, ses cinq écrans | parcouru |
 | D-3 — le banquier saisit, modifie, soumet, arbitre, reprend un dossier d'agent | parcouru |
 | Cloisonnement de l'agent (aucune administration) | parcouru |
-| Administration : comptes, banques | **interrompu** — voir `UTI-18` |
+| Administration : comptes (création, modification, mot de passe, désactivation) | parcouru — repris à la reprise |
+| Administration : banques (fiche, bornes du banquier) | parcouru — repris à la reprise |
 | Administration : référentiel MCC, désactivation et réactivation de `5999` | parcouru |
 | Import d'une édition : simulation, double confirmation | parcouru |
-| Journal d'administration : pagination, valeurs avant/après | parcouru pour l'administrateur, **interrompu** pour le banquier (`UTI-18`) |
+| Journal d'administration : pagination, valeurs avant/après | parcouru, pour l'administrateur **et** pour le banquier |
 | Liste des demandes paginable au-delà de cinquante | parcouru |
 | Ergonomie mobile 375 × 812 | parcouru |
 | Erreurs JavaScript en console | surveillées sur tout le parcours |
@@ -146,7 +147,23 @@ ci-dessous et non comme des régressions du front.
 
 ### 4.1 L'instance livrée
 
-#### UTI-18 — Défaut · bloquant · Trois écrans d'administration tombent en « Erreur interne du serveur » : la base n'a pas suivi le code
+#### UTI-18 — Requalifié à la reprise · Défaut · moyen · Une livraison qui change le schéma ne le vérifie pas au démarrage
+
+> **Reprise.** Le constat ci-dessous a été écrit alors que la base de cette
+> instance n'était pas migrée. **Elle l'est depuis**, et les trois écrans ont été
+> reparcourus : le journal du banquier s'affiche et se pagine, la création, la
+> modification, la réinitialisation de mot de passe et la désactivation d'un
+> compte agent par le banquier aboutissent toutes, et la fiche de sa banque est
+> modifiable. **Il n'y a plus rien de bloquant.** Ce qui reste, et qui est le
+> seul défaut du produit dans cette affaire, est le point 2 ci-dessous : l'API
+> démarre et répond `status: ok` sur une base dont le schéma est en retard, et
+> l'écart ne se découvre qu'au premier clic d'un utilisateur. La gravité passe
+> de **bloquant** à **moyen**, et le périmètre du constat aux seules conditions
+> de démarrage. Le détail d'origine est conservé ci-dessous à titre de trace.
+
+<details><summary>Constat d'origine, tel qu'il a été relevé avant la remise à niveau de la base</summary>
+
+**Défaut · bloquant · Trois écrans d'administration tombent en « Erreur interne du serveur »**
 
 **Écran et parcours.** Banquier → Administration → Journal · Banquier ou
 administrateur → Administration → Comptes → « + Nouveau compte » · toute
@@ -213,6 +230,218 @@ journal est vide ou cassé, ni s'il doit prévenir quelqu'un.
 > éprouver une fois la base mise à niveau. Les constats `UTI-03` à `UTI-06` de la
 > revue précédente, qui portaient sur le cloisonnement du journal du banquier,
 > **ne sont ni confirmés ni infirmés** par cette campagne.
+
+</details>
+
+**Ce qui a été repris et mené à son terme**, une fois la base à niveau, est
+consigné en `§4.3`. Les parcours d'administration des comptes, des banques et du
+journal du banquier sont désormais **parcourus**.
+
+### 4.3 L'administration des comptes et des banques
+
+Ces parcours ont été repris à la reprise de campagne, une fois la base à niveau.
+**Ils aboutissent tous.** Le banquier crée un compte agent, le modifie,
+réinitialise son mot de passe, le désactive et le réactive ; la fiche de sa
+banque est modifiable ; les bornes de D-3 tiennent — le rôle reste figé sur
+« Agent » à la création **comme à la modification**, la banque reste figée, les
+lignes qu'il n'administre pas portent « hors de votre périmètre », et l'écran des
+banques ne propose ni « + Nouvelle banque » ni « Désactiver ». Ce qui suit porte
+sur la manière, pas sur le résultat.
+
+#### UTI-20 — Défaut · moyen · L'astérisque des champs obligatoires est purement décoratif : le formulaire part vide au serveur
+
+**Écran et parcours.** Administration → Comptes → « + Nouveau compte ». Vaut
+pour **tous les formulaires du produit**, la saisie en cinq étapes comprise.
+
+**Attendu.** Un champ marqué `*` est obligatoire ; le navigateur retient la
+soumission et place le curseur sur le premier champ manquant, sans aller-retour
+serveur.
+
+**Observé.** Le composant de champ rend l'astérisque et rien d'autre : l'attribut
+`required` n'est jamais posé sur l'`input`. Vérifié à l'écran —
+`#champ-email` rend `required = null`. Un formulaire entièrement vide part donc
+au serveur, revient en **400** et l'utilisateur découvre ses cinq erreurs d'un
+coup, après un aller-retour, au lieu d'être arrêté sur la première.
+
+Deux conséquences visibles :
+
+- **le message est faux pour l'adresse e-mail.** Un champ vide est rapporté
+  « Adresse e-mail : Adresse e-mail **invalide** », là où le prénom et le nom
+  reçoivent bien « est obligatoire ». L'utilisateur qui n'a rien tapé lit qu'il a
+  mal tapé ;
+- l'astérisque porte `aria-hidden="true"` et aucun `aria-required` ne le
+  remplace : **un utilisateur au lecteur d'écran n'apprend nulle part que le
+  champ est obligatoire**, ni avant ni après.
+
+**Reproduire.** Banquier → Administration → Comptes → « + Nouveau compte » →
+« Créer le compte » sans rien saisir.
+
+*Capture : `b06-vide-erreurs.png`.*
+
+#### UTI-21 — Gêne · moyen · Chaque erreur de saisie est affichée deux fois
+
+**Écran et parcours.** Même écran, et tout formulaire du produit.
+
+**Observé.** Le retour en 400 alimente **deux affichages simultanés** : un
+bandeau « Données invalides » qui énumère toutes les erreurs, préfixées du nom du
+champ, **et** un message sous chacun des champs fautifs. Sur la soumission à vide
+ci-dessus, l'écran porte au même instant :
+
+| Dans le bandeau | Sous le champ |
+| --- | --- |
+| Adresse e-mail : Adresse e-mail invalide | Adresse e-mail invalide |
+| Prénom : Le prénom est obligatoire | Le prénom est obligatoire |
+| Nom : Le nom est obligatoire | Le nom est obligatoire |
+| Mot de passe : Le mot de passe doit comporter au moins 10 caractères | *(absent)* |
+| Mot de passe : Le mot de passe doit contenir une minuscule, une majuscule et un chiffre | Le mot de passe doit contenir une minuscule, une majuscule et un chiffre |
+
+L'utilisateur lit donc quatre fois le même texte à deux endroits — et, pour le
+mot de passe, **le bandeau porte deux exigences quand le champ n'en montre
+qu'une** : seule la dernière erreur est retenue sous le champ. Qui corrige ce que
+le champ lui dit (ajouter une majuscule) peut échouer de nouveau sur la longueur,
+sans l'avoir vu venir.
+
+**Reproduire.** Identique à `UTI-20`.
+
+#### UTI-22 — Défaut · moyen · Désactiver un compte ne dit rien, et laisse à l'écran le message de l'action précédente
+
+**Écran et parcours.** Administration → Comptes → « Désactiver » / « Réactiver »
+sur une ligne d'agent.
+
+**Attendu.** Une action qui coupe l'accès d'un utilisateur se confirme avant, et
+se confirme après. Les trois autres actions de l'écran le font : « Compte … créé. »,
+« Compte … mis à jour. », « Mot de passe de … réinitialisé. »
+
+**Observé.** Deux manques sur la même action :
+
+1. **Aucune confirmation avant.** Un seul clic sur « Désactiver » coupe l'accès
+   de l'agent. Aucune boîte de dialogue, aucun second geste. Le bouton est
+   voisin de « Modifier » et de « Mot de passe » dans la même barre, sans
+   séparation ni traitement visuel distinct.
+2. **Aucun message après.** Ni « Désactiver » ni « Réactiver » n'émettent de
+   message ; le seul signal est la pastille de la ligne qui change. Vérifié
+   isolément, l'écran vierge de tout message le reste après les deux actions.
+
+Le second manque produit un effet trompeur, relevé tel quel : en enchaînant
+« Mot de passe » puis « Désactiver », l'écran **conserve** le message
+« Mot de passe de `uti3.485439@banque.tn` réinitialisé. Communiquez-le par un
+canal sûr. » alors que l'action qui vient d'être faite est une désactivation. Le
+banquier lit une confirmation qui ne correspond pas à son dernier clic.
+
+**Reproduire.** Banquier → Administration → Comptes → sur une ligne d'agent,
+« Mot de passe », saisir un mot de passe valide, « Réinitialiser » ; puis, sur la
+même ligne, « Désactiver ». Lire le bandeau.
+
+*Capture : `b11-desactiver-message.png`.*
+
+#### UTI-23 — Gêne · mineur · L'écran des banques explique au banquier une règle qui ne le concerne pas
+
+**Écran et parcours.** Banquier → Administration → Banques.
+
+**Observé.** L'écran est juste — une seule ligne, sa banque, un seul bouton
+« Modifier », et une phrase d'en-tête exacte : « La fiche de votre banque. Vous
+pouvez en corriger le libellé ; sa création et son activation relèvent de
+l'administrateur. » Mais il se termine par : « Une banque ne peut être désactivée
+que si elle ne compte plus aucun compte actif. Ses demandes déjà enregistrées
+sont conservées. » — une note qui explique les conditions d'une action que le
+banquier ne peut pas faire et dont l'écran ne lui propose pas le bouton.
+
+*Capture : `b10-banques.png`.*
+
+### 4.4 Le journal d'administration
+
+**Ce qui est conforme.** Le journal a été repris pour les deux profils, une fois
+la base à niveau.
+
+| Attendu | Constat |
+| --- | --- |
+| `EVO-06` — journal paginé, « entrées 101 à 200 sur N » | **conforme** — l'administrateur lit « entrées 1 à 100 sur 143 » puis, après « Suivant », « entrées 101 à 143 sur 143 » ; cent lignes par page |
+| `EVO-05` — valeurs avant / après | **conforme, au mot près** — une promotion rend « **Rôle : agent → banquier** » ; une désactivation rend « Statut : actif → désactivé » |
+| `EVO-04` — le changement de mot de passe est journalisé | **conforme** — « Réinitialisation de mot de passe » apparaît en ligne propre |
+| Le journal du banquier est **filtré sur sa banque** | **conforme** — l'administrateur compte 143 entrées, le banquier 128 au même instant : les quinze actions portant sur les autres banques ne lui sont pas servies. Vérifié en créant un compte en `BQ002` : la ligne apparaît chez l'administrateur, pas chez le banquier |
+| Le journal est accessible au banquier | **conforme** — l'écran qui rendait une erreur serveur s'affiche, se pagine et se parcourt sans incident |
+
+#### UTI-24 — Gêne · majeur · Le journal désigne les comptes par un numéro interne : on ne sait pas de qui on parle
+
+**Écran et parcours.** Administration → Journal, colonne « Objet ».
+
+**Attendu.** Un journal d'administration sert à répondre à « qui a fait quoi, à
+qui ». Les deux premiers tiers sont bien rendus — l'auteur est nommé
+(« Karim Trabelsi »), l'action est en clair. Le troisième manque.
+
+**Observé.** L'objet de l'action est rendu « **Compte #71** », « Compte #72 » —
+l'identifiant technique en base, qui n'est affiché nulle part ailleurs dans le
+produit. L'écran des comptes ne montre pas ce numéro, la recherche ne le prend
+pas, et rien ne permet de passer de la ligne de journal au compte concerné : ni
+lien, ni infobulle, ni nom.
+
+Seule la ligne **Création** porte l'adresse e-mail, en détail. Les lignes
+« Modification », « Réinitialisation de mot de passe », « Statut : actif →
+désactivé » ne portent que le numéro. Pour savoir qui a été désactivé, il faut
+donc **remonter la liste jusqu'à la ligne de création du même numéro** — sur cent
+lignes par page, sans filtre et sans recherche.
+
+C'est précisément le contrôle que D-1 et D-3 désignent comme la seule contrepartie
+au cumul des rôles : « la maîtrise du risque repose sur la relecture du journal ».
+Cette relecture n'est pas praticable en l'état.
+
+**Reproduire.** Administration → Comptes, désactiver un agent ; aller au Journal
+et tenter de dire, à partir de la première ligne seule, quel compte a été
+désactivé.
+
+*Capture : `j03-avant-apres.png`.*
+
+#### UTI-25 — Gêne · majeur · Le journal n'offre aucun filtre ni recherche
+
+**Écran et parcours.** Administration → Journal.
+
+**Observé.** L'écran ne comporte **aucun champ de recherche et aucun filtre** :
+ni par date, ni par auteur, ni par objet, ni par type d'action. Les seuls
+contrôles sont « Précédent » et « Suivant ». Sur cent quarante-trois entrées la
+gêne est supportable ; la volumétrie réelle d'une plateforme bancaire la rend
+impraticable — retrouver ce qui a été fait sur un compte un jour donné suppose de
+feuilleter l'intégralité du journal, cent lignes à la fois.
+
+Les autres écrans de liste du produit ont, eux, une recherche (« Recherche » sur
+les comptes) ou des filtres (statut, banque sur le tableau de bord). Le seul
+écran qui existe **pour** être fouillé est le seul à n'en avoir aucun.
+
+#### UTI-26 — Défaut · mineur · Le détail d'une création expose des clés techniques non traduites
+
+**Écran et parcours.** Administration → Journal, colonne « Détail », ligne
+« Création » d'un compte.
+
+**Attendu.** Le détail est écrit dans les mots du produit, comme le sont
+« Rôle : agent → banquier » ou « Statut : actif → désactivé ».
+
+**Observé.** La ligne rend :
+
+> Rôle : agent · Adresse e-mail : uti3.role746070@banque.tn · **Banque : 2 · bankCode : BQ002**
+
+Trois défauts dans la même ligne :
+
+1. « **Banque : 2** » — l'identifiant interne de la banque, là où l'utilisateur
+   attend `BQ002` ou « Banque Internationale Arabe de Tunisie » ;
+2. « **bankCode** » — une clé technique, en anglais et en *camelCase*, non
+   traduite, au milieu de libellés français ;
+3. **l'information est donnée deux fois**, sous ses deux formes, l'une
+   inutilisable et l'autre non traduite.
+
+Le mécanisme de traduction des libellés existe et fonctionne pour « Rôle » et
+« Adresse e-mail » ; il laisse simplement passer ce qu'il ne connaît pas, tel
+quel, plutôt que de l'écarter ou de le nommer.
+
+**Reproduire.** Administrateur → Comptes → « + Nouveau compte », créer un compte ;
+aller au Journal et lire la première ligne.
+
+#### UTI-27 — Gêne · mineur · L'en-tête du journal annonce au banquier un périmètre qu'il n'a pas
+
+**Écran et parcours.** Banquier → Administration → Journal.
+
+**Observé.** Le sous-titre est « Actions sur les comptes, les banques **et le
+référentiel MCC** ». Le banquier n'a pas accès au référentiel MCC — c'est une
+borne explicite de D-3 — et aucune action de référentiel ne lui est servie. Le
+même texte est rendu pour les deux profils.
 
 ### 4.2 L'explicabilité des propositions MCC
 
