@@ -42,14 +42,17 @@ npm run dev                               # http://localhost:5173
 
 ### Comptes de démonstration
 
-| Rôle | Identifiant | Mot de passe |
-| --- | --- | --- |
-| Agent | `agent@banque.tn` | `Agent#2026` |
-| Banquier | `banquier@banque.tn` | `Banquier#2026` |
-| Administrateur | `admin@clicktopay.tn` | `Admin#2026` |
+| Rôle | Identifiant | Mot de passe | Banque |
+| --- | --- | --- | --- |
+| Agent | `agent@banque.tn` | `Agent#2026` | BQ001 |
+| Banquier | `banquier@banque.tn` | `Banquier#2026` | BQ001 |
+| Administrateur | `admin@clicktopay.tn` | `Admin#2026` | BQ001 |
+| Agent (seconde banque) | `agent2@banque.tn` | `Agent#2026` | BQ002 |
 
-Ces comptes sont créés par `npm run db:seed`. **À supprimer avant toute mise en
-production** (`seed({ withDemoUsers: false })` ne les crée pas).
+Ces comptes sont créés par `npm run db:seed` — ils sont **quatre**, le dernier
+rattaché à une seconde banque, sans quoi le cloisonnement inter-banques ne serait ni
+démontrable ni testable. **À supprimer avant toute mise en production**
+(`seed({ withDemoUsers: false })` ne les crée pas).
 
 ## Parcours fonctionnel
 
@@ -70,6 +73,9 @@ production** (`seed({ withDemoUsers: false })` ne les crée pas).
    tracé par le journal (décision D-3, dans le prolongement de D-1).
 5. **Tout est tracé** : chaque étape alimente un journal nominatif et horodaté, et
    le code initialement proposé par l'agent reste visible à côté du code retenu.
+   Une modification de dossier y porte les valeurs **avant et après**, le RIB
+   masqué — le contrôle à quatre yeux n'étant plus imposé, la trace est ce qui
+   permet d'en rendre compte.
 
 Statuts : `BROUILLON` → `SOUMISE` → `VALIDEE` | `REJETEE` | `COMPLEMENT_REQUIS`
 (qui redevient modifiable puis re-soumissible).
@@ -85,7 +91,7 @@ leur montre pas la même chose :
 | Comptes | toutes banques, tous rôles | les comptes de **sa** banque ; il n'en crée et n'en modifie que des **agents** |
 | Banques | création, modification, activation | consultation et correction de **sa** fiche ; ni création, ni activation |
 | Référentiel MCC et import | oui | **non** — il est commun à toutes les banques |
-| Journal | toutes banques | filtré sur **sa** banque |
+| Journal | toutes banques, référentiel compris | les actions **concernant sa banque**, quel qu'en soit l'auteur — y compris celles d'un administrateur ; le référentiel MCC, commun, n'y figure pas |
 
 Le corps d'une requête ne décide pas du périmètre : la banque de l'appelant écrase
 celle qu'annonce la requête, et aucune modification ne peut faire sortir un compte
@@ -186,6 +192,7 @@ agents sur quatre vagues. Tous les livrables sont dans `docs/` :
 | `decisions-commanditaire.md` | Arbitrages du commanditaire (D-1, D-2, D-3) — ce document fait foi sur les points qu'il tranche |
 | `journal-lot1.md` | Journal du lot 1 d'évolutions (EVO-01 à EVO-12) |
 | `non-regression-lot1.md` | Non-régression après le lot 1 : ce qui a été rejoué, et ce qui a bougé |
+| `journal-documentation.md` | Remise en cohérence du dossier avec le produit : ce qui a été corrigé, pourquoi, comment c'est vérifié, et ce qui reste à arbitrer |
 
 ### Ce que la campagne a corrigé
 
@@ -346,6 +353,16 @@ aucune proposition n'affiche 100 %, et l'écart entre deux codes reste lisible. 
 termes ayant déclenché la correspondance sont renvoyés avec chaque proposition,
 pour que le choix du banquier soit un arbitrage éclairé et non un acte de foi.
 
+**Aucune proposition sans terme justificatif.** Un code que le banquier ne peut
+rattacher à aucun mot de la demande n'a pas sa place dans la liste : un score tiré
+du seul bonus de pertinence e-commerce, sans la moindre correspondance, ne remonte
+plus rien. `limit` est donc un **plafond et non une consigne de remplissage** — une
+activité peu bavarde rend moins de propositions qu'une autre, et c'est le résultat
+attendu. Quand il n'en reste aucune, le filet de sécurité joue : le code de repli
+`5999` est servi seul, avec la mention explicite *aucune correspondance : code de
+repli*. Les valeurs de référence, jeu par jeu, sont au § 4.3 de
+`docs/plan-de-tests.md` — elles supposent un référentiel d'amorçage intact.
+
 ## API
 
 Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
@@ -407,7 +424,23 @@ strictement réservées à l'administrateur, référentiel commun oblige.
 - **Une réinitialisation de mot de passe ferme les sessions ouvertes** : tout
   jeton émis avant le dernier changement est refusé.
 - Cloisonnement par banque : une demande n'est lisible que par les utilisateurs de
-  la banque émettrice (l'`ADMIN` voit tout).
+  la banque émettrice (l'`ADMIN` voit tout). **Le refus est un 404, pas un 403**, et
+  il est rigoureusement identique à celui d'un objet inexistant — dossiers comme
+  comptes. Un 403 disait « cet identifiant existe, mais il n'est pas à vous » :
+  balayer les identifiants suffisait alors à dénombrer les dossiers et le personnel
+  d'une banque concurrente, ce qui est en soi une information commerciale, même sans
+  accès au contenu.
+- **Le journal d'administration est partitionné sur la banque concernée par
+  l'action**, figée au moment de l'écriture — et non sur la banque actuelle de son
+  auteur, qui change. Un compte muté d'une banque à l'autre n'emporte donc pas son
+  historique avec lui, et une action d'un administrateur sur un compte reste visible
+  de la banque de ce compte. Le référentiel MCC, commun à toutes les banques, est de
+  portée plateforme et n'apparaît dans le journal d'aucune banque.
+- **Les modifications d'un dossier sont tracées avec leurs valeurs avant et après**,
+  et pas seulement par les noms des champs touchés. Depuis que la même personne peut
+  saisir puis arbitrer un dossier (décisions D-1 et D-3), la trace est le seul
+  contrôle qui subsiste : savoir qu'un RIB a changé sans savoir en quoi ne permet de
+  rendre compte de rien. Le RIB y est masqué, quatre derniers caractères apparents.
 - Rôles vérifiés côté serveur sur chaque route sensible, jamais uniquement dans
   l'interface.
 - Validation de tous les corps de requête par zod, avec retour d'erreur champ par
@@ -429,7 +462,7 @@ strictement réservées à l'administrateur, référentiel commun oblige.
 
 ```bash
 cd server
-npm test      # 165 tests : authentification, référentiel, moteur, workflow,
+npm test      # 166 tests : authentification, référentiel, moteur, workflow,
               # habilitations, administration, import, limitation de débit,
               # robustesse, concurrence et indexation
 ```
@@ -452,7 +485,11 @@ par ses permissions : une habilitation élargie se prouve par ce qu'elle refuse
 encore. Le banquier y administre sa banque, y saisit et y arbitre — mais ne crée
 ni banquier ni administrateur, ne promeut pas ses agents, ne déplace aucun compte,
 ne touche ni au référentiel MCC, ni à une autre banque, ni à la sienne pour la
-désactiver.
+désactiver. Deux cas y portent le **journal** : les actions faites sur une autre
+banque et celles faites sur le référentiel commun n'entrent pas dans le sien,
+celles qu'un administrateur fait sur un compte de sa banque y entrent, et muter un
+compte d'une banque à l'autre ne déplace pas son historique. Ils remplacent un cas
+qui n'assertait que le type de la réponse et survivait au retrait du filtre.
 
 `tests/import.test.js` porte les invariants de l'import : une simulation n'écrit
 rien (base photographiée avant et après), rien n'est appliqué sans `apply: true`,

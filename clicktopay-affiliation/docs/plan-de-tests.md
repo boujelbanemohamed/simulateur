@@ -49,6 +49,7 @@ Campagne de recette : agents 2, 3, 5 et 6 exécutent, l'agent 7 consolide.
 5. **Ports** : ne jamais démarrer d'instance sur 4000, 5173, 4011, 4012, 4021.
 6. **Messages attendus** : reproduits **au caractère près**, apostrophe typographique `’` comprise là où le code l'emploie.
 7. **Rejeu** : chaque cas doit pouvoir être rejoué après `resetDatabase()` (ou `npm run db:seed` + remise à zéro des demandes).
+8. **Schéma à jour** *(ajouté le 2026-09-23)* : la base de recette doit avoir été migrée **après le commit `3a7ac2e`** (`npm run db:migrate`), qui ajoute la colonne `admin_events.bank_id` — la banque concernée par une action d'administration, figée à l'écriture. Sur une base plus ancienne, `GET /api/admin/events` rend **500** (`column e.bank_id does not exist`) dès qu'un banquier l'appelle, et les cas CAS-HAB-11 (point 7) et CAS-ADM-21 sont injouables. Contrôle en une ligne : `\d admin_events` doit montrer `bank_id`.
 
 ### 1.4 Conventions
 
@@ -179,8 +180,19 @@ Préconditions : une demande D1 créée par `agent@banque.tn` (banque BQ001) ; j
 1. `GET /api/requests/<D1>` avec le jeton de l'agent → doit répondre 200.
 2. ADMIN : `PUT /api/admin/users/<id agent>` `{"bankId":<id BQ002>}`.
 3. Rejouer `GET /api/requests/<D1>` avec **le même jeton**.
-Résultat attendu : étape 3 → HTTP 403 `{"error":"Cette demande appartient à une autre banque."}`.
-Acceptation : le jeton, non réémis, ne donne plus accès au dossier de l'ancienne banque.
+Résultat attendu : étape 3 → HTTP **404** `{"error":"Demande <D1> introuvable"}`, **identique au mot près** à la réponse servie pour une demande qui n'existe pas (`GET /api/requests/999999`).
+Acceptation : le jeton, non réémis, ne donne plus accès au dossier de l'ancienne banque, et le refus ne dit pas que ce dossier existe.
+
+> **Amendement du 2026-09-23.** Le code attendu passe de **403** à **404**, et le message
+> `Cette demande appartient à une autre banque.` disparaît : il n'est plus émis nulle part.
+> Commit `3a7ac2e` — un objet d'une autre banque se distinguait d'un objet inexistant par son
+> code de retour, ce qui laissait dénombrer les dossiers d'en face en balayant les
+> identifiants. `requests.js`, `getRequest()` lève désormais le même `notFound` dans les deux
+> cas. Mesuré le 2026-09-23 sur l'instance du port 4000, jeton `agent2@banque.tn` (BQ002) sur
+> la demande 1 (BQ001) : `404 {"error":"Demande 1 introuvable"}`, contre
+> `404 {"error":"Demande 9999 introuvable"}` pour un identifiant libre. Le cas n'est pas
+> affaibli : ce qu'il éprouve — le jeton non réémis perd l'accès — est inchangé, seule la forme
+> du refus l'est, et l'égalité des deux réponses devient elle-même une assertion.
 
 ---
 
@@ -375,7 +387,7 @@ Niveau : LES DEUX · Criticité : BLOQUANT
 3. (FRONT) Connecté en agent, saisir `/administration/comptes` dans la barre d'adresse.
 4. (FRONT) Connecté en banquier, ouvrir `/administration/comptes`.
 Résultat attendu :
-- (1) les 5 appels répondent **403**. Message exact `{"error":"Action réservée aux profils : ADMIN, BANQUIER"}` sur `/users`, `/banks` et `/events` ; `{"error":"Action réservée aux profils : ADMIN"}` sur `/mcc` et `/mcc/import`, réservés plus étroitement encore.
+- (1) les 5 appels répondent **403**, et tous **le même message** : `{"error":"Action réservée aux profils : ADMIN, BANQUIER"}`, y compris sur `/mcc` et `/mcc/import`. La garde du routeur est franchie avant celle des routes du référentiel : l'agent est écarté à la porte de l'espace d'administration, et n'apprend rien du cloisonnement qui règne derrière. Le message `{"error":"Action réservée aux profils : ADMIN"}`, lui, est servi au **banquier** (CAS-HAB-12), qui est entré.
 - (2) les 3 appels répondent **200**, chacun borné à la banque de l'appelant (voir CAS-HAB-11).
 - (3) redirection vers `/demandes`, aucun onglet d'administration rendu ; le lien « Administration » est absent de l'en-tête de l'agent.
 - (4) l'espace s'ouvre sur **trois onglets** — « Comptes », « Banques », « Journal ». Les onglets « Référentiel MCC » et « Import du référentiel » ne sont pas rendus.
@@ -390,6 +402,18 @@ Acceptation : 5 refus pour l'agent, 3 accès pour le banquier, et l'écran suit 
 > `web/src/pages/AdminLayout.jsx` (`administrateurSeul`) et `web/src/App.jsx`
 > (`referentielSeul`, `peutAdministrer`).
 
+> **Rectificatif du 2026-09-23 — point (1).** La rédaction précédente annonçait deux messages
+> différents pour l'agent : `ADMIN, BANQUIER` sur `/users`, `/banks` et `/events`, et `ADMIN`
+> sur `/mcc` et `/mcc/import`. **C'est faux**, et la mesure le montre : `routes/admin.js` monte
+> `requireRole('ADMIN', 'BANQUIER')` sur le **routeur entier** (`adminRouter.use`), et
+> `reserveAAdministrateur` n'intervient qu'ensuite, sur chaque route. L'agent est donc arrêté
+> par la première garde et reçoit partout le même message. Relevé le 2026-09-23, jeton
+> `agent@banque.tn`, sur les cinq routes — `/api/admin/users`, `/banks`, `/events`, `/mcc` et
+> `POST /mcc/import` : **`403 {"error":"Action réservée aux profils : ADMIN, BANQUIER"}`** pour
+> les cinq. L'écart n'était pas sans portée : attendre deux messages là où il n'y en a qu'un
+> fait conclure au KO un comportement correct, et masque au passage que l'agent ne peut rien
+> déduire de la structure interne de l'espace d'administration.
+
 ---
 
 **CAS-HAB-04 — Cloisonnement inter-banques sur une demande**
@@ -401,9 +425,37 @@ Préconditions : demande D créée par `agent@banque.tn` (BQ001).
 3. `GET /api/requests/<D>/suggestions`
 4. `PUT /api/requests/<D>`
 5. `GET /api/requests` (liste)
-6. (FRONT) Connecté en agent2, ouvrir `/demandes/<D>`.
-Résultat attendu : (1) à (4) → HTTP **403** `{"error":"Cette demande appartient à une autre banque."}` · (5) la liste ne contient **aucune** demande dont `bankId` ≠ BQ002 · (6) l'écran n'affiche que le bandeau d'erreur « Cette demande appartient à une autre banque. », aucune donnée du e-commerçant (ni raison sociale, ni RNE, ni e-mail de contact).
-Acceptation : aucune donnée de BQ001 n'est lisible par BQ002, à aucun des six points.
+6. `POST /api/requests/<D>/submit`
+7. `GET /api/requests/999999` — identifiant libre, pour comparaison.
+8. (FRONT) Connecté en agent2, ouvrir `/demandes/<D>`.
+Résultat attendu : (1) à (4) et (6) → HTTP **404** `{"error":"Demande <D> introuvable"}` · (5) la liste ne contient **aucune** demande dont `bankId` ≠ BQ002 · (7) même code et **même message à l'identifiant près** qu'aux points (1) à (4) : rien ne distingue le dossier d'une autre banque d'un dossier qui n'existe pas · (8) l'écran n'affiche que le bandeau d'erreur servi par l'API, aucune donnée du e-commerçant (ni raison sociale, ni RNE, ni e-mail de contact).
+Acceptation : aucune donnée de BQ001 n'est lisible par BQ002 à aucun des huit points, et le refus ne renseigne pas sur l'existence du dossier.
+
+> **Amendement du 2026-09-23.** Les points (1) à (4) attendaient **403** et le message
+> `Cette demande appartient à une autre banque.` ; ils attendent désormais **404** et
+> `Demande <D> introuvable`. Commit `3a7ac2e` : *« un objet appartenant à une autre banque se
+> distinguait d'un objet inexistant par son code de retour, ce qui laissait dénombrer les
+> dossiers et le personnel d'en face en balayant les identifiants. Les deux refus sont
+> désormais identiques. »* Le cas est **réécrit, non retiré** — et il est renforcé : ce qu'il
+> éprouvait (aucune donnée ne passe la cloison) reste éprouvé, et l'indiscernabilité des deux
+> refus, qui est le point de l'évolution, devient un résultat attendu de plein droit, d'où les
+> points (6) et (7) ajoutés.
+>
+> Mesuré le 2026-09-23 sur l'instance du port 4000, jeton `agent2@banque.tn` (BQ002), demande
+> 1 (BQ001) — aucune de ces sondes n'écrit, le contrôle de périmètre précédant la transaction :
+>
+> | Appel | Réponse |
+> | --- | --- |
+> | `GET /api/requests/1` | `404 {"error":"Demande 1 introuvable"}` |
+> | `GET /api/requests/1/events` | `404 {"error":"Demande 1 introuvable"}` |
+> | `GET /api/requests/1/suggestions` | `404 {"error":"Demande 1 introuvable"}` |
+> | `PUT /api/requests/1` | `404 {"error":"Demande 1 introuvable"}` |
+> | `POST /api/requests/1/submit` | `404 {"error":"Demande 1 introuvable"}` |
+> | `GET /api/requests` | liste vide |
+> | `GET /api/requests/9999` (identifiant libre) | `404 {"error":"Demande 9999 introuvable"}` |
+>
+> Le message `Cette demande appartient à une autre banque.` n'est plus émis par aucune route :
+> il ne doit plus être attendu nulle part dans le dossier de recette.
 
 ---
 
@@ -490,10 +542,10 @@ Résultat attendu :
 - (1) une seule banque représentée : la sienne.
 - (2) HTTP **201**, et le compte créé porte **la banque de l'appelant**, pas celle du corps : la requête ne décide pas.
 - (3) HTTP **403** `{"error":"Vous ne pouvez créer que des comptes agents dans votre banque."}` dans les deux cas.
-- (4) HTTP **403** `{"error":"Ce compte appartient à une autre banque."}` sur les trois appels.
+- (4) HTTP **404** `{"error":"Utilisateur <id> introuvable"}` sur les trois appels, **identique à l'identifiant près** à la réponse servie pour un compte qui n'existe pas (`GET /api/admin/users/999999`).
 - (5) HTTP **403** `{"error":"Vous n’administrez que les comptes agents de votre banque."}` (apostrophe typographique comprise).
-- (6) HTTP **403** dans les deux cas : ni promotion, ni sortie du périmètre.
-- (7) un `total` strictement inférieur à celui de l'ADMIN : le journal est filtré sur sa banque.
+- (6) HTTP **403** `{"error":"Vous ne pouvez pas changer le rôle de ce compte."}` puis `{"error":"Vous ne pouvez pas rattacher ce compte à une autre banque."}` : ni promotion, ni sortie du périmètre.
+- (7) un `total` strictement inférieur à celui de l'ADMIN : le journal est filtré sur la banque **concernée par l'action**, figée à l'écriture, et non sur la banque actuelle de son auteur.
 - (8) le rôle proposé à la création est figé sur « Agent » et la banque est pré-remplie et figée.
 Acceptation : le banquier obtient exactement le périmètre de sa banque et du rôle agent — ni un compte de plus, ni un rôle de plus.
 
@@ -506,6 +558,43 @@ Acceptation : le banquier obtient exactement le périmètre de sa banque et du r
 > près. Le point (2) est établi par `server/tests/habilitations.test.js` (*la banque du compte
 > créé est celle du banquier, quoi que dise la requête*), non rejoué à la main pour ne rien
 > écrire dans la base de démonstration.
+
+> **Amendement du 2026-09-23 — points (4), (6) et (7).**
+>
+> **(4) 403 devient 404.** Commit `3a7ac2e` : un compte d'une autre banque répondait autrement
+> qu'un compte inexistant, ce qui laissait dénombrer le personnel d'en face en balayant les
+> identifiants. `services/admin.js`, `assertCibleAutorisee()` lève maintenant le même
+> `notFound` dans les deux cas, et le message `Ce compte appartient à une autre banque.` n'est
+> plus émis. Mesuré le 2026-09-23 sur le port 4000, jeton `banquier@banque.tn` (BQ001) sur le
+> compte 3 (`agent2@banque.tn`, BQ002) :
+>
+> | Appel | Réponse |
+> | --- | --- |
+> | `GET /api/admin/users/3` | `404 {"error":"Utilisateur 3 introuvable"}` |
+> | `PUT /api/admin/users/3` | `404 {"error":"Utilisateur 3 introuvable"}` |
+> | `POST /api/admin/users/3/password` | `404 {"error":"Utilisateur 3 introuvable"}` |
+> | `PUT /api/admin/users/9999` (identifiant libre) | `404 {"error":"Utilisateur 9999 introuvable"}` |
+>
+> **(6) les deux messages sont nommés**, relevés au caractère près le même jour : le refus de
+> promotion et le refus de mutation sont distincts, et un cas qui n'attend qu'« un 403 » ne
+> verrait pas l'un se substituer à l'autre.
+>
+> **(7) le critère est précisé** : `3a7ac2e` a corrigé un défaut de cloison. Le journal était
+> partitionné sur la banque **actuelle de l'auteur** d'une action ; muter un compte d'une
+> banque à l'autre emportait donc tout son historique dans la banque d'arrivée et le retirait à
+> celle de départ, et une action d'un administrateur sur un compte échappait au journal de la
+> banque concernée. La banque est désormais **figée à l'écriture** (`admin_events.bank_id`), la
+> portée « plateforme » (`NULL`) étant réservée au référentiel MCC, commun à toutes les banques
+> et visible du seul administrateur.
+>
+> **Précondition ajoutée par ce correctif** : la base de recette doit avoir été **migrée après
+> `3a7ac2e`** (`npm run db:migrate`, qui ajoute `admin_events.bank_id`). Sur une base plus
+> ancienne, `GET /api/admin/events` rend **500** pour le banquier — relevé tel quel le
+> 2026-09-23 sur l'instance du port 4000, dont la base n'a pas été migrée depuis ce commit
+> (`column e.bank_id does not exist`). Le point (7) n'a donc **pas pu être remesuré** ici ; il
+> reste établi par `server/tests/habilitations.test.js`, où deux cas l'éprouvent sur une base à
+> jour (voir § 3.2). Ce n'est pas un défaut du produit mais un état d'environnement, et il est
+> consigné à ce titre dans `docs/journal-documentation.md`.
 
 ---
 
@@ -624,8 +713,24 @@ Préconditions : demande D au statut BROUILLON contenant `taxId`, `postalCode`, 
 Étapes :
 1. `PUT /api/requests/<D>` avec `{"siteName":"Beldi Cosmetics v2"}`.
 2. Relire `GET /api/requests/<D>`.
-Résultat attendu : HTTP 200 ; `siteName` modifié ; `taxId`, `postalCode`, `proposedJustification` **inchangés** (non remis à `null`). Un événement `MODIFICATION` est ajouté avec `payload.champs = ["siteName"]`.
-Acceptation : un seul champ modifié, journal conforme.
+Résultat attendu : HTTP 200 ; `siteName` modifié ; `taxId`, `postalCode`, `proposedJustification` **inchangés** (non remis à `null`). Un événement `MODIFICATION` est ajouté avec `payload.champs = ["siteName"]` **et** `payload.modifications = {"siteName":{"avant":"<ancienne valeur>","apres":"Beldi Cosmetics v2"}}`.
+Acceptation : un seul champ modifié, journal conforme, **valeur d'avant et valeur d'après toutes deux présentes**.
+
+> **Amendement du 2026-09-23.** Le résultat attendu s'enrichit de `payload.modifications`.
+> Commit `3a7ac2e` : *« les modifications de dossier n'étaient tracées que par noms de champs.
+> Puisque la saisie et l'arbitrage peuvent être le fait d'une même personne, la trace est le
+> seul contrôle qui subsiste : savoir qu'un RIB a changé sans savoir en quoi ne permet de
+> rendre compte de rien. »* C'est la contrepartie directe des décisions **D-1** et **D-3** :
+> la plateforme n'empêche plus le cumul, donc le journal doit permettre d'en rendre compte.
+> `requests.js`, `tracerModification()`. Trois points à éprouver, ajoutés au cas :
+>
+> - `payload.champs` est **conservé** (l'écran et les rapports s'en servent) et ne liste que
+>   les champs dont la valeur a **réellement** changé : réécrire un champ à l'identique ne le
+>   fait pas entrer dans la trace ;
+> - le champ `rib` y figure **masqué**, quatre derniers caractères apparents
+>   (`••••••••1234`), avant comme après : établir qu'un relevé a changé n'oblige pas à en
+>   conserver une seconde copie en clair dans le journal ;
+> - un `PUT` qui ne change rien ne crée toujours aucun événement (CAS-DEM-09).
 
 ---
 
@@ -702,13 +807,26 @@ Acceptation : les quatre états sont exacts.
 
 Matrice de référence (déduite de `services/requests.js`) :
 
-| Statut de départ | `PUT` (agent) | `submit` (agent) | `decision` (banquier) |
+| Statut de départ | `PUT` (agent **ou banquier**) | `submit` (agent **ou banquier**) | `decision` (banquier) |
 | --- | --- | --- | --- |
 | BROUILLON | 200 | 200 → SOUMISE | 409 |
 | SOUMISE | 409 | 409 | 200 → VALIDEE / REJETEE / COMPLEMENT_REQUIS |
 | COMPLEMENT_REQUIS | 200 | 200 → SOUMISE | 409 |
 | VALIDEE | 409 | 409 | 409 |
 | REJETEE | 409 | 409 | 409 |
+
+> **Amendement du 2026-09-23 — en-têtes des deux premières colonnes.** La matrice était lue
+> « `PUT` et `submit` sont l'affaire de l'agent ». Depuis la décision **D-3**,
+> `routes/requests.js` porte `requireRole('AGENT', 'BANQUIER')` sur ces deux routes : le
+> banquier saisit, modifie et soumet les dossiers de sa banque, et l'administrateur le peut
+> partout (D-1). **Les codes de retour, eux, sont inchangés** — ils dépendent du statut, pas
+> du profil : la matrice reste valable telle quelle, seule la lecture de ses colonnes change.
+> Deux nuances à garder à l'esprit en la rejouant :
+>
+> - la colonne `PUT` sur BROUILLON et COMPLEMENT_REQUIS vaut 200 **pour l'auteur du dossier** ;
+>   un agent sur le dossier d'un collègue reçoit 403 (CAS-HAB-06), un banquier sur le dossier
+>   d'un de ses agents reçoit 200 (CAS-HAB-01, point 5) ;
+> - hors de la banque, les trois colonnes ne rendent plus 403 mais **404** (CAS-HAB-04).
 
 ---
 
@@ -1915,19 +2033,29 @@ Acceptation : un message adapté dans chacun des deux cas.
 ## 3. Matrice de couverture
 
 Légende :
-- **Auto** : comportement déjà vérifié par un test automatisé existant (`cd server && npm test`, **165 tests** répartis en 10 fichiers, état du 2026-09-23). Le cas reste utile comme référence, il n'a pas à être rejoué à la main.
+- **Auto** : comportement déjà vérifié par un test automatisé existant (`cd server && npm test`, **166 tests** répartis en 10 fichiers, état du 2026-09-23 au commit `3a7ac2e`). Le cas reste utile comme référence, il n'a pas à être rejoué à la main.
 - **Partiel** : un test existe mais ne couvre qu'une partie du cas ; le **reste** doit être exécuté manuellement. La colonne « Reste à faire » dit quoi.
 - **Manuel** : aucun test automatisé ; le cas est à exécuter intégralement.
 - Filière : **API** (recette API) ou **Nav.** (recette navigateur). Les cas « LES DEUX » apparaissent dans les deux filières.
 
 > **Amendement du 2026-09-23 — table reprise sur la suite réelle.** La table avait été établie
-> sur une suite de 94 tests. Elle en compte **165**, et quatre fichiers se sont ajoutés :
+> sur une suite de 94 tests. Elle en compte **166**, et quatre fichiers se sont ajoutés :
 > `vague3.test.js` (correctifs de la vague 3), `import.test.js` (EVO-01), `limitation.test.js`
 > (EVO-11) et `habilitations.test.js` (décision D-3). Les lignes ci-dessous ont été reprises en
 > **ouvrant les tests**, et non en se fiant à leur intitulé : un test peut porter le nom d'un
 > cas sans en couvrir la moitié — c'est ce qui était arrivé à CAS-MCC-11, dont le test se
 > contentait d'un `length >= 1`. Seules les lignes dont la couverture a réellement changé sont
 > modifiées ; les autres sont laissées telles quelles.
+>
+> **Reprise du 2026-09-23 après le commit `3a7ac2e`.** La suite passe de 165 à **166** —
+> décompte relevé fichier par fichier : `robustesse` 51, `admin` 30, `requests` 22,
+> `habilitations` 19, `mcc` 11, `indexation` 10, `vague3` 9, `auth` 6, `import` 6,
+> `limitation` 2. Le mouvement tient à un seul fichier, `habilitations.test.js` : le cas *le
+> banquier consulte le journal de sa banque* n'assertait que `Array.isArray(items)` — il
+> passait aussi bien sur le journal de toute la plateforme, et **survivait au retrait du
+> filtre**. Il est remplacé par deux cas qui tombent quand la garde disparaît (§ 3.2,
+> CAS-HAB-11). Les lignes CAS-HAB-04 et CAS-HAB-11 sont reprises en conséquence ; les autres
+> restent inchangées, les tests correspondants n'ayant pas bougé.
 
 ### 3.1 AUTH
 
@@ -1940,7 +2068,7 @@ Légende :
 | CAS-AUTH-05 | Auto | `server/tests/auth.test.js` — *le serveur répond au contrôle de santé* | — | API |
 | CAS-AUTH-06 | Auto | `server/tests/robustesse.test.js` — *un compte désactivé perd immédiatement ses accès* ; `admin.test.js` — *un compte désactivé ne peut plus se connecter* | — | API |
 | CAS-AUTH-07 | **Manuel** | — | tout (**aucun test sur la banque désactivée**) | API |
-| CAS-AUTH-08 | Auto | `server/tests/robustesse.test.js` — *un agent muté de banque perd l'accès…* | — | API |
+| CAS-AUTH-08 | Partiel | `server/tests/robustesse.test.js` — *un agent muté de banque perd l'accès…* (`GET` et `PUT` en **404**) | la comparaison au 404 d'un identifiant libre, ajoutée au cas le 2026-09-23 | API |
 | CAS-AUTH-09 | Auto | `server/tests/robustesse.test.js` — *un changement de rôle s'applique sans reconnexion* | — | API |
 | CAS-AUTH-10 | Auto | `server/tests/robustesse.test.js` — *une réinitialisation de mot de passe ferme les sessions…* | — | API |
 | CAS-AUTH-11 | Partiel | `server/tests/admin.test.js` — *la réinitialisation par l'administrateur force un changement* | les 3 routes bloquées, l'accès maintenu à `/api/auth`, l'écran | API + Nav. |
@@ -1958,14 +2086,14 @@ Légende :
 | CAS-HAB-01 | Partiel | `server/tests/requests.test.js` — *un banquier saisit des demandes dans sa banque (D-3)* ; `habilitations.test.js` — *le banquier saisit, soumet puis arbitre un dossier de sa banque*, *le banquier reprend le dossier d'un agent de sa banque* | URL `/demandes/nouvelle` à l'écran en banquier | API + Nav. |
 | CAS-HAB-02 | Partiel | `server/tests/requests.test.js` — *un agent ne peut pas arbitrer une demande* | absence des boutons à l'écran | API + Nav. |
 | CAS-HAB-03 | Partiel | `server/tests/habilitations.test.js` — *l'agent n'administre rien* (4 routes), *le référentiel MCC reste hors de portée du banquier* ; `admin.test.js` — *l'administration est fermée aux autres profils* | `POST /api/admin/mcc/import` pour l'agent ; URL forcée et découpage des onglets à l'écran | API + Nav. |
-| CAS-HAB-04 | Partiel | `server/tests/requests.test.js` — *une demande reste invisible pour une autre banque* ; `habilitations.test.js` — *le banquier ne voit ni ne touche un dossier d'une autre banque* (`GET`, `PUT`, `submit`) | `events`, `suggestions`, écran | API + Nav. |
+| CAS-HAB-04 | Partiel | `server/tests/requests.test.js` — *une demande reste invisible pour une autre banque* (404, **comparé au 404 d'un identifiant libre** : le test tombe si les deux refus se remettent à différer) ; `habilitations.test.js` — *le banquier ne voit ni ne touche un dossier d'une autre banque* (`GET`, `PUT`, `submit`, les trois en 404) | `events`, `suggestions`, écran | API + Nav. |
 | CAS-HAB-05 | Manuel | — | tout (D6, close par la décision D-1 : le cas ne sert plus qu'à consigner) | API |
 | CAS-HAB-06 | Partiel | `server/tests/habilitations.test.js` — *un agent ne modifie pas le dossier d'un autre agent de sa banque* (`PUT`, message exact) | la lecture autorisée (200 sur `GET`) et le refus sur `submit` | API |
 | CAS-HAB-07 | Partiel | `server/tests/mcc.test.js` (rôle agent seulement) | rôles banquier et admin | API |
 | CAS-HAB-08 | Manuel | — | tout | API |
 | CAS-HAB-09 | Manuel | — | tout | Nav. |
 | CAS-HAB-10 | Manuel | — | tout | Nav. |
-| CAS-HAB-11 | Partiel | `server/tests/habilitations.test.js` — 7 cas : *le banquier administre les comptes de sa banque*, *la banque du compte créé est celle du banquier…*, *il ne crée ni banquier ni administrateur*, *ne promeut pas un de ses agents*, *ne déplace pas un compte vers une autre banque*, *ne touche à aucun compte d'une autre banque*, *ne modifie pas un compte banquier ou administrateur de sa banque* | le filtrage du journal sur sa banque ; le formulaire de création à l'écran (rôle figé, banque pré-remplie) | API + Nav. |
+| CAS-HAB-11 | Partiel | `server/tests/habilitations.test.js` — 7 cas : *le banquier administre les comptes de sa banque*, *la banque du compte créé est celle du banquier…*, *il ne crée ni banquier ni administrateur*, *ne promeut pas un de ses agents*, *ne déplace pas un compte vers une autre banque*, *ne touche à aucun compte d'une autre banque* (404, comparé au 404 d'un identifiant libre), *ne modifie pas un compte banquier ou administrateur de sa banque* ; + 2 cas sur le journal : *le journal du banquier ne porte que les actions de sa banque* (une action de l'administrateur sur une autre banque et une action sur le référentiel MCC n'y entrent pas ; une action de l'administrateur sur un compte de **sa** banque y entre) et *une mutation de banque ne fait pas franchir la cloison à l'historique* | le formulaire de création à l'écran (rôle figé, banque pré-remplie) | API + Nav. |
 | CAS-HAB-12 | Partiel | `server/tests/habilitations.test.js` — *le référentiel MCC reste hors de portée du banquier* (5 routes), *il ne crée pas de banque et ne voit que la sienne*, *il ne désactive pas sa propre banque* | redirection de `/administration/referentiel` à l'écran | API + Nav. |
 
 ### 3.3 DEMANDE
@@ -2117,7 +2245,7 @@ Légende :
 
 | Domaine | Cas | Auto | Partiel | Manuel |
 | --- | --- | --- | --- | --- |
-| AUTH | 17 | 7 | 7 | 3 |
+| AUTH | 17 | 6 | 8 | 3 |
 | HABILITATION | 12 | 0 | 8 | 4 |
 | DEMANDE | 14 | 1 | 2 | 11 |
 | WORKFLOW | 15 | 11 | 1 | 3 |
@@ -2127,7 +2255,7 @@ Légende :
 | INDEXATION | 10 | 5 | 4 | 1 |
 | ROBUSTESSE | 16 | 3 | 5 | 8 |
 | ERGONOMIE | 12 | 0 | 0 | 12 |
-| **Total** | **149** | **48** | **46** | **55** |
+| **Total** | **149** | **47** | **47** | **55** |
 
 > **Amendement du 2026-09-23.** Deux cas ajoutés (CAS-HAB-11 et CAS-HAB-12, bornes de la
 > décision D-3), d'où 147 → **149**. Le reste du mouvement tient aux quatre fichiers de tests
@@ -2138,6 +2266,12 @@ Légende :
 > 63 cas manuels deviennent 55, alors que le plan compte deux cas de plus. La colonne « Auto »
 > ne vaut que pour les cas de niveau BACK : dès qu'un cas est « LES DEUX », son volet écran le
 > maintient en « Partiel », aucune suite front n'existant dans le dépôt.
+
+> **Rectificatif du 2026-09-23 (suite au commit `3a7ac2e`).** Un seul mouvement : **CAS-AUTH-08
+> passe de « Auto » à « Partiel »** — 48/46 deviennent **47/47**. Ce n'est pas la couverture qui
+> a baissé mais l'exigence qui a monté : depuis que le refus inter-banques est un 404, le cas
+> demande en plus que ce refus soit **indiscernable** de celui d'un identifiant libre, et le
+> test automatisé ne fait pas cette comparaison. Le nombre de cas manuels, lui, est inchangé.
 
 ### 3.12 Répartition par criticité et par niveau
 
@@ -2271,6 +2405,32 @@ Un écart sur l'un de ces tableaux, sur un référentiel intact, est un **défau
 > (`5698`, `5942`, `5977`, `5999`) ont été modifiés en recette et son référentiel n'est plus
 > intact — il y rend `5977` à 76 et non à 74. La condition de reproductibilité posée en tête
 > du § 4 n'est donc pas une précaution de style : elle décide du résultat.
+
+> **Complément du 2026-09-23 — le corps envoyé au moteur fait partie de la condition.**
+> Contrôle du tableau refait le même jour sur le catalogue d'amorçage intact (279 codes,
+> secteurs initiaux, chargés par `rechargerCatalogue()` puis interrogés par
+> `suggestForNetworks()`, `limit = 6`). **Les onze lignes sont confirmées au point près**,
+> celles rectifiées ci-dessus comprises, et la parité Visa / Mastercard tient sur les onze
+> exécutions.
+>
+> Mais elles ne sont vraies que si le moteur reçoit **les trois seuls champs d'activité** —
+> `activitySector`, `deliveryMode`, `activityDescription` (plus `hasSubscription` pour JD-04 et
+> `isMarketplace` pour JD-06). C'est la forme employée par `docs/non-regression-lot1.md` § 3.1,
+> et c'est elle que ce tableau décrit. Si l'on envoie en plus le socle du § 4.1 — `siteName`,
+> `siteUrl`, `companyName` —, les noms propres pèsent à leur tour et le classement bouge :
+>
+> | Jeu | Trois champs d'activité | Socle complet du § 4.1 |
+> | --- | --- | --- |
+> | JD-01 | `5977:74, 7230:66, 7298:63, 5912:57, 5999:50` — 5 propositions | `5977:75, 7230:66, 7298:63, 5912:57, 5999:50, 5968:32` — 6 propositions |
+> | JD-01 *sans secteur* | `5977:54, 5999:50` — 2 propositions | `5977:56, 5999:50, 5968:32, 7399:32, 5311:14` — 5 propositions |
+> | JD-02 | `…, 5992:51, 5818:48` | `…, 5992:51, 4215:48` |
+> | JD-10 | `5999:10` *(repli)* | `8734:24`, `matchedTerms = ["test"]` — le mot **TEST** de la raison sociale `TEST NEUTRE SARL` suffit à accrocher un code |
+>
+> Les sept autres jeux rendent le même classement dans les deux formes. **À rejouer avec les
+> trois champs d'activité seuls**, faute de quoi quatre lignes sur onze tombent en KO sans
+> qu'aucune régression ne soit en cause. Le cas de JD-10 est le plus parlant : le jeu est
+> construit pour n'accrocher aucun code, et c'est le nom de la société de test — et non le
+> descriptif — qui le fait sortir du repli.
 
 ### 4.4 Codes MCC de référence pour les cas d'interdiction et de vigilance
 
