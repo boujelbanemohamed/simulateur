@@ -443,6 +443,83 @@ référentiel MCC** ». Le banquier n'a pas accès au référentiel MCC — c'es
 borne explicite de D-3 — et aucune action de référentiel ne lui est servie. Le
 même texte est rendu pour les deux profils.
 
+### 4.5 La connexion et le changement de mot de passe imposé
+
+**Ce qui est conforme.** Le parcours du mot de passe imposé est le mieux traité du
+produit. Un compte créé avec un mot de passe provisoire est, à sa première
+connexion, envoyé sur `/mot-de-passe` ; le bandeau « Changement obligatoire »
+explique la situation ; les quatre URL essayées à la main — `/demandes`,
+`/demandes/nouvelle`, `/referentiel`, `/administration/comptes` — y ramènent
+toutes ; un mot de passe actuel erroné rend « Le mot de passe actuel est
+incorrect. » ; la règle est annoncée **avant** la saisie (« au moins 10
+caractères, avec une minuscule, une majuscule et un chiffre ») et non après
+l'échec ; une fois changé, l'utilisateur arrive sur ses demandes. Rien à redire.
+
+#### UTI-28 — Défaut · majeur · La page de connexion affiche en clair les identifiants de deux comptes
+
+**Écran et parcours.** `/connexion`, premier écran du produit, avant toute
+authentification.
+
+**Observé.** Sous le bouton « Se connecter », en toutes lettres et sans aucune
+condition :
+
+> Comptes de démonstration : `agent@banque.tn` / `Agent#2026` —
+> `banquier@banque.tn` / `Banquier#2026`
+
+Ce sont des identifiants valides, dont l'un ouvre l'administration d'une banque :
+comptes agents, fiche de la banque, journal, et tous les dossiers d'affiliation
+de l'établissement. La mention est **inconditionnelle** — elle n'est gardée ni par
+une variable d'environnement, ni par un test sur le mode de développement ; elle
+est écrite en dur dans la page (`web/src/pages/LoginPage.jsx`). Telle quelle,
+elle part en production.
+
+C'est commode pour une démonstration et c'est sans doute pourquoi elle est là.
+Mais rien dans le produit ne la retirera le jour de la mise en service, et c'est
+le genre d'oubli qui ne se voit plus une fois qu'on s'y est habitué.
+
+**Reproduire.** Ouvrir `http://localhost:5173/connexion` et lire le bas de la
+carte.
+
+*Capture : `c01-connexion.png`.*
+
+#### UTI-29 — Gêne · moyen · Un agent désactivé est renvoyé à « Identifiants incorrects »
+
+**Écran et parcours.** `/connexion`, avec l'adresse et le **bon** mot de passe
+d'un compte que le banquier vient de désactiver.
+
+**Observé.** L'écran rend « Identifiants incorrects » — le même message, mot pour
+mot, que pour un mot de passe erroné ou une adresse inconnue. L'agent sait qu'il
+n'a pas fait de faute de frappe ; il va réessayer, se croire victime d'un
+incident, puis appeler son agence.
+
+Le produit connaît pourtant la cause, et son écran des comptes l'affiche au
+banquier (pastille « Désactivé »). Le renvoyer à l'utilisateur — « Votre compte a
+été désactivé ; rapprochez-vous de votre banque. » — lui éviterait l'essai
+répété et éviterait un appel au support.
+
+*La réserve est connue* : un message distinct révèle l'existence du compte. Elle
+pèse peu ici, sur un outil interne où les adresses sont celles des salariés de la
+banque, et où l'appelant a déjà fourni le bon mot de passe.
+
+**Reproduire.** Créer un compte agent, le désactiver depuis l'administration,
+puis tenter de s'y connecter avec son mot de passe valide.
+
+#### UTI-30 — Gêne · mineur · Un compte neuf est accueilli par « votre mot de passe a été réinitialisé par un administrateur »
+
+**Écran et parcours.** Première connexion d'un compte **créé** — jamais
+réinitialisé.
+
+**Observé.** Le bandeau annonce : « Changement obligatoire — **Votre mot de passe
+a été réinitialisé par un administrateur.** Vous devez en définir un nouveau
+avant d'accéder à la plateforme. » Rien n'a été réinitialisé : c'est le mot de
+passe provisoire de création, communiqué à l'agent par son banquier.
+
+Le produit distingue pourtant les deux cas — le journal enregistre « Création » et
+« Réinitialisation de mot de passe » en lignes séparées. L'écran d'accueil du
+nouvel arrivant, lui, ne retient que le second.
+
+*Capture : `c03-mdp-impose.png`.*
+
 ### 4.2 L'explicabilité des propositions MCC
 
 C'est la raison d'être du produit : l'écran doit faire comprendre **pourquoi** un
