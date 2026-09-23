@@ -464,8 +464,77 @@ Acceptation : aucun bouton d'écriture n'est rendu.
 **CAS-HAB-10 — Un compte ADMIN n'est pas exposé comme agent dans l'écran de saisie**
 Niveau : FRONT · Criticité : MINEUR
 Étapes : connecté en ADMIN, ouvrir `/demandes/nouvelle`.
-Résultat attendu : l'écran s'ouvre (l'ADMIN est `isAgent` dans `AuthContext`), le lien « Nouvelle demande » est visible dans l'en-tête.
+Résultat attendu : l'écran s'ouvre (l'écran ne s'appuie plus sur le rôle mais sur `peutSaisir`, vrai pour tout compte connecté), le lien « Nouvelle demande » est visible dans l'en-tête.
 Acceptation : cohérence entre les droits serveur (CAS-HAB-05) et l'affichage ; toute divergence est un défaut d'ergonomie à consigner.
+
+> **Amendement du 2026-09-23.** Le résultat attendu est inchangé ; seule sa justification l'est.
+> `AuthContext` ne déduit plus la saisie du rôle (`isAgent`, qui englobait l'ADMIN) mais la
+> nomme pour ce qu'elle permet — `peutSaisir: Boolean(user)` —, la décision D-3 l'ayant ouverte
+> au banquier. Lu dans `web/src/auth/AuthContext.jsx`.
+
+---
+
+**CAS-HAB-11 — Le banquier n'administre que les comptes agents de sa banque (décision D-3)**
+Niveau : LES DEUX · Criticité : MAJEUR
+Préconditions : jeton `banquier@banque.tn` (BQ001) ; au moins un compte AGENT dans BQ001, un compte non-AGENT dans BQ001, et un compte dans BQ002.
+Étapes (jeton BANQUIER) :
+1. `GET /api/admin/users` → relever les banques représentées.
+2. `POST /api/admin/users` avec un corps valide portant `"role":"AGENT"` et `"bankId"` d'une **autre** banque.
+3. `POST /api/admin/users` avec `"role":"BANQUIER"`, puis avec `"role":"ADMIN"`.
+4. `GET /api/admin/users/<id d'un compte de BQ002>`, puis `PUT` sur le même, puis `POST …/password` sur le même.
+5. `GET /api/admin/users/<id d'un compte BANQUIER ou ADMIN de BQ001>`.
+6. `PUT /api/admin/users/<id d'un de ses agents>` `{"role":"BANQUIER"}`, puis `{"bankId":<BQ002>}`.
+7. `GET /api/admin/events` → comparer le `total` à celui que voit l'ADMIN.
+8. (FRONT) Ouvrir `/administration/comptes` puis le formulaire de création de compte.
+Résultat attendu :
+- (1) une seule banque représentée : la sienne.
+- (2) HTTP **201**, et le compte créé porte **la banque de l'appelant**, pas celle du corps : la requête ne décide pas.
+- (3) HTTP **403** `{"error":"Vous ne pouvez créer que des comptes agents dans votre banque."}` dans les deux cas.
+- (4) HTTP **403** `{"error":"Ce compte appartient à une autre banque."}` sur les trois appels.
+- (5) HTTP **403** `{"error":"Vous n’administrez que les comptes agents de votre banque."}` (apostrophe typographique comprise).
+- (6) HTTP **403** dans les deux cas : ni promotion, ni sortie du périmètre.
+- (7) un `total` strictement inférieur à celui de l'ADMIN : le journal est filtré sur sa banque.
+- (8) le rôle proposé à la création est figé sur « Agent » et la banque est pré-remplie et figée.
+Acceptation : le banquier obtient exactement le périmètre de sa banque et du rôle agent — ni un compte de plus, ni un rôle de plus.
+
+> **Cas ajouté le 2026-09-23.** La décision D-3 crée une habilitation intermédiaire que le plan
+> ne couvrait pas : une habilitation élargie ne se démontre pas par ce qu'elle autorise mais
+> par ce qu'elle refuse encore. Points (1), (3), (4), (5), (6) et (7) mesurés le 2026-09-23 sur
+> l'instance du port 4000, par des appels qui échouent **avant** toute écriture (le contrôle de
+> périmètre précède la transaction) : listes bornées à BQ001, `total` du journal à 129 pour le
+> banquier contre 130 pour l'administrateur, et les messages ci-dessus relevés au caractère
+> près. Le point (2) est établi par `server/tests/habilitations.test.js` (*la banque du compte
+> créé est celle du banquier, quoi que dise la requête*), non rejoué à la main pour ne rien
+> écrire dans la base de démonstration.
+
+---
+
+**CAS-HAB-12 — Le référentiel MCC et la création de banques restent à l'administrateur**
+Niveau : LES DEUX · Criticité : BLOQUANT
+Préconditions : jeton `banquier@banque.tn` (BQ001), jeton ADMIN.
+Étapes (jeton BANQUIER) :
+1. `GET /api/admin/mcc`, `GET /api/admin/mcc/5977`, `GET /api/admin/mcc/5977/history`, `GET /api/admin/mcc/export`.
+2. `POST /api/admin/mcc`, `PUT /api/admin/mcc/5977`, `POST /api/admin/mcc/import`.
+3. `POST /api/admin/banks` avec un corps valide.
+4. `GET /api/admin/banks`.
+5. `PUT /api/admin/banks/<id d'une autre banque>` `{"name":"Renommée"}`.
+6. `PUT /api/admin/banks/<id de sa propre banque>` `{"active":false}`.
+7. (FRONT) Saisir `/administration/referentiel` dans la barre d'adresse.
+Résultat attendu :
+- (1) et (2) : les 7 appels répondent **403** `{"error":"Action réservée aux profils : ADMIN"}`.
+- (3) HTTP **403**, même message.
+- (4) HTTP 200 avec **une seule** banque : la sienne.
+- (5) HTTP **403** `{"error":"Vous ne gérez que votre propre banque."}`.
+- (6) HTTP **403** `{"error":"Seul un administrateur peut activer ou désactiver une banque."}`.
+- (7) redirection vers `/administration/comptes` ; l'écran du référentiel n'est jamais rendu.
+Acceptation : aucun des 10 appels réservés n'aboutit, et le banquier ne peut ni se couper l'accès à sa propre banque ni toucher à celle d'un concurrent.
+
+> **Cas ajouté le 2026-09-23.** C'est la borne la plus structurante de la décision D-3 : le
+> référentiel MCC est **commun à toutes les banques**, et un banquier qui désactiverait un code
+> le retirerait à ses concurrents. Les dix refus ont été mesurés le 2026-09-23 sur l'instance du
+> port 4000 — aucun n'écrit quoi que ce soit, le contrôle de rôle et le contrôle de périmètre
+> précédant toute transaction. Redirection de l'écran lue dans `web/src/App.jsx`
+> (`referentielSeul`).
 
 ---
 
@@ -1354,8 +1423,15 @@ Préconditions : code `5977` rattaché au secteur `BEAUTE_COSMETIQUE`.
 2. `POST /api/admin/mcc/import-fichier` → relever le rapport.
 3. `POST /api/admin/mcc/import` avec `apply = true`.
 4. `GET /api/admin/mcc/5977` → relever `sectors`.
-Résultat attendu (comportement **actuel**) : (2) `5977` est classé dans `inchanges` (le champ `sector` n'est pas dans `COMPARABLES`) · (4) `sectors` vaut toujours `["BEAUTE_COSMETIQUE"]` : le changement de secteur **n'a pas été appliqué**, sans le moindre message.
-Acceptation : si `sectors` n'a pas changé, la divergence D2 est confirmée — la colonne `Secteur` du fichier n'est opérante que sur un code **ajouté** ou par ailleurs modifié. À remonter comme défaut MAJEUR (le README l'annonce comme un moyen de rattachement).
+Résultat attendu : (2) `5977` est classé dans `modifies`, et l'écart signalé porte le champ `sectors` · (4) `sectors` vaut `["SANTE"]` : le changement a bien été appliqué.
+Acceptation : l'écart est détecté à la simulation **et** appliqué à la confirmation. Un code classé « inchangé » alors que son rattachement diffère est un échec : la colonne `Secteur` est annoncée par le README comme un moyen de rattachement.
+
+> **Amendement du 2026-09-23.** La divergence D2 est **close** : `sector` est désormais
+> comparé. Mesuré le 2026-09-23 sur l'instance du port 4000, par une simulation qui n'écrit
+> rien (`{"entrees":[{"code":"5977","sector":"SANTE"}]}`, sans `apply`) : `modifies = 1`,
+> `inchanges = 0`, champ signalé `sectors`. L'application (4) est établie par
+> `server/tests/robustesse.test.js` (*le secteur est comparé à l'import et n'est plus perdu*),
+> non rejouée à la main pour ne rien écrire dans la base de démonstration.
 
 ---
 
@@ -1367,8 +1443,15 @@ Préconditions : `PUT /api/admin/mcc/5912` `{"sectors":["SANTE","BEAUTE_COSMETIQ
 2. Dans le fichier, modifier **uniquement** son libellé (pour le faire entrer dans `modifies`).
 3. `POST /api/admin/mcc/import` avec `apply = true`.
 4. `GET /api/admin/mcc/5912` → relever `sectors`.
-Résultat attendu (comportement **actuel**) : (1) la colonne `Secteur` ne contient qu'**un seul** secteur (`sectors[0]`) · (4) `sectors` ne vaut plus qu'un seul élément : le second rattachement a été **effacé** par `ecrireSecteurs`.
-Acceptation : si `sectors.length` passe de 2 à 1, la divergence D3 est confirmée (perte de donnée silencieuse à l'aller-retour) — défaut MAJEUR.
+Résultat attendu : (1) la colonne `Secteur` porte les **deux** secteurs, séparés par une virgule · (4) `sectors` en compte toujours deux : l'aller-retour n'en perd aucun.
+Acceptation : `sectors.length` vaut 2 avant comme après. Toute perte silencieuse est un échec.
+
+> **Amendement du 2026-09-23.** La divergence D3 est **close** : l'export porte tous les
+> secteurs d'un code. Mesuré le 2026-09-23 sur l'export CSV de l'instance du port 4000, lecture
+> seule : `5912 → BEAUTE_COSMETIQUE, SANTE` et `5817 → CONTENUS_NUMERIQUES,
+> INFORMATIQUE_LOGICIEL`. Le cycle complet est couvert par `server/tests/robustesse.test.js`
+> (D2 et D3) et par `vague3.test.js` (DEF-A6-02, la régression que ce correctif avait
+> produite : un secteur concaténé dépassant la borne de 40 caractères).
 
 ---
 
@@ -1488,8 +1571,16 @@ Préconditions : secteur `ANIMALERIE` rattaché au seul code `5995`.
 2. `GET /api/mcc/secteurs` → relever l'ordre des `mccs` du secteur `ANIMALERIE`.
 3. `PUT /api/admin/mcc/5995` `{"sectors":["ANIMALERIE"]}` (ré-enregistrement à l'identique).
 4. Rejouer l'étape 2.
-Résultat attendu (comportement **actuel**) : (2) `mccs = ["5995","9101"]` — le nouveau code est placé **en dernier**, malgré le commentaire du code qui annonce « le rang suit l'ordre fourni » · (4) `mccs = ["9101","5995"]` : le simple ré-enregistrement des secteurs de `5995` l'a **rétrogradé en fin de liste**, et le bonus de secteur (`38 − rang × 4`) en est affecté.
-Acceptation : si l'ordre change en (4) sans que l'administrateur ne l'ait demandé, la divergence D1 est confirmée — défaut MAJEUR (l'ordre de priorité d'un secteur n'est ni pilotable ni stable).
+Résultat attendu : (2) `mccs = ["5995","9101"]` — le nouveau code est placé **en dernier**, malgré le commentaire du code qui annonce « le rang suit l'ordre fourni » · (4) `mccs = ["5995","9101"]`, **inchangé** : un ré-enregistrement ne rétrograde plus le code, et le bonus de secteur (`38 − rang × 4`) reste stable.
+Acceptation : (4) est identique à (2). Un ordre qui change sans que l'administrateur l'ait demandé est un échec. Le rang reste en revanche non pilotable : c'est la part de la divergence D1 qui demeure, et c'est un écart de documentation, pas un défaut de comportement.
+
+> **Amendement du 2026-09-23.** La divergence D1 s'est scindée en deux. Sa conséquence
+> dommageable — la rétrogradation silencieuse d'un code réenregistré — a été corrigée (constat
+> de revue `C-14`) et l'attendu (4) est réécrit en conséquence. Sa part documentaire subsiste :
+> un nouveau rattachement prend la fin de file, quel que soit l'ordre fourni. Établi par
+> `rapport-recette.md` (C-14, réserve D1) et par les deux cas C-14 de
+> `server/tests/robustesse.test.js` ; non rejoué à la main, la manœuvre écrivant dans le
+> référentiel.
 
 ---
 
@@ -1824,10 +1915,19 @@ Acceptation : un message adapté dans chacun des deux cas.
 ## 3. Matrice de couverture
 
 Légende :
-- **Auto** : comportement déjà vérifié par un test automatisé existant (`cd server && npm test`, 94 tests, 94 succès au 2026-09-21). Le cas reste utile comme référence, il n'a pas à être rejoué à la main.
+- **Auto** : comportement déjà vérifié par un test automatisé existant (`cd server && npm test`, **165 tests** répartis en 10 fichiers, état du 2026-09-23). Le cas reste utile comme référence, il n'a pas à être rejoué à la main.
 - **Partiel** : un test existe mais ne couvre qu'une partie du cas ; le **reste** doit être exécuté manuellement. La colonne « Reste à faire » dit quoi.
 - **Manuel** : aucun test automatisé ; le cas est à exécuter intégralement.
 - Filière : **API** (recette API) ou **Nav.** (recette navigateur). Les cas « LES DEUX » apparaissent dans les deux filières.
+
+> **Amendement du 2026-09-23 — table reprise sur la suite réelle.** La table avait été établie
+> sur une suite de 94 tests. Elle en compte **165**, et quatre fichiers se sont ajoutés :
+> `vague3.test.js` (correctifs de la vague 3), `import.test.js` (EVO-01), `limitation.test.js`
+> (EVO-11) et `habilitations.test.js` (décision D-3). Les lignes ci-dessous ont été reprises en
+> **ouvrant les tests**, et non en se fiant à leur intitulé : un test peut porter le nom d'un
+> cas sans en couvrir la moitié — c'est ce qui était arrivé à CAS-MCC-11, dont le test se
+> contentait d'un `length >= 1`. Seules les lignes dont la couverture a réellement changé sont
+> modifiées ; les autres sont laissées telles quelles.
 
 ### 3.1 AUTH
 
@@ -1847,24 +1947,26 @@ Légende :
 | CAS-AUTH-12 | Partiel | `server/tests/admin.test.js` — *la création de compte impose une politique…* | les 4 variantes sur `/api/auth/password` | API + Nav. |
 | CAS-AUTH-13 | Partiel | `server/tests/admin.test.js` — *un mot de passe identique à l'ancien est refusé* | mot de passe actuel erroné, péremption de l'ancien jeton | API + Nav. |
 | CAS-AUTH-14 | Manuel | — | tout | API |
-| CAS-AUTH-15 | **Partiel** | `server/tests/robustesse.test.js` — *les tentatives répétées finissent par être refusées* (**teste le composant isolé, pas la route `/api/auth/login`**) | bout en bout sur la route réelle, `Retry-After`, clé par compte | API |
-| CAS-AUTH-16 | Manuel | — | tout | API |
-| CAS-AUTH-17 | Manuel | — | tout (divergence D5) | API |
+| CAS-AUTH-15 | Partiel | `server/tests/limitation.test.js` — *au-delà du quota, un corps invalide reçoit 429 et non 400* (route réelle, `Retry-After`, message) ; `robustesse.test.js` — *les tentatives répétées…* (composant isolé) | **la clé par compte** : les deux fichiers n'éprouvent que la clé d'adresse IP, chaque tentative visant une adresse différente | API |
+| CAS-AUTH-16 | Partiel | `server/tests/limitation.test.js` — *un corps invalide est compté, et une connexion réussie remet le compteur à zéro* | le scénario par **tentatives erronées** (401) sur un même compte, et non par corps invalides (400) | API |
+| CAS-AUTH-17 | Auto | `server/tests/limitation.test.js` — les 2 cas (séquence `400, 400, 400, 429`, puis refus de la connexion valide) | — | API |
 
 ### 3.2 HABILITATION
 
 | Cas | Couverture | Fichier / test existant | Reste à faire | Filière |
 | --- | --- | --- | --- | --- |
-| CAS-HAB-01 | Partiel | `server/tests/requests.test.js` — *un banquier ne saisit pas de demande* | `PUT`, `submit`, URL forcée à l'écran | API + Nav. |
+| CAS-HAB-01 | Partiel | `server/tests/requests.test.js` — *un banquier saisit des demandes dans sa banque (D-3)* ; `habilitations.test.js` — *le banquier saisit, soumet puis arbitre un dossier de sa banque*, *le banquier reprend le dossier d'un agent de sa banque* | URL `/demandes/nouvelle` à l'écran en banquier | API + Nav. |
 | CAS-HAB-02 | Partiel | `server/tests/requests.test.js` — *un agent ne peut pas arbitrer une demande* | absence des boutons à l'écran | API + Nav. |
-| CAS-HAB-03 | Auto | `server/tests/admin.test.js` — *l'administration est fermée aux autres profils* ; `robustesse.test.js` — *l'import reste réservé à l'administrateur* | URL forcée à l'écran | API + Nav. |
-| CAS-HAB-04 | Partiel | `server/tests/requests.test.js` — *une demande reste invisible pour une autre banque* | `events`, `suggestions`, `PUT`, écran | API + Nav. |
-| CAS-HAB-05 | Manuel | — | tout (divergence D6) | API |
-| CAS-HAB-06 | Manuel | — | tout | API |
+| CAS-HAB-03 | Partiel | `server/tests/habilitations.test.js` — *l'agent n'administre rien* (4 routes), *le référentiel MCC reste hors de portée du banquier* ; `admin.test.js` — *l'administration est fermée aux autres profils* | `POST /api/admin/mcc/import` pour l'agent ; URL forcée et découpage des onglets à l'écran | API + Nav. |
+| CAS-HAB-04 | Partiel | `server/tests/requests.test.js` — *une demande reste invisible pour une autre banque* ; `habilitations.test.js` — *le banquier ne voit ni ne touche un dossier d'une autre banque* (`GET`, `PUT`, `submit`) | `events`, `suggestions`, écran | API + Nav. |
+| CAS-HAB-05 | Manuel | — | tout (D6, close par la décision D-1 : le cas ne sert plus qu'à consigner) | API |
+| CAS-HAB-06 | Partiel | `server/tests/habilitations.test.js` — *un agent ne modifie pas le dossier d'un autre agent de sa banque* (`PUT`, message exact) | la lecture autorisée (200 sur `GET`) et le refus sur `submit` | API |
 | CAS-HAB-07 | Partiel | `server/tests/mcc.test.js` (rôle agent seulement) | rôles banquier et admin | API |
 | CAS-HAB-08 | Manuel | — | tout | API |
 | CAS-HAB-09 | Manuel | — | tout | Nav. |
 | CAS-HAB-10 | Manuel | — | tout | Nav. |
+| CAS-HAB-11 | Partiel | `server/tests/habilitations.test.js` — 7 cas : *le banquier administre les comptes de sa banque*, *la banque du compte créé est celle du banquier…*, *il ne crée ni banquier ni administrateur*, *ne promeut pas un de ses agents*, *ne déplace pas un compte vers une autre banque*, *ne touche à aucun compte d'une autre banque*, *ne modifie pas un compte banquier ou administrateur de sa banque* | le filtrage du journal sur sa banque ; le formulaire de création à l'écran (rôle figé, banque pré-remplie) | API + Nav. |
+| CAS-HAB-12 | Partiel | `server/tests/habilitations.test.js` — *le référentiel MCC reste hors de portée du banquier* (5 routes), *il ne crée pas de banque et ne voit que la sienne*, *il ne désactive pas sa propre banque* | redirection de `/administration/referentiel` à l'écran | API + Nav. |
 
 ### 3.3 DEMANDE
 
@@ -1898,7 +2000,7 @@ Légende :
 | CAS-WF-11 | Auto | `server/tests/requests.test.js` — *seule une demande soumise peut être arbitrée* | — | API |
 | CAS-WF-12 | Auto | `server/tests/robustesse.test.js` — *deux soumissions simultanées : une seule aboutit* | — | API |
 | CAS-WF-13 | Auto | `server/tests/robustesse.test.js` — *deux décisions contradictoires simultanées* | — | API |
-| CAS-WF-14 | Manuel | — | tout (immuabilité de la photographie) | API |
+| CAS-WF-14 | Auto | `server/tests/requests.test.js` — *la photographie des suggestions est autoportante (EVO-08)* (libellé d'époque conservé après renommage, `libelleActuel`, `plusAuReferentiel` après désactivation) ; *une demande antérieure à la migration se relit en repli (EVO-08)* | — | API |
 | CAS-WF-15 | Manuel | — | tout | API |
 
 ### 3.5 MCC
@@ -1909,13 +2011,13 @@ Légende :
 | CAS-MCC-02 | Auto | `server/tests/mcc.test.js` — *la suggestion propose les mêmes codes pour Visa et Mastercard* | message à l'écran | API + Nav. |
 | CAS-MCC-03 | Manuel | — | tout | API |
 | CAS-MCC-04 | Partiel | `server/tests/mcc.test.js` — *une activité numérique fait remonter les MCC de biens numériques* | scores exacts, marqueur abonnement | API |
-| CAS-MCC-05 | Partiel | `server/tests/mcc.test.js` — *une place de marché est orientée vers le MCC 5262* | contre-épreuve `isMarketplace: false` | API |
+| CAS-MCC-05 | Partiel | `server/tests/mcc.test.js` — *une place de marché est orientée vers le MCC 5262* ; `vague3.test.js` — *la case « place de marché » pèse réellement sur le classement*, *un descriptif qui décrit une place de marché prime sur la case décochée* (les deux branches du texte amendé) | la **valeur exacte** du score (90) : les tests éprouvent le rang et le sens de la variation, pas le chiffre | API |
 | CAS-MCC-06 | Partiel | `server/tests/mcc.test.js` — *aucun MCC interdit n'est jamais proposé automatiquement* (1 formulation) | 2 autres formulations | API |
 | CAS-MCC-07 | Partiel | `server/tests/requests.test.js` — *un MCC non éligible ne peut pas être proposé* ; *le banquier ne peut pas retenir un MCC interdit* | cas `PUT` | API |
 | CAS-MCC-08 | Auto | `server/tests/admin.test.js` — *un code désactivé disparaît du catalogue et n'est plus sélectionnable* | — | API |
 | CAS-MCC-09 | Manuel | — | tout | API + Nav. |
 | CAS-MCC-10 | Partiel | `server/tests/mcc.test.js` — *la recherche par mot-clé remonte le MCC attendu* ; `robustesse.test.js` — *une pagination négative…* | classement, bornes de `limit`, recherche vide | API |
-| CAS-MCC-11 | **Partiel** | `server/tests/mcc.test.js` — *un descriptif sans correspondance retombe sur un code de repli* (**assertion trop faible : `length >= 1`**) | vérifier réellement le repli (divergence D4) | API |
+| CAS-MCC-11 | Auto | `server/tests/vague3.test.js` — *un descriptif sans correspondance ne renvoie que le code de repli* (assertion sur la liste **entière**, `['5999']`) et *aucune proposition n'est servie sans terme justificatif* (11 profils × 2 réseaux) ; `robustesse.test.js` (DEF-A3-03) ; `mcc.test.js` (EVO-02, repli désactivé) | — | API |
 | CAS-MCC-12 | Manuel | — | tout | API |
 | CAS-MCC-13 | Manuel | — | tout | API |
 | CAS-MCC-14 | Manuel | — | tout | Nav. |
@@ -1928,9 +2030,9 @@ Légende :
 | CAS-ADM-01 | Auto | `server/tests/admin.test.js` — *un administrateur liste les comptes avec leur banque* (+ créations dans les autres tests) | contrôle du hachage bcrypt en base | API |
 | CAS-ADM-02 | Auto | `server/tests/admin.test.js` — *un compte créé doit changer son mot de passe à la première connexion* | — | API + Nav. |
 | CAS-ADM-03 | Partiel | `server/tests/admin.test.js` — *la création de compte impose une politique de mot de passe* | cas de la réinitialisation | API |
-| CAS-ADM-04 | Auto | `server/tests/admin.test.js` — *une adresse e-mail déjà utilisée est refusée* | cas du `PUT` et de la casse | API |
+| CAS-ADM-04 | Auto | `server/tests/admin.test.js` — *une adresse e-mail déjà utilisée est refusée* ; *l'unicité de l'adresse ne dépend pas de la casse (EVO-03)* (doublon de casse, écriture directe en base refusée en `23505`, création concurrente, cas du `PUT`) | — | API |
 | CAS-ADM-05 | Manuel | — | tout | API |
-| CAS-ADM-06 | Auto | `server/tests/admin.test.js` — *le rôle et la banque d'un compte sont modifiables* | journal `payload.champs` | API + Nav. |
+| CAS-ADM-06 | Auto | `server/tests/admin.test.js` — *le rôle et la banque d'un compte sont modifiables* ; *le journal porte les valeurs avant et après (EVO-05)* ; *la modification de banque est journalisée de la même façon* | écran Journal | API + Nav. |
 | CAS-ADM-07 | Manuel | — | tout | API |
 | CAS-ADM-08 | Auto | `server/tests/admin.test.js` — *un administrateur ne peut ni changer son propre rôle ni se désactiver* | absence des commandes à l'écran | API + Nav. |
 | CAS-ADM-09 | Auto | `server/tests/admin.test.js` — *la plateforme refuse de perdre son dernier administrateur* | — | API |
@@ -1945,7 +2047,7 @@ Légende :
 | CAS-ADM-18 | Auto | `server/tests/robustesse.test.js` — *deux créations simultanées du même MCC : 201 puis 409* | — | API |
 | CAS-ADM-19 | Manuel | — | tout | API |
 | CAS-ADM-20 | Manuel | — | tout | API |
-| CAS-ADM-21 | Partiel | `server/tests/admin.test.js` — *les actions d'administration sont journalisées* | bornes de `limit`, écran Journal | API + Nav. |
+| CAS-ADM-21 | Partiel | `server/tests/admin.test.js` — *les actions d'administration sont journalisées* ; *les 250 entrées se remontent page par page, sans doublon ni oubli* ; *les filtres se cumulent* ; *les filtres illisibles sont refusés en français* | bornes hostiles de `limit` (`0`, `-5`, `abc`, `1e9`), écran Journal | API + Nav. |
 | CAS-ADM-22 | Auto | `server/tests/admin.test.js` — *le seed ne réécrit pas les ajustements de la conformité* | — | API |
 
 ### 3.7 IMPORT
@@ -1957,13 +2059,13 @@ Légende :
 | CAS-IMPORT-03 | Auto | `server/tests/robustesse.test.js` — *le CSV est accepté au même titre que l'Excel* | volumétrie 279 en CSV | API |
 | CAS-IMPORT-04 | Auto | `server/tests/robustesse.test.js` — *un fichier métier désordonné est lu, et ses anomalies signalées* | — | API |
 | CAS-IMPORT-05 | Partiel | `server/tests/robustesse.test.js` (quelques valeurs) | les 12 traductions | API |
-| CAS-IMPORT-06 | Partiel | `server/tests/robustesse.test.js` — *un fichier métier désordonné…* | anomalies de pertinence/vigilance, ligne vide, écran | API + Nav. |
+| CAS-IMPORT-06 | Partiel | `server/tests/import.test.js` — *CAS-IMPORT-06 — les anomalies portent leur numéro de ligne* (ligne sans code, doublon, pertinence et vigilance illisibles, avec le numéro de ligne exact) ; `robustesse.test.js` — *un fichier métier désordonné…* | écran (tableau d'anomalies) | API + Nav. |
 | CAS-IMPORT-07 | Manuel | — | tout | API |
-| CAS-IMPORT-08 | Auto | `server/tests/admin.test.js` — *l'import produit un rapport d'écart sans rien modifier* | bandeau « Simulation » | API + Nav. |
-| CAS-IMPORT-09 | Auto | `server/tests/admin.test.js` — *l'import applique les écarts et historise chaque code touché* | journal `IMPORT_REFERENTIEL`, double confirmation à l'écran | API + Nav. |
-| CAS-IMPORT-10 | Partiel | `server/tests/robustesse.test.js` — *la chaîne « false » ne déclenche pas un import destructeur* | `deactivateMissing: true`, historique `IMPORT_DESACTIVATION` | API |
-| CAS-IMPORT-11 | Manuel | — | tout (divergence D2) | API |
-| CAS-IMPORT-12 | Manuel | — | tout (divergence D3) | API |
+| CAS-IMPORT-08 | Partiel | `server/tests/import.test.js` — *CAS-IMPORT-08 — la simulation n'écrit rien, ni par fichier ni par JSON* (photographie de la base comparée avant/après) ; `admin.test.js` — *l'import produit un rapport d'écart sans rien modifier* | bandeau « Simulation » à l'écran | API + Nav. |
+| CAS-IMPORT-09 | Partiel | `server/tests/import.test.js` — *CAS-IMPORT-09 — rien n'est appliqué sans confirmation explicite* (`apply` absent, `false`, `"false"`, `0` : aucune écriture ; seul `true` écrit) ; `admin.test.js` — *l'import applique les écarts et historise chaque code touché* | journal `IMPORT_REFERENTIEL`, double confirmation à l'écran | API + Nav. |
+| CAS-IMPORT-10 | Auto | `server/tests/import.test.js` — *CAS-IMPORT-10 — la désactivation des absents est strictement optionnelle* (`deactivateMissing: true`, une ligne `IMPORT_DESACTIVATION` par code avec son motif, aucun code supprimé, code désactivé non servi à l'agent) ; `robustesse.test.js` — *la chaîne « false » ne déclenche pas un import destructeur* | — | API |
+| CAS-IMPORT-11 | Partiel | `server/tests/robustesse.test.js` — *le secteur est comparé à l'import et n'est plus perdu (D2 et D3)* (l'écart de secteur seul est détecté et porte le champ `sectors`) | l'**application** confirmée du seul changement de secteur, et le passage par un fichier Excel | API |
+| CAS-IMPORT-12 | Partiel | `server/tests/robustesse.test.js` — *le secteur est comparé à l'import et n'est plus perdu (D2 et D3)* (aller-retour export → relecture, les deux secteurs conservés) ; `vague3.test.js` — *le cycle exporter → relire → appliquer ne modifie aucun code*, *un secteur long survit à la validation de l'import* | l'aller-retour en **CSV**, et le cas d'un code par ailleurs modifié | API |
 | CAS-IMPORT-13 | Auto | `server/tests/indexation.test.js` — *le rapport d'import signale les codes sans lexique métier* | bandeau et tableau à l'écran | API + Nav. |
 | CAS-IMPORT-14 | Partiel | `server/tests/robustesse.test.js` — *un fichier sans colonne « code »…* ; *un format non pris en charge est refusé* | fichier absent, en-tête seul, > 5 Mo, JSON invalide | API |
 | CAS-IMPORT-15 | Partiel | `server/tests/admin.test.js` — *un fichier d'import invalide est rejeté avant toute écriture* ; `robustesse.test.js` — *chaque ligne d'un import est validée* | bornes 0 / 2001, doublon, code à 2 chiffres | API |
@@ -1978,8 +2080,8 @@ Légende :
 | CAS-INDEX-03 | Auto | `server/tests/indexation.test.js` — *le singulier retrouve un libellé écrit au pluriel* | — | API |
 | CAS-INDEX-04 | Partiel | `server/tests/indexation.test.js` — *un lexique métier saisi à la main reste plus fort que les dérivés* | absence avant saisie (« patinette ») | API |
 | CAS-INDEX-05 | Auto | `server/tests/indexation.test.js` — *un lexique métier saisi à la main reste plus fort que les dérivés* | — | API |
-| CAS-INDEX-06 | Manuel | — | tout (divergence D1) | API |
-| CAS-INDEX-07 | Partiel | `server/tests/indexation.test.js` — *un secteur inconnu est refusé* | via import, via `/api/requests` | API |
+| CAS-INDEX-06 | Partiel | `server/tests/robustesse.test.js` — *modifier un MCC ne le relègue pas en fin de secteur (C-14)*, *un nouveau rattachement prend la fin de file, sans bousculer les autres (C-14)* | l'effet du rang sur le bonus de secteur (`38 − rang × 4`), non éprouvé | API |
+| CAS-INDEX-07 | Partiel | `server/tests/indexation.test.js` — *un secteur inconnu est refusé* ; *la colonne « Secteur » du fichier rattache le code à l'import* ; *un code importé peut être rattaché à un secteur et en bénéficie* | via `/api/requests` | API |
 | CAS-INDEX-08 | Auto | `server/tests/indexation.test.js` — *l'index est reconstruit quand le libellé change* | recalcul de `keywordsAuto` | API |
 | CAS-INDEX-09 | Partiel | `server/tests/indexation.test.js` — *les secteurs sont servis depuis la base* ; `mcc.test.js` — *les secteurs d'activité sont exposés au formulaire* | désactivation d'un secteur | API |
 | CAS-INDEX-10 | Auto | `server/tests/admin.test.js` — *le changement de niveau de vigilance s'applique immédiatement au moteur* | — | API |
@@ -2015,24 +2117,34 @@ Légende :
 
 | Domaine | Cas | Auto | Partiel | Manuel |
 | --- | --- | --- | --- | --- |
-| AUTH | 17 | 5 | 6 | 6 |
-| HABILITATION | 10 | 1 | 4 | 5 |
+| AUTH | 17 | 7 | 7 | 3 |
+| HABILITATION | 12 | 0 | 8 | 4 |
 | DEMANDE | 14 | 1 | 2 | 11 |
-| WORKFLOW | 15 | 10 | 1 | 4 |
-| MCC | 15 | 3 | 7 | 5 |
+| WORKFLOW | 15 | 11 | 1 | 3 |
+| MCC | 15 | 4 | 6 | 5 |
 | ADMIN | 22 | 12 | 4 | 6 |
-| IMPORT | 16 | 6 | 6 | 4 |
-| INDEXATION | 10 | 5 | 3 | 2 |
+| IMPORT | 16 | 5 | 9 | 2 |
+| INDEXATION | 10 | 5 | 4 | 1 |
 | ROBUSTESSE | 16 | 3 | 5 | 8 |
 | ERGONOMIE | 12 | 0 | 0 | 12 |
-| **Total** | **147** | **46** | **38** | **63** |
+| **Total** | **149** | **48** | **46** | **55** |
+
+> **Amendement du 2026-09-23.** Deux cas ajoutés (CAS-HAB-11 et CAS-HAB-12, bornes de la
+> décision D-3), d'où 147 → **149**. Le reste du mouvement tient aux quatre fichiers de tests
+> apparus depuis : 8 cas quittent « Manuel » (dont CAS-AUTH-17, CAS-WF-14, CAS-IMPORT-11 et
+> -12, CAS-INDEX-06) et deux lignes d'import **régressent** de « Auto » vers « Partiel »
+> (CAS-IMPORT-08 et -09), non parce que la couverture a diminué mais parce que leur volet écran
+> n'a jamais été couvert et que l'ancienne table l'omettait. Le solde reste très favorable :
+> 63 cas manuels deviennent 55, alors que le plan compte deux cas de plus. La colonne « Auto »
+> ne vaut que pour les cas de niveau BACK : dès qu'un cas est « LES DEUX », son volet écran le
+> maintient en « Partiel », aucune suite front n'existant dans le dépôt.
 
 ### 3.12 Répartition par criticité et par niveau
 
 | Domaine | Cas | BLOQUANT | MAJEUR | MINEUR | BACK | FRONT | LES DEUX |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | AUTH | 17 | 8 | 6 | 3 | 13 | 0 | 4 |
-| HABILITATION | 10 | 4 | 3 | 3 | 3 | 2 | 5 |
+| HABILITATION | 12 | 5 | 4 | 3 | 3 | 2 | 7 |
 | DEMANDE | 14 | 2 | 8 | 4 | 4 | 8 | 2 |
 | WORKFLOW | 15 | 9 | 6 | 0 | 5 | 0 | 10 |
 | MCC | 15 | 4 | 8 | 3 | 8 | 1 | 6 |
@@ -2041,7 +2153,7 @@ Légende :
 | INDEXATION | 10 | 3 | 6 | 1 | 7 | 0 | 3 |
 | ROBUSTESSE | 16 | 1 | 12 | 3 | 14 | 0 | 2 |
 | ERGONOMIE | 12 | 0 | 11 | 1 | 0 | 12 | 0 |
-| **Total** | **147** | **45** | **81** | **21** | **70** | **23** | **54** |
+| **Total** | **149** | **46** | **82** | **21** | **70** | **23** | **56** |
 
 ### 3.13 Les cinq cas à exécuter en priorité
 
@@ -2051,7 +2163,7 @@ Légende :
 | 2 | **CAS-HAB-04** — cloisonnement inter-banques | Une fuite ici expose les données commerciales et le RNE des clients d'une banque concurrente ; les routes `events`, `suggestions` et `PUT` ne sont pas couvertes. |
 | 3 | **CAS-MCC-07** — refus API d'un MCC interdit sur les trois points d'entrée | Un code interdit accepté engage la banque sur une activité non éligible ; le chemin `PUT /api/requests/:id` n'est couvert par aucun test. |
 | 4 | **CAS-WF-13** — deux décisions simultanées | Une demande portant deux décisions contradictoires est irrattrapable en audit ; garde-fou porté par une seule clause `WHERE`. |
-| 5 | **CAS-AUTH-15** — limitation de débit sur la route réelle | Le seul test existant exerce le composant isolé, jamais `/api/auth/login` : la protection anti-force brute n'est en réalité pas vérifiée de bout en bout. |
+| 5 | **CAS-AUTH-15** — limitation de débit **par compte visé** | La route réelle est désormais éprouvée de bout en bout par `limitation.test.js`, mais sur la seule clé d'adresse IP : la clé par compte — celle qui freine une attaque distribuée sur un compte précis — n'est vérifiée par aucun test. |
 
 ---
 

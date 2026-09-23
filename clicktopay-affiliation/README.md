@@ -4,6 +4,12 @@ Application permettant à un **agent de banque** de saisir la demande d'affiliat
 d'un client e-commerçant à la plateforme ClickToPay, et au **banquier** de valider
 ou de modifier les codes MCC Visa et Mastercard proposés.
 
+Le **banquier est l'administrateur de sa banque** : il y crée et gère les comptes
+agents, y saisit et y arbitre les dossiers, et ne voit rien au-delà. Le référentiel
+MCC, commun à toutes les banques, lui reste fermé — il relève du seul
+administrateur de la plateforme, qui conserve tous les droits sur toutes les
+banques. *(Décisions D-1 et D-3 du commanditaire, `docs/decisions-commanditaire.md`.)*
+
 ```
 clicktopay-affiliation/
 ├── server/   API Node.js / Express + PostgreSQL
@@ -49,7 +55,7 @@ production** (`seed({ withDemoUsers: false })` ne les crée pas).
 
 1. **L'agent saisit la demande** en cinq étapes : site marchand, société (RNE,
    matricule fiscal, forme juridique), contact et adresse physique, activité, puis
-   codes MCC.
+   codes MCC. Le banquier de la banque peut saisir et reprendre les mêmes dossiers.
 2. **La plateforme propose les MCC** au fil de la saisie, classés par pertinence.
    Chaque proposition affiche son libellé et sa **description en français**, la
    définition officielle Visa, un score de pertinence et les termes de la demande
@@ -58,7 +64,10 @@ production** (`seed({ withDemoUsers: false })` ne les crée pas).
    le souhaite), justifie son choix, puis soumet la demande.
 4. **Le banquier arbitre** : il valide les codes proposés, les remplace par
    d'autres, rejette la demande ou la renvoie à l'agent pour complément. Les
-   propositions du moteur restent affichées à côté de sa décision.
+   propositions du moteur restent affichées à côté de sa décision. Il arbitre
+   **tous** les dossiers de sa banque, y compris ceux qu'il a saisis lui-même :
+   le contrôle à quatre yeux n'est plus imposé par la plateforme, seulement
+   tracé par le journal (décision D-3, dans le prolongement de D-1).
 5. **Tout est tracé** : chaque étape alimente un journal nominatif et horodaté, et
    le code initialement proposé par l'agent reste visible à côté du code retenu.
 
@@ -67,14 +76,32 @@ Statuts : `BROUILLON` → `SOUMISE` → `VALIDEE` | `REJETEE` | `COMPLEMENT_REQU
 
 ## Administration
 
-Le profil `ADMIN` dispose d'un espace dédié (`/administration`) en cinq onglets.
+L'espace d'administration (`/administration`) est ouvert à deux profils, et il ne
+leur montre pas la même chose :
+
+| | `ADMIN` | `BANQUIER` |
+| --- | --- | --- |
+| Onglets | les cinq | trois : **Comptes**, **Banques**, **Journal** |
+| Comptes | toutes banques, tous rôles | les comptes de **sa** banque ; il n'en crée et n'en modifie que des **agents** |
+| Banques | création, modification, activation | consultation et correction de **sa** fiche ; ni création, ni activation |
+| Référentiel MCC et import | oui | **non** — il est commun à toutes les banques |
+| Journal | toutes banques | filtré sur **sa** banque |
+
+Le corps d'une requête ne décide pas du périmètre : la banque de l'appelant écrase
+celle qu'annonce la requête, et aucune modification ne peut faire sortir un compte
+du périmètre de celui qui l'administre. Toutes ces bornes sont posées côté serveur
+(`services/admin.js`, `perimetreAdministration()`), l'écran ne faisant que les
+suivre.
 
 ### Comptes et banques
 
 - Création de comptes avec rôle (`AGENT`, `BANQUIER`, `ADMIN`) et rattachement à
-  une banque ; modification du rôle, de la banque et de l'identité.
+  une banque ; modification du rôle, de la banque et de l'identité. Pour un
+  banquier, le rôle est figé sur `AGENT` et la banque sur la sienne : il ne peut
+  ni s'attribuer des pairs, ni déplacer un compte hors de sa banque.
 - Activation et désactivation : un compte désactivé ne peut plus se connecter.
-- Réinitialisation du mot de passe par l'administrateur. Le compte doit alors en
+- Réinitialisation du mot de passe par l'administrateur — ou par le banquier, sur
+  les agents de sa banque. Le compte doit alors en
   définir un nouveau à la connexion suivante : **le serveur refuse toutes les
   autres routes** tant que ce n'est pas fait, l'écran n'est pas la seule barrière.
 - Changement de mot de passe par l'utilisateur lui-même, l'ancien étant exigé.
@@ -85,11 +112,18 @@ Le profil `ADMIN` dispose d'un espace dédié (`/administration`) en cinq onglet
 Deux garde-fous empêchent de verrouiller la plateforme : un administrateur ne
 peut ni modifier son propre rôle ni se désactiver, et la plateforme refuse de
 perdre son dernier administrateur actif. Une banque comptant encore des comptes
-actifs ne peut pas être désactivée.
+actifs ne peut pas être désactivée, et un banquier ne peut pas désactiver la
+sienne — se couper l'accès à soi-même rendrait la banque inadministrable de
+l'intérieur.
 
 Toutes ces actions alimentent le journal d'administration (onglet **Journal**).
 
 ### Référentiel MCC
+
+**Réservé à l'administrateur.** Le référentiel est commun à toutes les banques :
+un banquier qui désactiverait un code le retirerait à ses concurrents. Son
+administration, son import et son historique restent donc hors de portée du
+profil `BANQUIER`, qui reçoit un 403 sur chacune de ces routes.
 
 - Édition d'un code : libellé, description française, mots-clés du moteur,
   pertinence e-commerce, niveau de vigilance, note affichée au banquier, et
@@ -141,7 +175,7 @@ agents sur quatre vagues. Tous les livrables sont dans `docs/` :
 
 | Fichier | Contenu |
 | --- | --- |
-| `plan-de-tests.md` | 147 cas de test : préconditions, étapes, résultat attendu vérifiable, critère d'acceptation binaire, et 10 jeux de données avec les MCC attendus et leurs scores exacts |
+| `plan-de-tests.md` | 149 cas de test : préconditions, étapes, résultat attendu vérifiable, critère d'acceptation binaire, et 10 jeux de données avec les MCC attendus et leurs scores exacts |
 | `revue-de-code.md` | 26 constats de revue, ancrés fichier et ligne |
 | `resultats-vague2-front.md` / `-back.md` | Exécution des cas, filière interface et filière API |
 | `resultats-vague3-front.md` / `-back.md` | Retest après correction, et recherche de régressions |
@@ -314,20 +348,20 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 | POST | `/api/mcc/suggest` | tous | Propositions Visa et Mastercard pour une activité |
 | GET | `/api/requests` | tous | Liste filtrable (statut, recherche, périmètre banque) |
 | GET | `/api/requests/stats` | tous | Compteurs par statut |
-| POST | `/api/requests` | agent | Création d'une demande |
+| POST | `/api/requests` | agent, banquier | Création d'une demande |
 | GET | `/api/requests/:id` | tous | Détail d'une demande |
-| PUT | `/api/requests/:id` | agent | Modification (brouillon ou complément requis) |
-| POST | `/api/requests/:id/submit` | agent | Soumission au banquier |
+| PUT | `/api/requests/:id` | agent, banquier | Modification (brouillon ou complément requis) |
+| POST | `/api/requests/:id/submit` | agent, banquier | Soumission au banquier |
 | POST | `/api/requests/:id/decision` | banquier | Validation, rejet ou demande de complément |
 | GET | `/api/requests/:id/suggestions` | tous | Propositions figées à la soumission |
 | GET | `/api/requests/:id/events` | tous | Journal d'audit |
-| GET | `/api/admin/users` | admin | Liste des comptes |
-| POST | `/api/admin/users` | admin | Création d'un compte |
-| PUT | `/api/admin/users/:id` | admin | Rôle, banque, identité, activation |
-| POST | `/api/admin/users/:id/password` | admin | Réinitialisation du mot de passe |
-| GET | `/api/admin/banks` | admin | Banques et volumétrie |
-| POST | `/api/admin/banks` | admin | Création d'une banque |
-| PUT | `/api/admin/banks/:id` | admin | Raison sociale, activation |
+| GET | `/api/admin/users` | admin, banquier | Liste des comptes (le banquier : sa banque) |
+| POST | `/api/admin/users` | admin, banquier | Création d'un compte (le banquier : un agent, dans sa banque) |
+| PUT | `/api/admin/users/:id` | admin, banquier | Rôle, banque, identité, activation (le banquier : ni promotion, ni changement de banque) |
+| POST | `/api/admin/users/:id/password` | admin, banquier | Réinitialisation du mot de passe |
+| GET | `/api/admin/banks` | admin, banquier | Banques et volumétrie (le banquier : la sienne) |
+| POST | `/api/admin/banks` | admin | Création d'une banque (administrateur seul) |
+| PUT | `/api/admin/banks/:id` | admin, banquier | Raison sociale, activation (le banquier : sa fiche, hors activation) |
 | GET | `/api/admin/mcc` | admin | Référentiel complet, codes désactivés inclus |
 | POST | `/api/admin/mcc` | admin | Ajout d'un code |
 | PUT | `/api/admin/mcc/:code` | admin | Modification ou (dés)activation d'un code |
@@ -336,7 +370,10 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 | POST | `/api/admin/mcc/import-fichier` | admin | Lecture d'un fichier Excel/CSV : lignes, anomalies et rapport d'écart |
 | POST | `/api/admin/mcc/import` | admin | Rapport d'écart, puis application |
 | GET | `/api/mcc/secteurs` | tous | Secteurs et MCC rattachés (lus en base) |
-| GET | `/api/admin/events` | admin | Journal d'administration |
+| GET | `/api/admin/events` | admin, banquier | Journal d'administration (le banquier : filtré sur sa banque) |
+
+Les routes `/api/admin/mcc*` sont les seules de l'espace d'administration à rester
+strictement réservées à l'administrateur, référentiel commun oblige.
 
 ## Règles de sécurité appliquées
 
@@ -378,8 +415,9 @@ Toutes les routes sauf `/api/health` et `/api/auth/login` exigent un jeton JWT
 
 ```bash
 cd server
-npm test      # 106 tests : authentification, référentiel, moteur, workflow,
-              # habilitations, administration, robustesse, concurrence et indexation
+npm test      # 165 tests : authentification, référentiel, moteur, workflow,
+              # habilitations, administration, import, limitation de débit,
+              # robustesse, concurrence et indexation
 ```
 
 Les tests utilisent la base `clicktopay_test`, rejouée à chaque exécution. Ils
@@ -394,6 +432,24 @@ ne réécrit pas les ajustements de la conformité.
 dérivation des mots-clés, variantes singulier/pluriel, rattachement à un secteur,
 reconstruction de l'index au changement de libellé, et signalement des codes sans
 lexique métier.
+
+`tests/habilitations.test.js` éprouve la décision D-3 par ses **bornes** plutôt que
+par ses permissions : une habilitation élargie se prouve par ce qu'elle refuse
+encore. Le banquier y administre sa banque, y saisit et y arbitre — mais ne crée
+ni banquier ni administrateur, ne promeut pas ses agents, ne déplace aucun compte,
+ne touche ni au référentiel MCC, ni à une autre banque, ni à la sienne pour la
+désactiver.
+
+`tests/import.test.js` porte les invariants de l'import : une simulation n'écrit
+rien (base photographiée avant et après), rien n'est appliqué sans `apply: true`,
+la désactivation des absents reste optionnelle et ne supprime jamais, les anomalies
+portent leur numéro de ligne, et un code réintroduit par le fichier est remis en
+service.
+
+`tests/limitation.test.js` exerce la limitation de débit sur la route réelle, avec
+un quota réaliste : un corps invalide est compté, une connexion réussie remet le
+compteur à zéro, et au-delà du quota c'est un 429 avec `Retry-After` — connexion
+valide comprise.
 
 `tests/robustesse.test.js` est une suite adversariale, écrite à partir des
 défauts réellement relevés en recette — chaque correctif y a son test de

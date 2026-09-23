@@ -313,3 +313,207 @@ l'URL bascule de `/demandes/nouvelle` à `/demandes/64/modifier` ; le titre pass
 de « Nouvelle demande d'affiliation » à « Modifier la demande ». C'est correct au
 fond — le brouillon existe — mais la bascule est muette, et rien ne dit à l'agent
 que son dossier porte désormais un numéro.
+
+### L'explicabilité des propositions MCC
+
+C'est la raison d'être du produit : l'écran doit faire comprendre **pourquoi**
+un code est proposé à quelqu'un qui ne connaît pas le moteur. Chaque carte
+affiche donc un code, un libellé, une description, la définition Visa d'origine,
+une pastille « Pertinence N % » et un ou plusieurs termes. La forme est bonne.
+Le fond ne tient pas, et les quatre constats qui suivent le montrent à l'écran,
+sans jamais lire le code du moteur.
+
+#### UTI-12 — Défaut · majeur · La justification affichée n'explique pas le classement affiché
+
+**Écran et parcours.** Agent → Nouvelle demande → étape 4, pour une activité
+déclarée : « Vente de livres, de bandes dessinées et de manuels scolaires ».
+
+**Ce qui se produit.** Le moteur rend six propositions. **Quatre d'entre elles
+portent exactement la même justification, le seul mot « livres »** — et se
+classent pourtant à 60 %, 51 %, 49 % et 41 % :
+
+| Rang | Code | Libellé | Pertinence | Termes affichés |
+| --- | --- | --- | --- | --- |
+| 1 | 5815 | Biens numériques – livres, films, images et musique | 60 % | livres |
+| 2 | 5943 | Papeteries et fournitures scolaires | 54 % | scolaires |
+| 3 | 8931 | **Comptabilité, audit et tenue de livres** | 51 % | livres |
+| 4 | 5192 | Livres, périodiques et journaux (gros) | 49 % | livres |
+| 5 | 5816 | Biens numériques – jeux | 41 % | livres |
+| 6 | **5942** | **Librairies** | **41 %** | livres |
+
+Un agent regarde ces six cartes et ne peut rien en tirer : la justification est
+identique, l'écart de classement est de dix-neuf points, et rien à l'écran ne
+dit d'où vient l'écart. La pastille « Pertinence 60 % » n'est expliquée nulle
+part — ni légende, ni infobulle, ni seuil annoncé.
+
+**Et le classement lui-même dessert le produit.** Pour une librairie en ligne :
+
+- le code proposé en premier est **5815, « Biens numériques »**, alors que
+  l'activité déclarée est de la vente de livres papier ;
+- le troisième, à 51 %, est **8931, « Comptabilité, audit et tenue de livres »** —
+  un cabinet comptable, retenu parce que le mot « livres » figure dans
+  « tenue de livres » ;
+- **5942, « Librairies », le code manifestement juste, arrive dernier**, à égalité
+  avec « Biens numériques – jeux ».
+
+Ce n'est pas un cas limite construit pour l'occasion. En écrivant explicitement
+« Librairie en ligne : vente de livres neufs », 5942 remonte à la deuxième place
+(56 %) mais reste **derrière** 5815 « Biens numériques » (60 %).
+
+**Reproduire.** Agent → Nouvelle demande, étapes 1 et 2 remplies avec un nom de
+site neutre (« Zzz »), étape 3, champ « Description de l'activité » : `Vente de
+livres, de bandes dessinees et de manuels scolaires`, puis « Suivant ».
+
+*Capture : `a-14-librairie-classement.png`.*
+
+#### UTI-13 — Défaut · majeur · Le score bouge sans que la justification bouge
+
+**Écran et parcours.** Même dossier que ci-dessus, étape 3, case « Mode de
+livraison ».
+
+**Attendu.** Si deux saisies donnent deux classements différents, l'écran doit
+dire ce qui a changé. C'est tout l'objet de la ligne de termes.
+
+**Ce qui se produit.** En passant le mode de livraison de « Biens physiques
+livrés » à « Biens numériques téléchargés », **sans toucher un seul mot de la
+description** :
+
+| Code | Libellé | Pertinence en physique | Pertinence en numérique | Termes affichés |
+| --- | --- | --- | --- | --- |
+| 5943 | Papeteries et fournitures scolaires | 54 % | **49 %** | `scolaires` — inchangé |
+| 8931 | Comptabilité… | 51 % | **45 %** | `livres` — inchangé |
+| 5192 | Livres, périodiques (gros) | 49 % | **42 %** | `livres` — inchangé |
+| 5815 | Biens numériques – livres… | 60 % | 67 % | `livres`, **`livraison numérique`** |
+
+Le moteur est donc **à moitié honnête** : le code qui *gagne* des points reçoit
+un terme neuf, visible — « livraison numérique » — tandis que tous les codes qui
+*perdent* des points n'en reçoivent aucun. Trois cartes voient leur pertinence
+reculer de cinq à sept points, et affichent mot pour mot la même justification
+qu'avant.
+
+Un agent qui coche une case et voit le classement se réorganiser sous ses yeux,
+sans qu'aucune carte n'explique pourquoi, n'a plus de raison de faire confiance
+à la pastille. C'est exactement ce que l'explicabilité devait éviter.
+
+**Reproduire.** Étape 3, description `Vente de livres, de bandes dessinees et de
+manuels scolaires`, passer « Mode de livraison » de `Biens physiques livrés` à
+`Biens numériques téléchargés`, revenir à l'étape 4 et comparer les pastilles.
+
+#### UTI-14 — Défaut · moyen · L'écran affirme que les propositions viennent de l'activité déclarée ; elles viennent aussi du nom du site, de l'URL et de la raison sociale
+
+**Écran et parcours.** Étape 4, bandeau de tête : « Propositions classées par
+pertinence **à partir de l'activité déclarée**. »
+
+**Ce qui se produit.** Le nom du site, l'adresse du site et la raison sociale
+alimentent eux aussi les propositions, et peuvent les déterminer à eux seuls.
+Trois essais, avec pour toute description la chaîne `qzxwv yjklm ptdfg` :
+
+| Ce qui est saisi en plus | Proposition rendue | Terme affiché |
+| --- | --- | --- |
+| rien | 5999 Commerces de détail spécialisés divers, 10 % | « aucune correspondance : code de repli » |
+| nom du site « UTI Souk **Bio** » | **5499 Commerces alimentaires spécialisés et supérettes**, 37 % | `bio` |
+| adresse `https://uti-souk-**bio**.tn` | 5499, 37 % | `bio` |
+| raison sociale « **PHARMACIE** DU LAC SARL » | **5912 Pharmacies et parapharmacies**, 24 % | `pharmacie` |
+
+Deux conséquences à l'écran :
+
+1. L'agent lit « bio » comme justification et cherche ce mot dans la description
+   de l'activité, où il ne figure pas. Rien ne dit d'où vient le terme — ni le
+   champ, ni le poids.
+2. **Le nom du site chasse le code de repli.** Sans nom de site, l'écran
+   proposait honnêtement 5999 avec la mention « aucune correspondance : code de
+   repli ». Avec un nom de site, il propose une épicerie à 37 % et le repli
+   disparaît. Toute boutique qui s'appelle « Souk Bio » se verra proposer un code
+   de commerce alimentaire, quoi qu'elle vende.
+
+**Reproduire.** Étape 3, description `qzxwv yjklm ptdfg`, avec puis sans
+« UTI Souk Bio » à l'étape 1, champ « Nom du site ».
+
+#### UTI-15 — Gêne · moyen · Un mot isolé suffit à porter une proposition, et une correspondance à 6 % s'affiche comme une correspondance à 86 %
+
+**Écran et parcours.** Étape 4.
+
+**Ce qui se produit.** Deux illustrations relevées à l'écran :
+
+- Activité déclarée : « je vends des billets d'avion en ligne pour toutes
+  **compagnies** ». Le moteur propose **4411 Compagnies maritimes et de
+  croisière** (45 %) et **6300 Assurances – vente, souscription et primes**
+  (41 %, avec le jeton « Vigilance renforcée »). La justification affichée, pour
+  l'une comme pour l'autre, est le seul mot `compagnies`.
+- Activité déclarée : « vente de cannabis, de stupéfiants et d'armes à feu en
+  ligne ». **Une seule proposition** est rendue : **5718 « Cheminées et
+  accessoires »**, à 6 %, justifiée par le mot `feu` — tiré de « armes à feu ».
+
+Sur ce second cas, la carte à 6 % a exactement la même forme que la carte à
+86 % d'un bon appariement : même cadre, même pastille, même jeton. La seule
+différence est la couleur de la pastille — grise sous 40 %, ambre entre 40 et
+65 %, verte au-dessus — un code couleur qui n'est expliqué nulle part et qu'un
+agent daltonien ne lira pas.
+
+Et la proposition à 6 % **empêche le code de repli de sortir** : le repli
+n'apparaît que lorsqu'il n'y a strictement aucune correspondance, pas lorsqu'il
+n'y en a aucune de bonne. Une correspondance accidentelle sur un mot vaut donc
+mieux, aux yeux du moteur, qu'un aveu d'ignorance.
+
+**Reproduire.** Étape 3, description `vente de cannabis, de stupefiants et d
+armes a feu en ligne`, puis « Suivant ».
+
+*Capture : `a-12-score-6pc.png`.*
+
+#### UTI-16 — Gêne · mineur · Les termes affichés ne sont pas les mots de l'agent
+
+Le commentaire du moteur pose que « le terme est celui que l'agent a lui-même
+saisi, il lui parle donc toujours ». Ce n'est pas ce que l'écran rend : les
+termes sortent **désaccentués et en minuscules**. Un agent qui a écrit
+« cosmétiques » lit « cosmetiques » ; il lira « bandes dessinees » pour
+« bandes dessinées ». Sur un écran dont c'est toute la valeur, le mot rendu
+devrait être celui qui a été tapé.
+
+La liste est par ailleurs **tronquée à huit termes sans le dire** : au-delà, les
+correspondances qui ont pourtant compté dans le score ne sont pas affichées.
+
+#### EVO-02 — conforme · Le moteur ne sert jamais de proposition sans code ni libellé
+
+Éprouvé comme demandé, à l'écran, et non sur la seule foi des tests.
+
+1. Connecté en administrateur, `/administration/referentiel`, recherche `5999`,
+   bouton « Désactiver » → message « MCC 5999 désactivé. »
+2. Connecté en agent, dossier dont la description d'activité est
+   `qzxwv yjklm ptdfg` et dont le nom de site est neutre : l'étape 4 n'affiche
+   **aucune carte vide, aucun code sans libellé**, mais un message explicite à la
+   place de la liste : « Aucune proposition ne peut être faite : le code de repli
+   5999 est absent du référentiel actif. Recherchez un code manuellement ou
+   prévenez l'administrateur. » L'API renvoie bien `{ VISA: [], MASTERCARD: [] }`.
+3. Réactivation depuis le même écran (`/administration/referentiel`, recherche
+   `5999`, « Réactiver » → « MCC 5999 réactivé. »). Le moteur rend de nouveau
+   5999 à 10 %, avec le terme « aucune correspondance : code de repli » et la
+   note « Code de repli : à n'utiliser que si aucun MCC plus précis ne correspond
+   à l'activité ». Le référentiel est rendu dans l'état où il a été trouvé.
+
+*Captures : `r-02-5999-desactive.png`, `a-10-charabia-vide.png`,
+`r-05-5999-retabli.png`.*
+
+**Une réserve sur ce message.** Il est adressé à l'agent, qui ne peut rien y
+faire, et il est écrit dans le vocabulaire du produit — « code de repli 5999 »,
+« référentiel actif » — que rien à l'écran n'a jamais expliqué à un agent
+d'agence.
+
+#### UTI-17 — Gêne · moyen · La recherche manuelle d'un code désactivé rend un autre code, sans le dire
+
+**Écran et parcours.** Étape 4 → « Rechercher un autre code dans le référentiel ».
+Le champ est légendé « Mot-clé ou code à 4 chiffres (ex. « librairie » ou
+« 5942 ») ».
+
+**Ce qui se produit.** Pendant que `5999` était désactivé, y taper `5999` rend
+un seul résultat : **5995, « Animalerie – animaux, aliments et accessoires »**.
+Rien ne dit que le code demandé n'a pas été trouvé, ni qu'il existe mais qu'il
+est désactivé. L'agent a tapé un code qu'il connaît et reçoit son voisin, présenté
+comme une réponse.
+
+Un code qui n'a jamais existé (`9999`, `0000`) rend, lui, une liste vide — donc
+le produit sait dire « rien ». Il ne le dit pas dans le seul cas où la confusion
+est possible.
+
+**Reproduire.** Désactiver `5999` depuis l'administration, puis, en agent,
+étape 4, taper `5999` dans le champ de recherche. *Capture :
+`a-11-recherche-5999.png`.*
