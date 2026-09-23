@@ -6,17 +6,28 @@ Chromium. Le produit est éprouvé comme le feraient ses utilisateurs : un agent
 d'agence, un banquier, un administrateur de la plateforme.
 
 **Code éprouvé.** L'instance sert bien le code courant, et c'est vérifiable :
-l'arbre de travail est propre au commit `3a7ac2e` (« Corriger les constats des
-revues de sécurité et d'habilitation »), le fichier source le plus récent date
-du 23/09/2026 à 12:56:24, et les deux processus servis ont démarré **après** —
-l'API à 12:56:34, le serveur de développement du front à 12:56:35. Aucun constat
-de ce document ne porte sur une instance restée sur du code antérieur.
+l'arbre de travail est propre au commit `ca06470` (« Corriger les trois
+observations de la non-régression »), le fichier source le plus récent date du
+23/09/2026 à 13:27:28 et le commit de 13:29:43 ; les deux processus servis ont
+démarré **après** — l'API à 13:31:53, le serveur de développement du front à
+13:32:06. Aucun constat de ce document ne porte sur une instance restée sur du
+code antérieur.
 
-**Une réserve d'environnement, à lire avant tout le reste.** La base de données
-de cette instance **n'a pas été mise à niveau** avec le schéma du commit courant
-(voir `UTI-18`). Trois écrans en dépendent et tombent en erreur ; le fait est
-consigné comme tel, avec sa cause exacte, et les parcours concernés n'ont pas pu
-être menés à leur terme. Tout le reste a été éprouvé normalement.
+**Reprise de campagne.** Ce document a été commencé par deux campagnes
+précédentes, interrompues avant leur terme. Il est repris ici, non réécrit. Deux
+corrections d'importance y ont été portées à la reprise, et signalées comme
+telles :
+
+- la **réserve d'environnement est levée**. La base de cette instance est
+  désormais migrée (`admin_events.bank_id` existe) : les trois écrans qui
+  tombaient en « Erreur interne du serveur » ont été repris et menés à leur
+  terme. Voir `UTI-18`, requalifié ;
+- le **référentiel de l'instance avait dérivé** au moment de la campagne
+  précédente ; il est rétabli. Les trois jeux de référence rendent bien
+  aujourd'hui `5977:74, 7230:66, 7298:63, 5912:57, 5999:50` avec le secteur
+  beauté, `5977:54, 5999:50` sans secteur, et `5999:10` seul sur un descriptif
+  sans correspondance — mesuré à la reprise. Les chiffres de `UTI-19` ont donc
+  été **remesurés** ; le constat tient, ses valeurs ont changé.
 
 Deux natures de constats, distinguées partout :
 

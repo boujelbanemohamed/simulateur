@@ -703,6 +703,86 @@ que `pg_listening_channels()` est vide.
 
 ---
 
+### RL1-12 — La reprise du journal reste attachée à la banque *actuelle* du compte visé : un compte muté fait encore franchir la cloison à son historique
+
+**Gravité** majeur. **Fichier** `server/src/db/schema.sql:212-216`.
+
+**Ce qui a été corrigé entre-temps, et qu'il faut porter au crédit du lot.** Le
+constat RL1-02 de cette revue — la reprise recopiait la banque de l'**auteur** —
+a été **corrigé** par le commit `ca06470`. La reprise se fait désormais depuis la
+**cible** : `entity = 'BANK'` se rattache à la banque désignée par `entity_id`,
+`entity = 'USER'` à la banque du compte visé, et tout le reste reste `NULL`. Le
+commentaire qui accompagne le correctif est juste et explique le pourquoi.
+Vérifié en exécution : la ligne `BANK` d'une action portant sur la banque 2,
+écrite par un administrateur rattaché à la banque 1, est bien reprise sous la
+banque **2** — là où l'ancienne reprise la mettait sous la 1.
+
+**Ce qui subsiste.** Pour `entity = 'USER'`, la reprise lit `u.bank_id`,
+c'est-à-dire la banque **où le compte se trouve aujourd'hui**, et non celle à
+laquelle l'action se rapportait. C'est très exactement le mécanisme que le
+commentaire du schéma condamne quinze lignes plus haut (`schema.sql:195-201`) :
+« une mutation de compte d'une banque vers une autre faisait donc franchir la
+cloison à tout son historique, que la banque d'arrivée découvrait et que celle de
+départ perdait ». La règle a été posée pour les lignes futures et pour l'auteur ;
+elle n'a pas été appliquée à la reprise elle-même.
+
+**Scénario qui casse (exécuté, base `revue_lot1`).** Base au schéma d'avant le
+lot, peuplée ; le compte 3 (`agent2@banque.tn`) est créé alors qu'il relève de la
+**banque 2**, puis muté vers la **banque 1** ; migration avec le `schema.sql`
+d'aujourd'hui :
+
+```
+ id | entity | entity_id | bank_id | payload->>'bankId' (la banque au moment de l'action)
+  1 | USER   | 3         |       1 | 2      <- repris sous la banque 1, il appartient à la 2
+  2 | BANK   | 2         |       2 |        <- correct depuis ca06470
+  3 | MCC    | 5977      |         |        <- correct : portée plateforme
+  4 | USER   | 99        |         | 2      <- cible disparue : NULL, donc réservé à l'administrateur
+```
+
+La ligne 1 porte `{"role":"AGENT","email":"agent2@banque.tn","bankId":2,...}`.
+Après migration, le banquier de la **banque 1** la lit — adresse électronique et
+rôle d'un compte qui n'était pas le sien —, et le banquier de la **banque 2**,
+qui employait ce compte au moment des faits, ne la voit pas. La fuite est plus
+étroite qu'avant `ca06470` (elle ne concerne plus que les comptes mutés), mais
+elle est de la même nature, et elle porte sur l'historique entier au jour du
+déploiement.
+
+**La valeur juste était à portée de main.** `journaliser` écrit la banque dans le
+corps de l'événement depuis toujours : `payload->>'bankId'` pour une création
+(`admin.js:210`), `payload->'bankId'->'avant'->>'id'` pour une modification de
+rattachement (`admin.js:295-296`). C'est la banque **au moment de l'action** —
+exactement ce que la colonne veut dire. La reprise interroge la table `users`
+alors que la réponse est dans la ligne qu'elle est en train de mettre à jour.
+
+**Correction proposée.** Faire précéder les deux `UPDATE` actuels d'une passe qui
+lit le corps de l'événement, et ne garder la jointure sur `users` que comme
+dernier recours :
+
+```sql
+-- La banque d'une ligne ancienne est celle que l'événement a lui-même consignée :
+-- `journaliser` la porte dans le corps depuis l'origine. La table `users` ne dit
+-- que la banque d'AUJOURD'HUI, qui n'est pas celle des faits dès qu'un compte a
+-- été muté — soit précisément le franchissement de cloison qu'on ferme ici.
+UPDATE admin_events e SET bank_id = (e.payload->>'bankId')::int
+ WHERE e.bank_id IS NULL AND e.entity = 'USER'
+   AND e.payload->>'bankId' ~ '^\d+$'
+   AND EXISTS (SELECT 1 FROM banks b WHERE b.id = (e.payload->>'bankId')::int);
+
+UPDATE admin_events e SET bank_id = (e.payload->'bankId'->'avant'->>'id')::int
+ WHERE e.bank_id IS NULL AND e.entity = 'USER'
+   AND e.payload->'bankId'->'avant'->>'id' ~ '^\d+$';
+```
+
+puis les deux `UPDATE` existants pour ce qui reste. Le `EXISTS` est nécessaire :
+la colonne porte une clé étrangère, et une banque supprimée ferait échouer toute
+la migration — c'est-à-dire, vu le constat RL1-01, l'ensemble du fichier.
+
+**Test de non-régression possible sans base dédiée** : insérer trois lignes à
+`bank_id` nul — un compte muté, une banque, un MCC —, rejouer `migrate()`,
+asserter les trois rattachements.
+
+---
+
 ### RL1-11 — Le tri stable d'EVO-06 n'est éprouvé par aucun test (mutation survivante)
 
 **Gravité** mineur. **Fichier** `server/src/services/admin.js:584`, suite
