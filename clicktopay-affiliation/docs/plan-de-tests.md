@@ -69,6 +69,21 @@ Campagne de recette : agents 2, 3, 5 et 6 exécutent, l'agent 7 consolide.
 | D6 | « Le profil ADMIN cumule les droits d'agent et de banquier » (point ouvert assumé) | Confirmé dans `requireRole` : `ADMIN` court-circuite tout contrôle de rôle, et `getRequest` lui ouvre toutes les banques | CAS-HAB-05 |
 | D7 | « 279 MCC » | `mcc-catalog.json` contient bien 279 entrées, mais `GET /api/mcc` renvoie `total = catalogueActif().length` : après une désactivation le total baisse sans que l'écran ne le signale | CAS-MCC-02 |
 
+> **Amendement du 2026-09-23 — où en sont les sept divergences.** Elles ont été relevées à la
+> lecture du code le 2026-09-21 ; quatre d'entre elles ont été tranchées depuis, par une
+> correction ou par un arbitrage. Le tableau ci-dessus est conservé tel quel — il dit ce qui
+> était promis et ce qui était écrit —, cette note dit ce qui est vrai aujourd'hui.
+>
+> | # | État au 2026-09-23 | Établi par |
+> | --- | --- | --- |
+> | D1 | **partiellement close.** La conséquence dommageable est corrigée (un code réenregistré n'est plus relégué en fin de secteur) ; la promesse « le rang suit l'ordre fourni » n'est toujours pas tenue — un nouveau rattachement prend la fin de file. Écart de documentation subsistant. | `rapport-recette.md` (C-14, réserve D1) ; `robustesse.test.js`, deux cas C-14 |
+> | D2 | **close.** Un fichier qui ne change que le rattachement sectoriel est détecté et appliqué. Mesuré le 2026-09-23 : une simulation sur `{"code":"5977","sector":"SANTE"}` rend `modifies = 1`, `inchanges = 0`, le champ signalé étant `sectors`. | mesure directe ; `robustesse.test.js` (*le secteur est comparé à l'import*) |
+> | D3 | **close.** L'export porte **tous** les secteurs d'un code et l'aller-retour ne les perd plus. Mesuré le 2026-09-23 sur l'export CSV : `5817 → CONTENUS_NUMERIQUES, INFORMATIQUE_LOGICIEL` et `5912 → BEAUTE_COSMETIQUE, SANTE`. | mesure directe ; `rapport-recette.md` (D3) |
+> | D4 | **close.** Le filet de sécurité n'est plus du code mort : l'invariant « aucune proposition sans terme justificatif » écarte les six MCC de vente à distance qui le rendaient inatteignable, et le repli sur `5999` est servi. Voir les amendements de CAS-MCC-11 et du § 4.3. | mesure directe ; `vague3.test.js` |
+> | D5 | **close, et dans l'autre sens.** Le compteur de limitation est désormais posé **avant** la validation du corps (EVO-11) : un corps malformé est compté comme une tentative. CAS-AUTH-17 est réécrit en conséquence. | `journal-lot1.md` (EVO-11) ; `limitation.test.js` |
+> | D6 | **close par décision, non par correction.** Le cumul des droits de l'administrateur est assumé (décision D-1), et la décision D-3 l'étend au banquier sur sa propre banque. CAS-HAB-05 reste à exécuter pour consigner le comportement. | `decisions-commanditaire.md`, D-1 et D-3 |
+> | D7 | **ouverte.** Comportement inchangé. | — |
+
 ---
 
 ## 2. Les cas
@@ -276,14 +291,28 @@ Acceptation : zéro réponse 429 sur l'ensemble du scénario.
 
 ---
 
-**CAS-AUTH-17 — Divergence D5 : un corps invalide n'alimente pas le compteur**
+**CAS-AUTH-17 — Un corps invalide alimente le compteur (divergence D5 close)**
 Niveau : BACK · Criticité : MINEUR
 Préconditions : idem CAS-AUTH-15, compteur vierge.
 Étapes :
-1. Envoyer 15 `POST /api/auth/login` avec `{"email":"agent@banque.tn"}` (sans `password`).
-2. Envoyer un `POST /api/auth/login` avec `{"email":"agent@banque.tn","password":"Faux#12345"}`.
-Résultat attendu (comportement **actuel** du code) : (1) 15 réponses 400 · (2) HTTP 401, pas 429 — le compteur n'a pas été incrémenté par les corps invalides.
-Acceptation : consigner le résultat observé. Si (2) répond 401, la divergence D5 est confirmée et doit être remontée comme constat, non comme échec bloquant.
+1. Envoyer 10 `POST /api/auth/login` avec `{"email":"agent@banque.tn"}` (sans `password`).
+2. Envoyer un 11e appel au corps tout aussi incomplet.
+3. Envoyer un `POST /api/auth/login` avec `{"email":"agent@banque.tn","password":"Agent#2026"}` — identifiants **corrects**.
+Résultat attendu :
+- (1) 10 réponses **400** `{"error":"Données invalides"}` : le corps reste refusé comme avant, mais chacune de ces tentatives est désormais **comptée**.
+- (2) HTTP **429**, corps `{"error":"Trop de tentatives de connexion. Réessayez dans quelques minutes."}`, en-tête `Retry-After` présent et numérique.
+- (3) HTTP **429** également : passé le quota, la limitation prime sur tout, connexion valide comprise.
+Acceptation : le 11e appel répond 429 ; un corps malformé ne permet plus de balayer la route sans consommer de quota.
+
+> **Amendement du 2026-09-23.** Le cas constatait la divergence D5 : `validate(loginSchema)`
+> était monté **avant** `loginLimiter`, si bien qu'un corps malformé n'était jamais compté et
+> qu'alterner corps valides et invalides diluait la consommation d'un attaquant. EVO-11 a
+> inversé les deux intergiciels (`routes/auth.js` : `loginLimiter`, puis `validate`). Le cas
+> est réécrit sur la règle nouvelle, dont il éprouve l'effet utile plutôt que l'absence.
+> Attendu établi sur le code et sur `server/tests/limitation.test.js`, qui pose
+> `LOGIN_RATE_LIMIT_MAX = 3` et observe la séquence `400, 400, 400, 429` puis un refus de la
+> connexion valide ; **non rejoué sur l'instance partagée du port 4000**, où épuiser le quota
+> aurait privé les autres intervenants de connexion pendant quinze minutes.
 
 ---
 
@@ -291,16 +320,39 @@ Acceptation : consigner le résultat observé. Si (2) répond 401, la divergence
 
 ---
 
-**CAS-HAB-01 — Le banquier ne saisit pas de demande**
+**CAS-HAB-01 — Le banquier saisit et gère les dossiers de sa banque (décision D-3)**
 Niveau : LES DEUX · Criticité : BLOQUANT
-Préconditions : jeton `banquier@banque.tn`.
+Préconditions : jeton `banquier@banque.tn` (banque BQ001) ; une demande D au statut `BROUILLON` saisie par `agent@banque.tn`, même banque.
 Étapes :
 1. `POST /api/requests` avec un corps valide (jeu JD-01).
-2. `PUT /api/requests/<id d'une demande BROUILLON>` avec `{"siteName":"X"}`.
-3. `POST /api/requests/<id>/submit`.
-4. (FRONT) Connecté en banquier, saisir `/demandes/nouvelle` dans la barre d'adresse.
-Résultat attendu : (1)(2)(3) → HTTP **403** `{"error":"Action réservée aux profils : AGENT"}` · (4) redirection immédiate vers `/demandes`, le formulaire n'est jamais rendu (aucun champ « Nom du site » dans le DOM).
-Acceptation : trois 403 côté API **et** redirection côté écran.
+2. `PUT /api/requests/<id créé>` avec `{"siteName":"X"}`.
+3. `POST /api/requests/<id créé>/submit`.
+4. `POST /api/requests/<id créé>/decision` `{"decision":"VALIDEE"}` — le banquier arbitre le dossier qu'il vient de saisir.
+5. `PUT /api/requests/<D>` `{"siteName":"Repris par le banquier"}` — il reprend le dossier d'un de ses agents.
+6. (FRONT) Connecté en banquier, saisir `/demandes/nouvelle` dans la barre d'adresse.
+Résultat attendu :
+- (1) HTTP **201**, la demande créée portant `bankId` = celle du banquier, jamais une autre.
+- (2) HTTP **200** · (3) HTTP **200**, statut `SOUMISE` · (4) HTTP **200**, statut `VALIDEE`.
+- (5) HTTP **200** : la règle « on ne modifie que les demandes qu'on a saisies » vise les agents entre eux, pas le banquier sur sa banque.
+- (6) le formulaire de saisie s'ouvre, le champ « Nom du site » est rendu, et le lien « Nouvelle demande » figure dans l'en-tête.
+Acceptation : les cinq appels aboutissent et l'écran de saisie s'ouvre. Le cloisonnement, lui, reste éprouvé par CAS-HAB-04 et CAS-HAB-11 : ce que le banquier gagne s'arrête aux frontières de sa banque.
+
+> **Amendement du 2026-09-23.** La rédaction initiale — « le banquier ne saisit pas » —
+> décrivait la plateforme d'avant la décision **D-3** (`docs/decisions-commanditaire.md`,
+> commit `3c03b25`), qui fait du banquier l'administrateur de sa banque : il y crée les
+> comptes agents, y saisit et y arbitre les dossiers. `routes/requests.js` porte désormais
+> `requireRole('AGENT', 'BANQUIER')` sur la création, la modification et la soumission. Le cas
+> est **réécrit sur la règle nouvelle et non supprimé** : un cas retiré serait une couverture
+> perdue sans trace, et c'est le même chemin qu'il faut continuer d'éprouver — dans l'autre
+> sens.
+>
+> Mesuré le 2026-09-23 sur l'instance du port 4000, par sondes ne produisant aucune écriture
+> (corps vide : la vérification de rôle précède la validation, un **400 « Données invalides »**
+> atteste donc que le rôle est admis là où un **403** l'aurait refusé) : `POST /api/requests`
+> rend 400 pour l'agent, pour le banquier et pour l'administrateur — aucun des trois n'est
+> plus écarté sur son rôle. La conséquence assumée par D-3 est que le banquier peut arbitrer
+> un dossier qu'il a lui-même saisi : c'est l'entorse au contrôle à quatre yeux que D-1 avait
+> déjà consentie à l'administrateur, étendue au profil opérationnel.
 
 ---
 
@@ -315,13 +367,28 @@ Acceptation : 403 côté API et aucun bouton de décision côté écran.
 
 ---
 
-**CAS-HAB-03 — L'espace d'administration est fermé aux autres profils**
+**CAS-HAB-03 — L'espace d'administration est fermé à l'agent, et partagé entre banquier et administrateur**
 Niveau : LES DEUX · Criticité : BLOQUANT
 Étapes :
-1. Jeton AGENT puis jeton BANQUIER : `GET /api/admin/users`, `GET /api/admin/banks`, `GET /api/admin/mcc`, `GET /api/admin/events`, `POST /api/admin/mcc/import`.
-2. (FRONT) Connecté en agent, saisir `/administration/comptes` dans la barre d'adresse.
-Résultat attendu : (1) les 10 appels répondent **403** `{"error":"Action réservée aux profils : ADMIN"}` · (2) redirection vers `/demandes`, aucun onglet d'administration rendu ; le lien « Administration » est absent de l'en-tête.
-Acceptation : 10 réponses 403 et redirection effective.
+1. Jeton AGENT : `GET /api/admin/users`, `GET /api/admin/banks`, `GET /api/admin/mcc`, `GET /api/admin/events`, `POST /api/admin/mcc/import`.
+2. Jeton BANQUIER : `GET /api/admin/users`, `GET /api/admin/banks`, `GET /api/admin/events`.
+3. (FRONT) Connecté en agent, saisir `/administration/comptes` dans la barre d'adresse.
+4. (FRONT) Connecté en banquier, ouvrir `/administration/comptes`.
+Résultat attendu :
+- (1) les 5 appels répondent **403**. Message exact `{"error":"Action réservée aux profils : ADMIN, BANQUIER"}` sur `/users`, `/banks` et `/events` ; `{"error":"Action réservée aux profils : ADMIN"}` sur `/mcc` et `/mcc/import`, réservés plus étroitement encore.
+- (2) les 3 appels répondent **200**, chacun borné à la banque de l'appelant (voir CAS-HAB-11).
+- (3) redirection vers `/demandes`, aucun onglet d'administration rendu ; le lien « Administration » est absent de l'en-tête de l'agent.
+- (4) l'espace s'ouvre sur **trois onglets** — « Comptes », « Banques », « Journal ». Les onglets « Référentiel MCC » et « Import du référentiel » ne sont pas rendus.
+Acceptation : 5 refus pour l'agent, 3 accès pour le banquier, et l'écran suit exactement le même découpage que l'API.
+
+> **Amendement du 2026-09-23.** La décision **D-3** ouvre l'administration au banquier, borné
+> à sa banque et au seul rôle agent ; `routes/admin.js` monte `requireRole('ADMIN',
+> 'BANQUIER')` sur le routeur et réserve à l'administrateur, par `reserveAAdministrateur`,
+> toutes les routes `/mcc` ainsi que `POST /banks`. Le cas est réécrit plutôt que supprimé :
+> il continue d'éprouver la fermeture de l'espace, désormais à deux niveaux. Messages relevés
+> au caractère près le 2026-09-23 sur l'instance du port 4000 ; découpage de l'écran lu dans
+> `web/src/pages/AdminLayout.jsx` (`administrateurSeul`) et `web/src/App.jsx`
+> (`referentielSeul`, `peutAdministrer`).
 
 ---
 
@@ -744,8 +811,14 @@ Acceptation : 6 lignes VISA, 6 lignes MASTERCARD, contenu renouvelé.
 **CAS-MCC-01 — Proposition nominale, classée et explicitée**
 Niveau : LES DEUX · Criticité : BLOQUANT
 Étapes : `POST /api/mcc/suggest` avec le profil **JD-01** (secteur `BEAUTE_COSMETIQUE`, livraison `PHYSIQUE`).
-Résultat attendu : HTTP 200 ; `VISA` contient 6 éléments ; les codes dans l'ordre exact `5977, 7230, 7298, 5912, 5999, 5960` avec les scores `74, 66, 63, 57, 50, 31`. Chaque élément porte `label`, `description` (français, non vide), `descriptionEn`, `score`, `rawScore` et `matchedTerms` (tableau non vide pour les 5 premiers, contenant notamment `secteur : Beauté, cosmétique et parfumerie`).
-Acceptation : ordre, scores et présence des 6 attributs conformes.
+Résultat attendu : HTTP 200 ; `VISA` contient **5 éléments** ; les codes dans l'ordre exact `5977, 7230, 7298, 5912, 5999` avec les scores `74, 66, 63, 57, 50`. Chaque élément porte `label`, `description` (français, non vide), `descriptionEn`, `score`, `rawScore` et `matchedTerms` — **tableau non vide pour chacun des cinq**, celui de `5977` contenant notamment `secteur : Beauté, cosmétique et parfumerie`.
+Acceptation : ordre, scores, nombre de propositions et présence des 6 attributs conformes ; aucune proposition sans terme justificatif.
+
+> **Amendement du 2026-09-23.** La rédaction initiale attendait six propositions, la sixième
+> étant `5960` au score `31` avec des `matchedTerms` vides. L'invariant « aucune proposition
+> sans terme justificatif » l'a fait disparaître, et avec elle toute la queue de classement à
+> `31` : le plafond `limit = 6` n'est pas une consigne de remplissage. Valeurs remesurées le
+> 2026-09-23 ; voir le § 4.3 et `docs/non-regression-lot1.md` § 3.1.
 
 ---
 
@@ -762,8 +835,14 @@ Niveau : BACK · Criticité : MAJEUR
 Étapes :
 1. `POST /api/mcc/suggest` avec la description JD-01 **sans** `activitySector`.
 2. Le même appel **avec** `activitySector = "BEAUTE_COSMETIQUE"`.
-Résultat attendu : (1) ordre `5977, 5999, 5960, 5962, 5964, 5965`, score de `5977` = **54** · (2) ordre `5977, 7230, 7298, 5912, 5999, 5960`, score de `5977` = **74** et `matchedTerms` contient `secteur : Beauté, cosmétique et parfumerie`. Les codes `7230`, `7298`, `5912` n'apparaissent que dans le second appel.
-Acceptation : les deux ordres et les deux scores sont exacts.
+Résultat attendu : (1) ordre `5977, 5999` — **2 propositions** —, score de `5977` = **54** · (2) ordre `5977, 7230, 7298, 5912, 5999` — **5 propositions** —, score de `5977` = **74** et `matchedTerms` contient `secteur : Beauté, cosmétique et parfumerie`. Les codes `7230`, `7298`, `5912` n'apparaissent que dans le second appel.
+Acceptation : les deux ordres, les deux longueurs et les deux scores sont exacts.
+
+> **Amendement du 2026-09-23.** Les deux listes ont perdu leur queue de codes de vente à
+> distance (`5960, 5962, 5964, 5965`), proposés au score `31` sans aucun terme justificatif.
+> Le contraste que le cas met à l'épreuve — le secteur déclaré fait entrer `7230`, `7298` et
+> `5912` et porte `5977` de 54 à 74 — est intact. Valeurs remesurées le 2026-09-23 ; voir le
+> § 4.3.
 
 ---
 
@@ -857,11 +936,20 @@ Acceptation : aucune réponse ≠ 200, classement et bornes conformes.
 
 ---
 
-**CAS-MCC-11 — Divergence D4 : le repli sur 5999 est-il atteignable ?**
+**CAS-MCC-11 — Le repli sur 5999 est servi, et il s'annonce (divergence D4 close)**
 Niveau : BACK · Criticité : MINEUR
 Étapes : `POST /api/mcc/suggest` `{"activityDescription":"zzzz qqqq wwww xxxx yyyy kkkk jjjj hhhh gggg ffff"}`.
-Résultat attendu (comportement **actuel**) : HTTP 200, 6 propositions — `5960, 5962, 5964, 5965, 5968, 5969` — toutes au score **31**, `matchedTerms` **vide**, et **pas** la carte de repli `5999` annoncée par le commentaire du code.
-Acceptation : consigner la liste obtenue. Si elle ne contient pas l'entrée `{code:"5999", matchedTerms:["aucune correspondance : code de repli"]}`, la divergence D4 est confirmée : le filet de sécurité est du code mort et l'agent reçoit six codes de vente à distance sans aucune justification affichée. À remonter comme défaut d'explicabilité (MAJEUR côté métier, MINEUR côté technique).
+Résultat attendu : HTTP 200, **une seule** proposition par réseau : `{code: "5999", score: 10, matchedTerms: ["aucune correspondance : code de repli"]}`. Aucun code de vente à distance (`5960, 5962, 5964, 5965, 5968, 5969`) n'est servi, faute de terme justificatif.
+Acceptation : la liste contient l'entrée de repli `5999` **et elle seule**, avec son terme d'annonce. Toute proposition servie avec un `matchedTerms` vide est un échec : c'est l'explicabilité, promesse centrale du produit, qui tombe avec elle.
+
+> **Amendement du 2026-09-23.** Le cas éprouvait la divergence D4 — la branche de repli était
+> réputée inatteignable, les six MCC de `REMOTE_SALE_MCCS` recevant `+2` inconditionnels qui
+> rendaient `rawScore > 0` toujours vrai. Le filtre `matchedTerms.length > 0` posé lors des
+> corrections de la vague 3 les écarte désormais, et le filet de sécurité joue réellement :
+> **D4 est close**. Le cas est réécrit sur la règle nouvelle plutôt que retiré — c'est le même
+> invariant qu'il surveille, dans l'autre sens. Mesuré le 2026-09-23 sur un référentiel
+> intact ; couvert par `server/tests/vague3.test.js` (*un descriptif sans correspondance ne
+> renvoie que le code de repli*) et `robustesse.test.js` (DEF-A3-03).
 
 ---
 
@@ -2025,10 +2113,10 @@ Toutes les demandes partent de ce socle ; chaque jeu ne redéfinit que les champ
 
 ### 4.3 Résultats attendus du moteur (`POST /api/mcc/suggest`, `limit = 6`)
 
-| Jeu | Rang 1 | Les 6 codes, dans l'ordre | Scores correspondants |
+| Jeu | Rang 1 | Les codes proposés, dans l'ordre | Scores correspondants |
 | --- | --- | --- | --- |
-| JD-01 | **5977** Cosmétiques et parfumerie | `5977, 7230, 7298, 5912, 5999, 5960` | `74, 66, 63, 57, 50, 31` |
-| JD-01 *sans secteur* | **5977** | `5977, 5999, 5960, 5962, 5964, 5965` | `54, 50, 31, 31, 31, 31` |
+| JD-01 | **5977** Cosmétiques et parfumerie | `5977, 7230, 7298, 5912, 5999` — **5 propositions** | `74, 66, 63, 57, 50` |
+| JD-01 *sans secteur* | **5977** | `5977, 5999` — **2 propositions** | `54, 50` |
 | JD-02 | **5812** Restaurants | `5812, 5814, 5811, 4214, 5992, 5818` | `82, 80, 73, 60, 51, 48` |
 | JD-03 | **5942** Librairies | `5942, 5815, 5994, 5521, 5931, 5733` | `75, 74, 66, 65, 63, 61` |
 | JD-04 | **5734** Magasins de logiciels | `5734, 5817, 4816, 7372, 4899, 5815` | `78, 75, 73, 73, 67, 61` |
@@ -2037,9 +2125,40 @@ Toutes les demandes partent de ce socle ; chaque jeu ne redéfinit que les champ
 | JD-07 | **5047** Matériel médical, dentaire, ophtalmique et hospitalier (gros) | `5047, 8011, 8099, 5912, 5499, 7394` | `85, 75, 71, 69, 63, 61` |
 | JD-08 | **5013** Fournitures et pièces détachées automobiles (gros) | `5013, 5533, 5532, 5511, 5065, 5571` | `81, 76, 63, 62, 60, 60` |
 | JD-09 | **5697** Retouches et couture sur mesure | `5697, 7699, 7622, 7631, 7629, 7538` | `68, 63, 62, 62, 56, 55` |
-| JD-10 | *(aucune correspondance)* | `5960, 5962, 5964, 5965, 5968, 5969` | `31, 31, 31, 31, 31, 31` — `matchedTerms` vides, **pas** de repli sur `5999` (divergence D4) |
+| JD-10 | **5999** Commerces de détail spécialisés divers *(repli)* | `5999` seul — **1 proposition** | `10` — `matchedTerms = ["aucune correspondance : code de repli"]` |
+
+Le nombre de propositions fait partie du résultat attendu : `limit = 6` est un plafond, pas
+une consigne de remplissage. Trois jeux en rendent moins de six, et c'est conforme.
 
 Un écart sur l'un de ces tableaux, sur un référentiel intact, est un **défaut de non-régression du moteur**, pas un aléa.
+
+> **Amendement du 2026-09-23 — trois attendus rectifiés (JD-01, JD-01 sans secteur, JD-10).**
+> La rédaction initiale décrivait un moteur antérieur aux corrections de la vague 3. Depuis,
+> le moteur applique l'invariant **« aucune proposition sans terme justificatif »**
+> (`mccSuggestion.js`, filtre `rawScore > 0 && matchedTerms.length > 0`) : une carte que le
+> banquier ne peut rattacher à aucun mot de la demande n'a pas sa place dans la liste. La
+> queue de classement à `31` a donc disparu — c'étaient les six MCC de vente à distance, qui
+> ne tenaient leur score que du bonus de pertinence e-commerce, sans la moindre
+> correspondance. Les listes de JD-01 se raccourcissent d'autant, et JD-10, qui n'était
+> constitué que de cette queue, atteint désormais la branche de repli sur `5999` : elle n'est
+> plus inatteignable, ce qui **clôt la divergence D4** et rend au filet de sécurité annoncé
+> par le README son effet réel.
+>
+> **Ce n'est pas une régression.** Le rapport `docs/non-regression-lot1.md` § 3.1 établit, en
+> interrogeant le moteur au commit antérieur `154edba` puis à `c9abaf3`, que le comportement
+> est rigoureusement le même avant et après le lot 1 : c'est le document qui était périmé,
+> pas le moteur.
+>
+> **Valeurs remesurées le 2026-09-23** sur un référentiel intact (279 codes actifs,
+> conformes au catalogue d'amorçage au champ près, `SUGGESTION_LIMIT = 6`), les onze
+> exécutions étant relevées une à une. Les huit autres lignes du tableau sont inchangées :
+> elles ont été remesurées et concordent au point près avec la rédaction initiale. Parité
+> Visa / Mastercard : **identique sur les onze exécutions**.
+>
+> Mesure faite hors de l'instance de démonstration du port 4000 : quatre de ses codes
+> (`5698`, `5942`, `5977`, `5999`) ont été modifiés en recette et son référentiel n'est plus
+> intact — il y rend `5977` à 76 et non à 74. La condition de reproductibilité posée en tête
+> du § 4 n'est donc pas une précaution de style : elle décide du résultat.
 
 ### 4.4 Codes MCC de référence pour les cas d'interdiction et de vigilance
 
