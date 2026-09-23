@@ -82,6 +82,37 @@ async function nextReference(client) {
   return `AFF-${new Date().getFullYear()}-${String(rows[0].n).padStart(5, '0')}`;
 }
 
+/**
+ * Valeurs avant et après d'une modification de dossier.
+ *
+ * Le journal ne retenait que les NOMS des champs touchés. Depuis que
+ * l'administrateur et le banquier peuvent saisir puis arbitrer le même dossier
+ * (décisions D-1 et D-3), la trace est le seul contrôle qui subsiste : savoir
+ * qu'un RIB a changé sans savoir en quoi ne permet de rendre compte de rien.
+ *
+ * Le RIB est masqué : le journal est consultable par tout administrateur, et
+ * conserver un relevé d'identité bancaire en clair dans une seconde table n'est
+ * pas nécessaire pour établir qu'il a été modifié.
+ */
+const masquer = (champ, valeur) => {
+  if (valeur == null || champ !== 'rib') return valeur;
+  const texte = String(valeur);
+  return texte.length <= 4 ? '••••' : `${'•'.repeat(texte.length - 4)}${texte.slice(-4)}`;
+};
+
+function tracerModification(avant, payload) {
+  const trace = {};
+  for (const champ of Object.keys(payload)) {
+    if (!(champ in FIELDS)) continue;
+    const ancienne = avant[champ] ?? null;
+    const nouvelle = payload[champ] ?? null;
+    // Une valeur réécrite à l'identique n'est pas une modification.
+    if (String(ancienne) === String(nouvelle)) continue;
+    trace[champ] = { avant: masquer(champ, ancienne), apres: masquer(champ, nouvelle) };
+  }
+  return trace;
+}
+
 async function logEvent(client, { requestId, userId, type, comment = null, payload = {} }) {
   await client.query(
     `INSERT INTO request_events (request_id, user_id, event_type, comment, payload)
@@ -135,6 +166,7 @@ export async function createRequest({ payload, user }) {
 export async function updateRequest({ id, payload, user }) {
   const existing = await getRequest(id, user);
   assertEditable(existing, user);
+  const modifications = tracerModification(existing, payload);
   assertSelectableMcc(payload.proposedVisaMcc, 'proposedVisaMcc');
   assertSelectableMcc(payload.proposedMastercardMcc, 'proposedMastercardMcc');
 
@@ -165,7 +197,9 @@ export async function updateRequest({ id, payload, user }) {
       requestId: id,
       userId: user.id,
       type: 'MODIFICATION',
-      payload: { champs: Object.keys(payload) },
+      // `champs` est conservé : les rapports et l'écran s'en servent déjà, et la
+      // liste reste lisible quand la trace détaillée est longue.
+      payload: { champs: Object.keys(modifications), modifications },
     });
     return getRequest(id, user, client);
   });
@@ -188,7 +222,11 @@ export async function getRequest(id, user, client = null) {
   const row = rows[0];
   if (!row) throw notFound(`Demande ${id} introuvable`);
   if (user.role !== 'ADMIN' && row.bank_id !== user.bankId) {
-    throw forbidden("Cette demande appartient à une autre banque.");
+    // Volontairement le même refus qu'une demande inexistante. Distinguer les deux
+    // laissait dénombrer les dossiers des autres banques en balayant les
+    // identifiants : rien ne fuyait du contenu, mais la volumétrie d'un
+    // concurrent est en elle-même une information commerciale.
+    throw notFound(`Demande ${id} introuvable`);
   }
   return camel(row);
 }

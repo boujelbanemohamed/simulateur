@@ -36,6 +36,14 @@ export async function resetDatabase() {
   await pool.query('UPDATE mcc_codes SET updated_by = NULL WHERE updated_by IS NOT NULL');
   await pool.query('DELETE FROM users WHERE email <> ALL($1::text[])', [COMPTES_DE_DEMONSTRATION]);
   await pool.query("UPDATE users SET active = TRUE, must_change_password = FALSE");
+  // La banque de rattachement aussi : un test qui mute un compte d'une banque à
+  // l'autre et échoue avant de le remettre laissait toute la suite suivante sur
+  // une base fausse, avec des échecs sans rapport avec la cause.
+  await pool.query(
+    `UPDATE users SET bank_id = CASE WHEN email = $1 THEN 2 ELSE 1 END
+      WHERE email = ANY($2::text[])`,
+    ['agent2@banque.tn', COMPTES_DE_DEMONSTRATION]
+  );
   await pool.query('DELETE FROM mcc_codes WHERE code <> ALL($1::text[])', [CODES_DE_REFERENCE]);
   await pool.query('DELETE FROM mcc_sectors');
   await pool.query('DELETE FROM mcc_code_history');

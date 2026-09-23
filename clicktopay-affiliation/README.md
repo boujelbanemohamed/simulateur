@@ -182,6 +182,10 @@ agents sur quatre vagues. Tous les livrables sont dans `docs/` :
 | `recette-coordination.md` | Protocole d'isolation entre agents : un port et une base par intervenant |
 | `recette-tableau-de-bord.md` | Tableau de bord partagé et conventions de nommage |
 | `verifier-environnement.sh` | Contrôle de l'environnement de recette en une commande |
+| `rapport-recette.md` | Rapport de recette consolidé : défauts, critères d'acceptation, avis d'aptitude |
+| `decisions-commanditaire.md` | Arbitrages du commanditaire (D-1, D-2, D-3) — ce document fait foi sur les points qu'il tranche |
+| `journal-lot1.md` | Journal du lot 1 d'évolutions (EVO-01 à EVO-12) |
+| `non-regression-lot1.md` | Non-régression après le lot 1 : ce qui a été rejoué, et ce qui a bougé |
 
 ### Ce que la campagne a corrigé
 
@@ -206,9 +210,15 @@ l'entoure :
 
 ### Points ouverts, à trancher avec la conformité
 
-- **Le profil `ADMIN` cumule les droits d'agent et de banquier**, sur toutes les
-  banques : il peut saisir une demande, la soumettre et l'arbitrer seul. Pratique
-  en exploitation, mais cela supprime le contrôle à quatre yeux.
+- **Le cumul de la saisie et de l'arbitrage est tranché, et assumé.** Le profil
+  `ADMIN` peut saisir une demande, la soumettre et l'arbitrer seul, sur toutes les
+  banques (décision D-1) ; depuis la décision D-3, le **banquier** le peut aussi
+  sur sa propre banque — donc sur des volumes autrement plus importants. Le
+  contrôle à quatre yeux n'est plus exigé par la plateforme : il reste
+  **traçable a posteriori** (le journal conserve qui a saisi, qui a soumis et qui
+  a décidé, avec l'horodatage), mais il n'est plus empêché a priori. La maîtrise
+  du risque repose donc sur l'attribution des comptes et sur la relecture du
+  journal. Le point n'est plus ouvert : il est arbitré.
 - **Le garde-fou du dernier administrateur n'est atteignable qu'en concurrence** :
   séquentiellement, c'est la règle « on ne modifie pas son propre compte » qui
   protège la plateforme. Assouplir cette règle rouvrirait le risque.
@@ -217,6 +227,10 @@ l'entoure :
 - **Le cache du référentiel est propagé par `LISTEN/NOTIFY`** : une notification
   perdue pendant le redémarrage d'une instance laisserait un cache périmé
   jusqu'au changement suivant.
+- **La lecture des dossiers entre agents d'une même banque reste ouverte** : un
+  agent voit les dossiers de ses collègues, même s'il ne peut pas les modifier.
+  La décision D-3 dit qu'un agent ne « gère » pas les dossiers des autres ; en
+  l'absence de précision sur la lecture, le comportement actuel est conservé.
 
 ## Le référentiel MCC
 

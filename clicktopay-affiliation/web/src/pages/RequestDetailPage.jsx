@@ -17,7 +17,7 @@ const LIBELLES_EVENEMENT = {
 export default function RequestDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAgent, isBanquier } = useAuth();
+  const { user, isBanquier } = useAuth();
 
   const [demande, setDemande] = useState(null);
   const [propositions, setPropositions] = useState(null);
@@ -88,9 +88,14 @@ export default function RequestDetailPage() {
   if (erreur && !demande) return <ErreurApi erreur={erreur} />;
   if (!demande) return <p className="vide">Chargement…</p>;
 
+  // Règle recopiée du serveur (`assertEditable`) plutôt que réinventée : seul
+  // l'agent est borné à ses propres dossiers ; le banquier gère ceux de sa banque
+  // depuis la décision D-3, et l'administrateur tous. Une règle parallèle finit
+  // toujours par diverger — ici elle figeait le dossier qu'un banquier venait de
+  // saisir, sans bouton pour le modifier ni pour le soumettre.
   const modifiable =
-    isAgent && ['BROUILLON', 'COMPLEMENT_REQUIS'].includes(demande.status) &&
-    (demande.createdBy === user.id || user.role === 'ADMIN');
+    ['BROUILLON', 'COMPLEMENT_REQUIS'].includes(demande.status) &&
+    (user.role !== 'AGENT' || demande.createdBy === user.id);
   const arbitrable = isBanquier && demande.status === 'SOUMISE';
   const erreursChamps = erreur?.fieldErrors ?? {};
   /**

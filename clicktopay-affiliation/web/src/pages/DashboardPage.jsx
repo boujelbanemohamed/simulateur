@@ -13,17 +13,16 @@ const COMPTEURS = [
 ];
 
 export default function DashboardPage() {
-  const { user, isAgent, isBanquier } = useAuth();
+  const { user, peutSaisir, isBanquier } = useAuth();
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [demandes, setDemandes] = useState([]);
   const [erreur, setErreur] = useState(null);
   const [chargement, setChargement] = useState(true);
-  // Le banquier arrive sur la file des demandes à arbitrer, l'agent sur tout son portefeuille.
-  const [filtres, setFiltres] = useState({
-    status: isBanquier && !isAgent ? 'SOUMISE' : '',
-    search: '',
-  });
+  // Aucun filtre par défaut. Le banquier arrivait auparavant sur la seule file
+  // des demandes à arbitrer ; depuis qu'il saisit aussi ses propres dossiers, ce
+  // filtre lui cachait le brouillon qu'il venait de créer.
+  const [filtres, setFiltres] = useState({ status: '', search: '' });
 
   const charger = useCallback(async () => {
     setChargement(true);
@@ -53,12 +52,12 @@ export default function DashboardPage() {
         <div>
           <h1>Demandes d'affiliation</h1>
           <p>
-            {user.bankName} — {isBanquier && !isAgent
-              ? 'Arbitrage des MCC proposés par les agents.'
+            {user.bankName} — {isBanquier
+              ? 'Saisie, suivi et arbitrage des demandes de votre banque.'
               : 'Saisie et suivi de vos demandes d’affiliation ClickToPay.'}
           </p>
         </div>
-        {isAgent && (
+        {peutSaisir && (
           <button className="bouton" type="button" onClick={() => navigate('/demandes/nouvelle')}>
             + Nouvelle demande
           </button>
@@ -119,7 +118,7 @@ export default function DashboardPage() {
         {!chargement && demandes.length === 0 && (
           <p className="vide">
             Aucune demande ne correspond à ces critères.
-            {isAgent && (
+            {peutSaisir && (
               <>
                 {' '}
                 <Link to="/demandes/nouvelle">Saisir une première demande</Link>.

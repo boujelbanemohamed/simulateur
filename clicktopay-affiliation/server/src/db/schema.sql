@@ -193,6 +193,25 @@ CREATE TABLE IF NOT EXISTS admin_events (
 
 CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC);
 
+-- Banque CONCERNÉE par l'action, figée à l'écriture. Le journal était partitionné
+-- en interrogeant la banque actuelle de son auteur : une mutation de compte d'une
+-- banque vers une autre faisait donc franchir la cloison à tout son historique,
+-- que la banque d'arrivée découvrait et que celle de départ perdait. La banque
+-- doit être celle de l'action au moment où elle a eu lieu, pas celle de la
+-- personne aujourd'hui. NULL désigne une action de portée plateforme — le
+-- référentiel MCC, commun à toutes les banques — que seul l'administrateur voit.
+ALTER TABLE admin_events ADD COLUMN IF NOT EXISTS bank_id INTEGER REFERENCES banks(id);
+CREATE INDEX IF NOT EXISTS idx_admin_events_bank ON admin_events(bank_id, created_at DESC);
+
+-- Reprise des lignes antérieures à la colonne : faute de mieux, la banque actuelle
+-- de l'auteur, sauf pour le référentiel, qui n'appartient à personne. C'est une
+-- approximation, et elle est assumée : elle ne vaut que pour l'historique déjà
+-- écrit, jamais pour les lignes suivantes.
+UPDATE admin_events e
+   SET bank_id = u.bank_id
+  FROM users u
+ WHERE e.bank_id IS NULL AND e.user_id = u.id AND e.entity <> 'MCC';
+
 -- Horodatage du dernier changement de mot de passe : tout jeton émis avant est
 -- refusé, ce qui coupe réellement les sessions ouvertes lors d'une réinitialisation.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at TIMESTAMPTZ NOT NULL DEFAULT now();

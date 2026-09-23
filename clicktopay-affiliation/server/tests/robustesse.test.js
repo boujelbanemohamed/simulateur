@@ -244,9 +244,10 @@ describe('Cycle de vie des jetons : les droits sont relus, pas figés', () => {
     const demande = await creerDemande({ siteName: 'Dossier BQ001' });
 
     await request(app).put('/api/admin/users/1').set(asAdmin()).send({ bankId: 2 }).expect(200);
-    await request(app).get(`/api/requests/${demande.id}`).set(asAgent()).expect(403);
+    // 404 : un dossier hors périmètre se comporte comme un dossier inexistant.
+    await request(app).get(`/api/requests/${demande.id}`).set(asAgent()).expect(404);
     await request(app).put(`/api/requests/${demande.id}`).set(asAgent())
-      .send({ siteName: 'tentative' }).expect(403);
+      .send({ siteName: 'tentative' }).expect(404);
 
     await request(app).put('/api/admin/users/1').set(asAdmin()).send({ bankId: 1 }).expect(200);
   });

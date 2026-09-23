@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { Champ, ErreurApi, Message, Tableau, formaterDate } from '../components/ui.jsx';
 
 export default function AdminBanksPage() {
+  // Le banquier ne gère que sa propre banque : il peut en corriger la fiche, mais
+  // ni en créer une, ni la désactiver — se couper l'accès à soi-même rendrait la
+  // banque inadministrable de l'intérieur. Proposer ces actions ne menait qu'à un
+  // refus du serveur après coup.
+  const { isAdmin } = useAuth();
   const [banques, setBanques] = useState([]);
   const [formulaire, setFormulaire] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -63,14 +69,17 @@ export default function AdminBanksPage() {
         <div>
           <h1>Banques affiliées</h1>
           <p>
-            Chaque demande d'affiliation est rattachée à une banque, et les comptes ne voient
-            que les demandes de la leur.
+            {isAdmin
+              ? "Chaque demande d'affiliation est rattachée à une banque, et les comptes ne voient que les demandes de la leur."
+              : 'La fiche de votre banque. Vous pouvez en corriger le libellé ; sa création et son activation relèvent de l’administrateur.'}
           </p>
         </div>
-        <button type="button" className="bouton"
-          onClick={() => { setFormulaire({ code: '', name: '' }); setErreur(null); }}>
-          + Nouvelle banque
-        </button>
+        {isAdmin && (
+          <button type="button" className="bouton"
+            onClick={() => { setFormulaire({ code: '', name: '' }); setErreur(null); }}>
+            + Nouvelle banque
+          </button>
+        )}
       </div>
 
       <ErreurApi erreur={erreur} />
@@ -133,10 +142,12 @@ export default function AdminBanksPage() {
                       onClick={() => { setFormulaire({ ...b }); setErreur(null); }}>
                       Modifier
                     </button>
-                    <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      onClick={() => basculerActivation(b)}>
-                      {b.active ? 'Désactiver' : 'Réactiver'}
-                    </button>
+                    {isAdmin && (
+                      <button type="button" className="bouton bouton--secondaire bouton--petit"
+                        onClick={() => basculerActivation(b)}>
+                        {b.active ? 'Désactiver' : 'Réactiver'}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>

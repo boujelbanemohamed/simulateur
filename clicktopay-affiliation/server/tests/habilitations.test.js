@@ -100,9 +100,69 @@ describe('Habilitations du banquier (D-3)', () => {
     assert.equal(repris.body.siteName, 'Repris par le banquier');
   });
 
-  test('le banquier consulte le journal de sa banque', async () => {
-    const res = await request(app).get('/api/admin/events').set(banquier()).expect(200);
-    assert.ok(Array.isArray(res.body.items));
+  test('le journal du banquier ne porte que les actions de sa banque', async () => {
+    // L'ancienne version de ce cas n'assertait que `Array.isArray(items)` : elle
+    // passait aussi bien sur le journal de toute la plateforme, et n'a donc rien
+    // vu quand le filtre s'est révélé faux. Une épreuve par mutation l'a établi —
+    // retirer le filtre laissait les 165 tests au vert.
+    const avant = await request(app).get('/api/admin/events').set(banquier()).expect(200);
+
+    // Une action de l'administrateur SUR UNE AUTRE BANQUE.
+    const tous = await request(app).get('/api/admin/users').set(admin()).expect(200);
+    const etranger = tous.body.items.find((u) => u.bankId !== 1);
+    await request(app).put(`/api/admin/users/${etranger.id}`).set(admin())
+      .send({ firstName: 'Trace' }).expect(200);
+
+    // Une action sur le référentiel MCC, commun à toutes les banques.
+    await request(app).put('/api/admin/mcc/5977').set(admin())
+      .send({ note: `Trace ${Date.now()}` }).expect(200);
+
+    const apres = await request(app).get('/api/admin/events').set(banquier()).expect(200);
+    assert.equal(apres.body.items.length, avant.body.items.length,
+      'aucune des deux actions n’a sa place dans le journal de la banque 1');
+    assert.ok(!apres.body.items.some((e) => e.entity === 'MCC'),
+      'le référentiel est commun : ses modifications ne sont d’aucune banque');
+
+    // À l'inverse, une action de l'administrateur SUR la banque du banquier doit
+    // y figurer, quel qu'en soit l'auteur : c'est sa piste d'audit.
+    const sien = tous.body.items.find((u) => u.bankId === 1 && u.role === 'AGENT');
+    await request(app).put(`/api/admin/users/${sien.id}`).set(admin())
+      .send({ firstName: 'Suivi' }).expect(200);
+    const final = await request(app).get('/api/admin/events').set(banquier()).expect(200);
+    assert.equal(final.body.items.length, avant.body.items.length + 1,
+      'une action de l’administrateur sur un compte de sa banque lui est visible');
+  });
+
+  test('une mutation de banque ne fait pas franchir la cloison à l’historique', async () => {
+    // Le journal était partitionné en interrogeant la banque ACTUELLE de l'auteur.
+    // Muter un compte d'une banque à l'autre emportait donc tout son historique
+    // dans la banque d'arrivée, qui le découvrait, et le retirait à la banque de
+    // départ, qui le perdait. La banque est désormais figée à l'écriture.
+    const tous = await request(app).get('/api/admin/users').set(admin()).expect(200);
+    const etranger = tous.body.items.find((u) => u.bankId !== 1);
+
+    // Une action tracée alors que le compte est encore dans l'autre banque. On
+    // évite volontairement la réinitialisation de mot de passe : elle révoque les
+    // jetons du compte visé, et emporterait celui dont les cas suivants ont besoin.
+    await request(app).put(`/api/admin/users/${etranger.id}`).set(admin())
+      .send({ lastName: 'Historique' }).expect(200);
+    const avant = await request(app).get('/api/admin/events').set(banquier()).expect(200);
+
+    // On le mute vers la banque du banquier, puis on le remet.
+    await request(app).put(`/api/admin/users/${etranger.id}`).set(admin())
+      .send({ bankId: 1 }).expect(200);
+    const pendant = await request(app).get('/api/admin/events').set(banquier()).expect(200);
+
+    const historiqueImporte = pendant.body.items.filter(
+      (e) => e.entity === 'USER' && e.entityId === String(etranger.id)
+    );
+    assert.equal(historiqueImporte.length, 0,
+      'l’historique du compte muté reste dans la banque où il a été écrit');
+    assert.ok(pendant.body.items.length >= avant.body.items.length,
+      'la mutation elle-même est tracée, mais rien n’est importé rétroactivement');
+
+    await request(app).put(`/api/admin/users/${etranger.id}`).set(admin())
+      .send({ bankId: etranger.bankId }).expect(200);
   });
 
   // ------------------------------------------- ce que le banquier ne gagne pas
@@ -140,11 +200,19 @@ describe('Habilitations du banquier (D-3)', () => {
     const etranger = tous.body.items.find((u) => u.bankId !== 1);
     assert.ok(etranger, 'le jeu de démonstration comporte bien une seconde banque');
 
-    await request(app).get(`/api/admin/users/${etranger.id}`).set(banquier()).expect(403);
+    // 404 et non 403 : un compte d'une autre banque doit répondre comme un
+    // compte inexistant, faute de quoi on dénombre le personnel d'en face.
+    const refus = await request(app).get(`/api/admin/users/${etranger.id}`).set(banquier()).expect(404);
+    const inexistant = await request(app).get('/api/admin/users/999999').set(banquier()).expect(404);
+    assert.equal(
+      refus.body.error.replace(/\d+/, 'N'),
+      inexistant.body.error.replace(/\d+/, 'N'),
+      'les deux refus doivent être identiques à l’identifiant près'
+    );
     await request(app).put(`/api/admin/users/${etranger.id}`).set(banquier())
-      .send({ firstName: 'Piraté' }).expect(403);
+      .send({ firstName: 'Piraté' }).expect(404);
     await request(app).post(`/api/admin/users/${etranger.id}/password`).set(banquier())
-      .send({ password: 'Pirate#2026' }).expect(403);
+      .send({ password: 'Pirate#2026' }).expect(404);
   });
 
   test('le banquier ne modifie pas un compte banquier ou administrateur de sa banque', async () => {
@@ -189,10 +257,10 @@ describe('Habilitations du banquier (D-3)', () => {
       .set({ Authorization: `Bearer ${jetons.agentAutreBanque}` })
       .send({ ...DEMANDE_VALIDE, siteName: 'Dossier d’en face' }).expect(201)).body;
 
-    await request(app).get(`/api/requests/${etranger.id}`).set(banquier()).expect(403);
+    await request(app).get(`/api/requests/${etranger.id}`).set(banquier()).expect(404);
     await request(app).put(`/api/requests/${etranger.id}`).set(banquier())
-      .send({ siteName: 'Intrusion' }).expect(403);
-    await request(app).post(`/api/requests/${etranger.id}/submit`).set(banquier()).expect(403);
+      .send({ siteName: 'Intrusion' }).expect(404);
+    await request(app).post(`/api/requests/${etranger.id}/submit`).set(banquier()).expect(404);
   });
 
   // ---------------------------------------------- ce que l'agent ne gagne pas

@@ -254,10 +254,22 @@ describe("Demandes d'affiliation", () => {
 
   test('une demande reste invisible pour une autre banque', async () => {
     const demande = await creerDemande();
-    await request(app)
+    // 404 et non 403 : le refus doit être indiscernable de celui d'une demande
+    // inexistante, sans quoi balayer les identifiants permet de dénombrer les
+    // dossiers d'une banque concurrente.
+    const refus = await request(app)
       .get(`/api/requests/${demande.id}`)
       .set({ Authorization: `Bearer ${tokens.agentAutreBanque}` })
-      .expect(403);
+      .expect(404);
+    const inexistante = await request(app)
+      .get('/api/requests/999999')
+      .set({ Authorization: `Bearer ${tokens.agentAutreBanque}` })
+      .expect(404);
+    assert.equal(
+      refus.body.error.replace(/\d+/, 'N'),
+      inexistante.body.error.replace(/\d+/, 'N'),
+      'les deux refus doivent être identiques à l’identifiant près'
+    );
 
     const liste = await request(app)
       .get('/api/requests')

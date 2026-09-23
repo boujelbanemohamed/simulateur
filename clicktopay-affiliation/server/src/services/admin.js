@@ -8,11 +8,19 @@ const SALT_ROUNDS = 10;
 /** Clé arbitraire mais stable du verrou protégeant la population d'administrateurs. */
 const VERROU_ADMINISTRATEURS = 4242;
 
-async function journaliser(client, { userId, entity, entityId, action, payload = {} }) {
+/**
+ * Écrit une ligne de journal.
+ *
+ * `bankId` est la banque **concernée par l'action**, pas celle de son auteur : un
+ * administrateur qui modifie un compte de la banque B écrit dans le journal de B.
+ * `null` vaut « portée plateforme » — le référentiel MCC, commun à toutes les
+ * banques — et n'est alors visible que de l'administrateur.
+ */
+async function journaliser(client, { userId, bankId = null, entity, entityId, action, payload = {} }) {
   await client.query(
-    `INSERT INTO admin_events (user_id, entity, entity_id, action, payload)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [userId, entity, String(entityId ?? ''), action, payload]
+    `INSERT INTO admin_events (user_id, bank_id, entity, entity_id, action, payload)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [userId, bankId ?? null, entity, String(entityId ?? ''), action, payload]
   );
 }
 
@@ -48,7 +56,9 @@ export function perimetreAdministration(user) {
 function assertCibleAutorisee(cible, perimetre) {
   if (perimetre.estAdministrateur) return;
   if (cible.bankId !== perimetre.banqueImposee) {
-    throw forbidden('Ce compte appartient à une autre banque.');
+    // Le même refus qu'un compte inexistant : distinguer les deux laissait
+    // dénombrer le personnel des autres banques en balayant les identifiants.
+    throw notFound(`Utilisateur ${cible.id} introuvable`);
   }
   if (!perimetre.rolesAutorises.includes(cible.role)) {
     throw forbidden('Vous n’administrez que les comptes agents de votre banque.');
@@ -194,7 +204,7 @@ export async function createUser({ payload, user }) {
       [payload.bankId, payload.email, hash, payload.firstName, payload.lastName, payload.role]
     );
     await journaliser(client, {
-      userId: user.id, entity: 'USER', entityId: rows[0].id, action: 'CREATION',
+      userId: user.id, bankId: payload.bankId, entity: 'USER', entityId: rows[0].id, action: 'CREATION',
       // Le code de la banque, et pas seulement son identifiant : c'est lui qu'un
       // contrôleur sait lire sans ouvrir une seconde table.
       payload: { email: payload.email, role: payload.role, bankId: payload.bankId, bankCode: codeBanque },
@@ -274,7 +284,9 @@ export async function updateUser({ id, payload, user }) {
       );
     }
     await journaliser(client, {
-      userId: user.id, entity: 'USER', entityId: id, action: 'MODIFICATION',
+      // La banque d'AVANT : une mutation d'une banque vers une autre est un
+      // événement de la banque de départ, qui doit en garder la trace.
+      userId: user.id, bankId: avant.bankId, entity: 'USER', entityId: id, action: 'MODIFICATION',
       payload: tracerChamps({
         firstName: { avant: avant.firstName, apres: payload.firstName },
         lastName: { avant: avant.lastName, apres: payload.lastName },
@@ -322,7 +334,8 @@ async function assertResteUnAdmin(client, id, payload) {
 
 /** Réinitialisation par l'administrateur : le mot de passe devra être changé à la connexion. */
 export async function resetPassword({ id, password, user }) {
-  assertCibleAutorisee(await getUser(id), perimetreAdministration(user));
+  const cible = await getUser(id);
+  assertCibleAutorisee(cible, perimetreAdministration(user));
   await withTransaction(async (client) => {
     const hash = await bcrypt.hash(password, SALT_ROUNDS);
     await client.query(
@@ -331,7 +344,7 @@ export async function resetPassword({ id, password, user }) {
       [hash, id]
     );
     await journaliser(client, {
-      userId: user.id, entity: 'USER', entityId: id, action: 'REINITIALISATION_MOT_DE_PASSE',
+      userId: user.id, bankId: cible.bankId, entity: 'USER', entityId: id, action: 'REINITIALISATION_MOT_DE_PASSE',
     });
   });
   return getUser(id);
@@ -364,7 +377,7 @@ export async function changeOwnPassword({ user, currentPassword, newPassword }) 
     // passe, ni le nouveau, ni leur empreinte n'ont rien à faire dans un journal
     // consultable par tout administrateur.
     await journaliser(client, {
-      userId: user.id, entity: 'USER', entityId: user.id, action: 'CHANGEMENT_MOT_DE_PASSE',
+      userId: user.id, bankId: user.bankId, entity: 'USER', entityId: user.id, action: 'CHANGEMENT_MOT_DE_PASSE',
       payload: { impose: Boolean(rows[0].must_change_password) },
     });
   });
@@ -416,7 +429,7 @@ export async function createBank({ payload, user }) {
       [payload.code, payload.name]
     );
     await journaliser(client, {
-      userId: user.id, entity: 'BANK', entityId: rows[0].id, action: 'CREATION', payload,
+      userId: user.id, bankId: rows[0].id, entity: 'BANK', entityId: rows[0].id, action: 'CREATION', payload,
     });
     return rows[0].id;
   });
@@ -467,7 +480,7 @@ export async function updateBank({ id, payload, user }) {
       await client.query(`UPDATE banks SET ${sets.join(', ')} WHERE id = $${values.length}`, values);
     }
     await journaliser(client, {
-      userId: user.id, entity: 'BANK', entityId: id, action: 'MODIFICATION',
+      userId: user.id, bankId: id, entity: 'BANK', entityId: id, action: 'MODIFICATION',
       payload: tracerChamps({
         // `code` ne peut pas être soumis aujourd'hui (le schéma de validation ne
         // l'accepte pas) ; il est tracé pour que l'ouvrir un jour suffise.
@@ -519,13 +532,15 @@ export async function listAdminEvents({ limit = 100, offset = 0, entity, action,
   const conditions = [];
   const values = [];
 
-  // Le banquier lit le journal de sa banque : les actions de son personnel, et
-  // les siennes. Pas celles des autres banques, ni celles de l'administrateur
-  // sur le référentiel commun.
+  // Le banquier lit le journal de SA banque : les actions qui la concernent, quel
+  // qu'en soit l'auteur — y compris celles d'un administrateur sur l'un de ses
+  // comptes, qui lui échappaient jusqu'ici. Le filtre porte sur la banque figée à
+  // l'écriture, et non sur la banque actuelle de l'auteur : celle-ci change, et
+  // faisait alors franchir la cloison à des lignes déjà écrites.
   const perimetre = perimetreAdministration(user);
   if (perimetre.banqueImposee !== null) {
     values.push(perimetre.banqueImposee);
-    conditions.push(`e.user_id IN (SELECT id FROM users WHERE bank_id = $${values.length})`);
+    conditions.push(`e.bank_id = $${values.length}`);
   }
 
   if (entity) {

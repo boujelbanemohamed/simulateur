@@ -222,7 +222,13 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {utilisateurs.map((u) => (
+            {utilisateurs.map((u) => {
+              // Le banquier voit tout le personnel de sa banque — savoir qu'un
+              // collègue existe est utile — mais n'agit que sur les agents. Sans
+              // cette distinction, l'écran proposait sur la ligne d'un
+              // administrateur trois boutons qui échouaient tous en 403.
+              const administrable = isAdmin || u.role === 'AGENT';
+              return (
               <tr key={u.id}>
                 <td>
                   {u.firstName} {u.lastName}
@@ -243,23 +249,28 @@ export default function AdminUsersPage() {
                 </td>
                 <td>{u.lastLoginAt ? formaterDate(u.lastLoginAt) : 'jamais'}</td>
                 <td>
-                  <div className="barre-actions">
-                    <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      onClick={() => { setFormulaire({ ...u, bankId: String(u.bankId), password: '' }); setReinitialisation(null); setErreur(null); }}>
-                      Modifier
-                    </button>
-                    <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      onClick={() => { setReinitialisation({ compte: u, password: '' }); setFormulaire(null); setErreur(null); }}>
-                      Mot de passe
-                    </button>
-                    <button type="button" className="bouton bouton--secondaire bouton--petit"
-                      disabled={u.id === user.id} onClick={() => basculerActivation(u)}>
-                      {u.active ? 'Désactiver' : 'Réactiver'}
-                    </button>
-                  </div>
+                  {administrable ? (
+                    <div className="barre-actions">
+                      <button type="button" className="bouton bouton--secondaire bouton--petit"
+                        onClick={() => { setFormulaire({ ...u, bankId: String(u.bankId), password: '' }); setReinitialisation(null); setErreur(null); }}>
+                        Modifier
+                      </button>
+                      <button type="button" className="bouton bouton--secondaire bouton--petit"
+                        onClick={() => { setReinitialisation({ compte: u, password: '' }); setFormulaire(null); setErreur(null); }}>
+                        Mot de passe
+                      </button>
+                      <button type="button" className="bouton bouton--secondaire bouton--petit"
+                        disabled={u.id === user.id} onClick={() => basculerActivation(u)}>
+                        {u.active ? 'Désactiver' : 'Réactiver'}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="jeton">hors de votre périmètre</span>
+                  )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         </Tableau>
