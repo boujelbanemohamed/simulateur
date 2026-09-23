@@ -595,3 +595,138 @@ dans la transaction mais sans `FOR UPDATE` : la fenêtre est plus étroite, pas
 nulle.
 
 ---
+### RL1-09 — La trace détaillée des modifications de dossier et le masquage du RIB ne sont couverts par aucun test : deux mutations survivantes
+
+**Gravité** majeur. **Fichiers** `server/src/services/requests.js:85-115`
+(`masquer`, `tracerModification`) et `:200` (l'écriture de l'événement).
+
+**Constat.** Le correctif `3a7ac2e` annonce deux choses sur la trace des
+modifications de dossier : « les valeurs avant et après sont conservées, le
+relevé bancaire masqué ». Ni l'une ni l'autre n'est tenue par un test. Un
+`grep` des mots `modifications`, `masquer`, `•` et `request_events` sur
+`server/tests/` ne rend **aucune** occurrence dans un cas de test.
+
+**Preuve (deux mutations, suite entière, 166 tests).**
+
+| Mutation | Effet sur le produit | Résultat |
+| --- | --- | --- |
+| M-K : `payload: { champs: Object.keys(modifications), modifications }` → `payload: { champs: Object.keys(payload) }` | la trace revient aux **noms de champs seuls**, c'est-à-dire exactement l'état que le correctif condamne | `# tests 166  # pass 166  # fail 0` — **survivante** |
+| M-L : garde de `masquer` neutralisée | le **RIB en clair** entre au journal, lisible de tout administrateur | `# tests 166  # pass 166  # fail 0` — **survivante** |
+
+Ce sont les deux mutations les plus graves de la revue, parce qu'elles portent
+sur la pièce que la décision D-1 désigne comme le seul contrôle restant : la
+saisie et l'arbitrage pouvant être le fait d'une même personne, la trace est ce
+qui tient lieu de contrôle à quatre yeux. Rien n'empêche aujourd'hui une
+régression de la vider de son contenu, ni d'y verser un relevé d'identité
+bancaire en clair.
+
+**Correction proposée.** Deux cas de test, dans `requests.test.js` :
+
+1. Modifier un dossier sur trois champs dont `rib` ; relire
+   `request_events.payload` ; asserter que `modifications.siteName` porte bien
+   `{avant, apres}` avec les deux valeurs attendues, et que
+   `modifications.rib.apres` **ne contient pas** le RIB envoyé tout en se
+   terminant par ses quatre derniers caractères.
+2. Réécrire un champ à l'identique et asserter qu'il **n'apparaît pas** dans
+   `modifications` — la garde `String(ancienne) === String(nouvelle)` n'est pas
+   éprouvée non plus.
+
+**Réserve d'invariant, de la même famille.** `masquer` reconnaît le champ
+sensible à son nom littéral (`champ !== 'rib'`). Le jour où un
+`accountHolder`, un `iban` ou un numéro de pièce d'identité entre dans `FIELDS`,
+il partira en clair au journal sans qu'aucun test ne rougisse. Mieux vaut une
+liste explicite `CHAMPS_MASQUES = new Set(['rib'])` posée **à côté de `FIELDS`**,
+et un test d'invariant qui vérifie que tout champ déclaré sensible est
+effectivement masqué.
+
+---
+### RL1-10 — `arreterEcoute()` rend au lot une connexion qui écoute encore, avec son gestionnaire
+
+**Gravité** majeur. **Fichier** `server/src/services/mccCatalog.js:298-312`.
+
+**Constat.** C'est la réponse, par l'expérience, à la question posée sur EVO-12 :
+*une connexion dont l'état n'est plus neutre peut-elle être rendue au lot ?*
+Oui — mais pas par `withTransaction`, qui est juste (voir § 6.2). Par
+`arreterEcoute()` :
+
+```js
+if (ecoute) {
+  const client = ecoute;
+  ecoute = null;
+  client.removeAllListeners('error');   // les 'error' seulement
+  client.release();                     // sans erreur : la connexion RETOURNE au lot
+}
+```
+
+Aucun `UNLISTEN` n'est émis, et le gestionnaire `'notification'` posé ligne 257
+n'est pas retiré. `pg` ne remet pas l'état de session à zéro au retour au lot :
+la connexion revient donc dans le lot **abonnée au canal** et **toujours
+outillée pour agir**.
+
+**Scénario qui casse (exécuté).** Établir l'écoute, appeler `arreterEcoute()`,
+puis reprendre une connexion au lot :
+
+```
+canaux encore actifs sur la connexion REPRISE au lot : [{"canal":"mcc_catalogue_modifie"}]
+auditeurs « notification » encore posés : 1
+```
+
+Le consommateur suivant de cette connexion — une requête métier quelconque —
+hérite de l'abonnement et du gestionnaire. Un `NOTIFY` émis par une autre
+instance déclenche alors `rechargerCatalogue()` sur un service qu'on vient de
+déclarer arrêté, depuis la connexion d'une requête qui n'a rien demandé. En
+production la fenêtre est courte (`arreterEcoute()` précède `process.exit`), mais
+en test elle ne l'est pas : `robustesse.test.js:760` appelle `arreterEcoute()` au
+milieu de la suite, et la connexion contaminée reste dans le lot pour tout ce qui
+suit.
+
+C'est aussi, en soi, un défaut d'invariant : le retour d'une connexion au lot
+n'est correct que si son état de session est neutre, et rien ici ne le garantit.
+
+**Correction proposée.**
+
+```js
+if (ecoute) {
+  const client = ecoute;
+  ecoute = null;
+  client.removeAllListeners('error');
+  client.removeAllListeners('notification');
+  // L'abonnement vit dans la SESSION, pas dans le processus : une connexion rendue
+  // au lot sans UNLISTEN continue de recevoir les NOTIFY pour le compte du
+  // consommateur suivant.
+  client.query('UNLISTEN *').catch(() => {}).finally(() => client.release());
+}
+```
+
+Test à ajouter : après `arreterEcoute()`, reprendre un client du lot et asserter
+que `pg_listening_channels()` est vide.
+
+---
+
+### RL1-11 — Le tri stable d'EVO-06 n'est éprouvé par aucun test (mutation survivante)
+
+**Gravité** mineur. **Fichier** `server/src/services/admin.js:584`, suite
+« Journal d'administration : pagination et filtres » de `tests/admin.test.js`.
+
+**Mutation survivante (M-B).** `ORDER BY e.created_at DESC, e.id DESC` remplacé
+par l'ancien `ORDER BY e.id DESC` :
+
+```
+# tests 30  # pass 30  # fail 0
+```
+
+Le jeu d'essai insère ses 250 entrées avec un horodatage croissant, où les deux
+tris coïncident. La raison d'être du changement — et la reconstruction de l'index
+`idx_admin_events_date` qui l'accompagne — n'est donc tenue par rien. En pratique
+`id DESC` est stable aussi, ce qui borne la portée ; mais les deux tris
+**divergent** dès qu'un `created_at` est posé explicitement — reprise de données,
+import d'un journal antérieur —, c'est-à-dire précisément là où la pagination
+doit tenir.
+
+Ce constat avait déjà été relevé lors d'une passe antérieure de revue ; il n'a
+pas été corrigé.
+
+**Correction.** Ajouter au jeu d'essai quelques entrées dont `created_at` est
+antidaté à contre-courant des identifiants, et asserter l'ordre rendu.
+
+---

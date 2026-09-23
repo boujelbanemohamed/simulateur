@@ -197,9 +197,12 @@ export async function updateRequest({ id, payload, user }) {
       requestId: id,
       userId: user.id,
       type: 'MODIFICATION',
-      // `champs` est conservé : les rapports et l'écran s'en servent déjà, et la
-      // liste reste lisible quand la trace détaillée est longue.
-      payload: { champs: Object.keys(modifications), modifications },
+      // `champs` garde son sens d'origine — les champs SOUMIS — pour que les
+      // rapports et l'écran qui s'en servent déjà ne changent pas de lecture ;
+      // `modifications` porte les seules valeurs réellement changées. Les deux
+      // diffèrent quand un champ est réécrit à l'identique, et c'est voulu :
+      // « il a touché au RIB sans rien y changer » est une information.
+      payload: { champs: Object.keys(payload), modifications },
     });
     return getRequest(id, user, client);
   });

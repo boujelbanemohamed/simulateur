@@ -92,6 +92,24 @@ describe('Habilitations du banquier (D-3)', () => {
     assert.equal(decide.body.status, 'VALIDEE');
   });
 
+  test('un dossier rejoint la banque de son auteur, quoi que dise la requête', async () => {
+    // Trou de couverture relevé par la campagne de non-régression : aucun cas ne
+    // voyait qu'un banquier puisse déposer un dossier dans une autre banque. Le
+    // comportement était correct — la banque vient du compte, pas du corps — mais
+    // rien ne l'empêchait de changer. C'est pourtant la borne que D-3 promet.
+    const res = await request(app)
+      .post('/api/requests')
+      .set(banquier())
+      .send({ ...DEMANDE_VALIDE, siteName: 'Dossier détourné', bankId: 2 })
+      .expect(201);
+    assert.equal(res.body.bankId, 1, 'la banque de l’appelant prime sur celle du corps');
+
+    // Et l'agent de l'autre banque ne doit pas le voir.
+    await request(app).get(`/api/requests/${res.body.id}`)
+      .set({ Authorization: `Bearer ${jetons.agentAutreBanque}` })
+      .expect(404);
+  });
+
   test('le banquier reprend le dossier d’un agent de sa banque', async () => {
     const dossier = (await request(app).post('/api/requests').set(agent())
       .send({ ...DEMANDE_VALIDE, siteName: 'Dossier de l’agent' }).expect(201)).body;

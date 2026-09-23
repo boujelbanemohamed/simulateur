@@ -203,14 +203,27 @@ CREATE INDEX IF NOT EXISTS idx_admin_events_date ON admin_events(created_at DESC
 ALTER TABLE admin_events ADD COLUMN IF NOT EXISTS bank_id INTEGER REFERENCES banks(id);
 CREATE INDEX IF NOT EXISTS idx_admin_events_bank ON admin_events(bank_id, created_at DESC);
 
--- Reprise des lignes antérieures à la colonne : faute de mieux, la banque actuelle
--- de l'auteur, sauf pour le référentiel, qui n'appartient à personne. C'est une
--- approximation, et elle est assumée : elle ne vaut que pour l'historique déjà
--- écrit, jamais pour les lignes suivantes.
+-- Reprise des lignes antérieures à la colonne. On la rattache à la banque de la
+-- CIBLE, que `entity_id` désigne, et non à celle de l'auteur : une action d'un
+-- administrateur sur un compte appartient au journal de la banque de ce compte,
+-- pas à celle de l'administrateur. Prendre l'auteur donnait un historique faux
+-- dans les deux sens — des lignes d'une autre banque apparaissaient, des lignes
+-- de la sienne manquaient.
 UPDATE admin_events e
    SET bank_id = u.bank_id
   FROM users u
- WHERE e.bank_id IS NULL AND e.user_id = u.id AND e.entity <> 'MCC';
+ WHERE e.bank_id IS NULL AND e.entity = 'USER' AND e.entity_id = u.id::text;
+
+-- Une action sur une banque appartient à cette banque.
+UPDATE admin_events e
+   SET bank_id = b.id
+  FROM banks b
+ WHERE e.bank_id IS NULL AND e.entity = 'BANK' AND e.entity_id = b.id::text;
+
+-- Tout le reste — le référentiel MCC, et les lignes dont la cible a disparu —
+-- garde `bank_id` à NULL : portée plateforme, visible du seul administrateur.
+-- Mieux vaut une ligne réservée à l'administrateur qu'une ligne attribuée à la
+-- mauvaise banque.
 
 -- Horodatage du dernier changement de mot de passe : tout jeton émis avant est
 -- refusé, ce qui coupe réellement les sessions ouvertes lors d'une réinitialisation.

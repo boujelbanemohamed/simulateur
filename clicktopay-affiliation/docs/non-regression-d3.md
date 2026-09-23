@@ -19,10 +19,10 @@ Documents de référence : `docs/plan-de-tests.md` (147 cas, § 3 matrice de cou
 **Définition retenue** : une régression est un cas qui **passait avant** ces changements
 et **ne passe plus**. Trois catégories sont tenues séparées :
 
-- **régression** (§ 6, `NRG-xx`) — perte effective de comportement acquis ;
+- **régression** (§ 8) — perte effective de comportement acquis ;
 - **changement délibéré** (§ 4) — le comportement change parce que la décision ou le
   correctif le veut ; le cas du plan devient caduc, le plan doit être amendé ;
-- **défaut antérieur** (§ 7) — déjà présent avant, non porté au débit de ces changements.
+- **défaut antérieur** (§ 9) — déjà présent avant, non porté au débit de ces changements.
 
 ## 0. Provenance de ce document — à lire avant le reste
 
@@ -105,7 +105,7 @@ en parallèle sur la base partagée `clicktopay_test`** — un autre agent du ba
 l'arrêt de PostgreSQL évoqué en consigne (le service répondait), ni un défaut du produit :
 c'est une contention d'environnement sur une base de test non cloisonnée.
 
-**Constat d'environnement, consigné en § 7 (DEF-ENV-01)** : la suite n'est pas
+**Constat d'environnement, consigné en § 9 (`DEF-ENV-01`)** : la suite n'est pas
 ré-entrante — elle ne peut pas tourner à deux sur la même base.
 
 ### 2.2 Deuxième exécution — même cause
@@ -481,3 +481,275 @@ Balayage paginé complet (CAS-ADM-21), tailles de page 1, 3, 7, 10, 25 et 50 :
 | 1 · 3 · 7 · 10 · 25 · 50 | 16 à chaque fois | 16 | **0** | **0** | identique à la page unique |
 
 **Conforme.**
+
+---
+
+## 7. Cas du plan rejoués à la main
+
+Niveau BACK, cas **manuels ou partiels** au § 3 du plan, en priorité ceux dont les deux
+changements ont touché le code. Banc `4100`, base `clicktopay_nr2`.
+
+### 7.1 Authentification, jeton, mot de passe
+
+| Cas | Attendu | Observé | Verdict |
+| --- | --- | --- | --- |
+| CAS-AUTH-03 | Compte inexistant et mot de passe erroné indiscernables | `401 {"error":"Identifiants incorrects"}` dans les deux cas | conforme |
+| CAS-AUTH-04 | Jeton illisible, schéma `Basic`, en-tête vide, en-tête absent : 401 | `401` sur les quatre (`Session expirée ou jeton invalide` / `Authentification requise`) | conforme |
+| CAS-AUTH-06 | Un compte désactivé perd immédiatement ses accès | jeton déjà émis → `401 Compte désactivé` ; reconnexion → `401 Identifiants incorrects` | conforme |
+| CAS-AUTH-07 | Un agent d'une banque désactivée n'accède plus | connexion `401` ; jeton déjà émis `401` | conforme (voir réserve ci-dessous) |
+| CAS-AUTH-08 | Un agent muté de banque perd son ancien portefeuille, sans reconnexion | liste `count 3` → `count 1` ; ancien dossier D1 → `404` ; retour en BQ001 → `count 3` | conforme |
+| CAS-AUTH-09 | Un changement de rôle s'applique sans reconnexion | `/api/admin/users` : `403` → promotion → `200` → rétrogradation → `403`, **même jeton** | conforme |
+| CAS-AUTH-10 | Une réinitialisation ferme les sessions ouvertes | ancien jeton → `401 Mot de passe modifié : reconnectez-vous` | conforme |
+| CAS-AUTH-11 | Mot de passe imposé : routes métier fermées, `/api/auth` ouvert | `403 Vous devez définir un nouveau mot de passe avant d’utiliser la plateforme.` sur `/api/requests`, `/api/mcc`, `/api/admin/users` ; `200` sur `/api/auth/me` | conforme |
+| CAS-AUTH-12 | Les 4 variantes faibles refusées | `400 Données invalides` sur `court`, `minuscules2026`, `MAJUSCULES2026`, `SansChiffre#` | conforme |
+| CAS-AUTH-13 | Mot de passe actuel erroné ; nouveau identique | `400 Le mot de passe actuel est incorrect.` · `400 Le nouveau mot de passe doit être différent de l’ancien.` | conforme |
+| CAS-AUTH-14 | Jeton expiré et jeton mal signé : 401 | `401 Session expirée ou jeton invalide` pour les deux ; le jeton mal signé forçant `role:'ADMIN'` **n'ouvre rien** | conforme |
+
+**Réserve sur CAS-AUTH-07.** La branche « Banque désactivée » du contrôle d'authentification
+n'a **pas pu être isolée** par l'API seule : une banque comptant un compte actif refuse
+d'être désactivée (`409`, CAS-ADM-13), et une fois le compte désactivé c'est
+`401 Compte désactivé` qui est servi le premier. Le refus est bien obtenu, mais par l'autre
+garde. **Sous-cas non atteint**, sans écriture directe en base — qui n'a pas été pratiquée
+pour ne pas fausser le reste du banc.
+
+### 7.2 Habilitation et cloisonnement
+
+| Cas | Attendu | Observé | Verdict |
+| --- | --- | --- | --- |
+| CAS-HAB-02 | L'agent n'arbitre pas | `403 Action réservée aux profils : BANQUIER` | conforme |
+| CAS-HAB-03 | L'administration fermée à l'agent | `403 Action réservée aux profils : ADMIN, BANQUIER` sur `/admin/users`, `/admin/banks`, `/admin/events`, `/admin/mcc/:code/history` | conforme (§ 4) |
+| CAS-HAB-04 | Cloisonnement sur `GET`, `/events`, `/suggestions`, `PUT`, `submit`, liste | refus sur les 5 routes, liste de BQ002 réduite à D2 | conforme **au code de retour près** (403 → 404, § 3 et § 4) |
+| CAS-HAB-04 *étendu au banquier* | Le banquier ne voit pas au-delà de sa banque | `404` sur les 6 routes, `decision` comprise ; sa liste ne porte que BQ001 | conforme |
+| CAS-HAB-05 | L'ADMIN cumule et voit toutes les banques | `GET /api/requests` sert les 3 dossiers des 2 banques ; `200` sur D1, D2, D3 | conforme (assumé par D-1) |
+| CAS-HAB-06 | Un agent ne modifie pas la demande d'un collègue de sa banque | lecture `200` ; `PUT` **et** `submit` → `403 Vous ne pouvez modifier que les demandes que vous avez saisies.` | conforme — **et non basculé en 404** |
+| CAS-HAB-07 | Le référentiel de lecture ouvert aux trois profils | 6 appels `200` | conforme |
+| CAS-HAB-08 | Une route inexistante n'expose rien | `404 Route inconnue : GET /api/administration` · `404 Route inconnue : DELETE /api/requests/1` · `401 Authentification requise` sans jeton | conforme |
+| CAS-HAB-12 | Le référentiel MCC hors de portée du banquier | `403 Action réservée aux profils : ADMIN` sur 5 routes + `POST /admin/banks` | conforme |
+
+### 7.3 Cycle de vie d'une demande et décisions
+
+Dossier D1 mené de bout en bout : `CREATION → MODIFICATION* → SOUMISSION →
+COMPLEMENT_REQUIS → MODIFICATION → SOUMISSION → VALIDATION`.
+
+| Cas | Attendu | Observé | Verdict |
+| --- | --- | --- | --- |
+| CAS-DEM-01 | 201, référence, `BROUILLON`, banque et auteur | `AFF-2026-00001`, `BROUILLON`, `bankId 1`, `createdBy 1` | conforme |
+| CAS-DEM-08 | Chaîne vide → `NULL` sur 5 colonnes | `t|t|t|t|t` en base, aucun 500 | conforme |
+| CAS-DEM-09 | `PUT {}` et `PUT {champInconnu}` : 200, aucun événement | `count(MODIFICATION)` stable à 3 avant et après les deux appels | conforme |
+| CAS-WF-01 | La soumission fige la photographie des suggestions | `/suggestions` sert 6 entrées VISA et 6 MASTERCARD, codes identiques | conforme |
+| CAS-WF-03 | Demande soumise non modifiable par l'agent | `409 Une demande au statut SOUMISE n'est plus modifiable par l'agent.` | conforme |
+| CAS-WF-06 | Rejet sans commentaire, et commentaire `""` | `400 Un commentaire est obligatoire pour un rejet ou une demande de complément.` dans les deux cas | conforme |
+| CAS-WF-08 | Complément requis, reprise, re-soumission, validation | `COMPLEMENT_REQUIS` → `PUT 200` → `SOUMISE` → `VALIDEE`, `finalVisa/finalMC = 5977`, `decidedBy = 2`, `decidedAt` renseigné | conforme |
+| CAS-WF-10 | `VALIDEE` terminal | `PUT` `409`, nouvel arbitrage `409 Seule une demande au statut SOUMISE peut être arbitrée (statut actuel : VALIDEE).` | conforme |
+| CAS-WF-10 *étendu* | Le nouveau droit d'écriture du banquier ne rouvre pas un dossier clos | `PUT` du banquier sur D1 `VALIDEE` → `409` | conforme |
+| CAS-WF-11 | Re-soumission d'une demande déjà soumise refusée | `409`, même message | conforme |
+| CAS-WF-13 | Journal complet, ordre chronologique, `userName` et `userRole` | 11 événements, ordre strict, aucune étape manquante | conforme |
+| CAS-MCC-02 | Parité Visa / Mastercard | identique sur les 3 jeux rejoués | conforme |
+
+### 7.4 Administration des comptes, des banques et du journal
+
+| Cas | Attendu | Observé | Verdict |
+| --- | --- | --- | --- |
+| CAS-ADM-06 | Le journal des comptes porte les valeurs avant et après | `{"champs":{"role":{"avant":"AGENT","apres":"BANQUIER"},"bankId":{"avant":{"id":2,"code":"BQ002"},"apres":{"id":1,"code":"BQ001"}},"lastName":{"avant":"Gharbi","apres":"Recette-2"}}}` | conforme |
+| CAS-ADM-08 | L'administrateur ne change ni son rôle ni son état | `403 Vous ne pouvez pas modifier votre propre rôle.` · `403 Vous ne pouvez pas désactiver votre propre compte.` | conforme |
+| CAS-ADM-09 | La plateforme conserve au moins un administrateur actif | rétrogradation croisée puis tentatives sur le dernier : `SELECT count(*) FROM users WHERE role='ADMIN' AND active` = 2 → 1 → **jamais 0** → 2 | conforme |
+| CAS-ADM-12 | Création de banque : casse, doublon, code court, compteurs | `{"code":"bq009"}` → `201 code BQ009` · doublon `409 Le code banque BQ009 est déjà utilisé.` · `{"code":"B"}` → `400 Code banque trop court` | conforme |
+| CAS-ADM-13 | Banque à comptes actifs non désactivable | `409 Cette banque compte 4 compte(s) actif(s). Désactivez-les avant de désactiver la banque.` ; banque vide → `200` | conforme |
+| CAS-ADM-21 | Le journal pagine sans perte ni doublon, `total` juste | § 6.4 — 0 perdu, 0 doublon sur 6 tailles de page ; totaux confrontés au `GROUP BY` | conforme |
+| CAS-ROB-07 | Identifiant de route non numérique ou hors bornes | `abc`, `1.5`, `-1`, `0`, `1 OR 1`, `99999999999999999999`, `null` → `400 Identifiant invalide : « … »` ; `999` → `404 … introuvable` ; idem sur `/api/requests` (`400 Demande invalide : « … »`) | conforme — **8 formes jouées, les 8 annoncées « reste à faire » au plan** |
+| CAS-ROB-08 | Aucune valeur hostile de pagination ne produit de 500 | `limit` = 0, −5, 99999, `abc`, `1e9`, `9007199254740993` ; `offset` = −10, 999999, sur `/api/admin/events` **et** `/api/mcc` : **aucun 500**, toutes ramenées à une borne saine | conforme |
+
+**Sur CAS-ADM-09**, une précision d'honnêteté : les deux tentatives sur le *dernier*
+administrateur sont arrêtées par la garde « pas sur soi-même » (`403`), qui s'exécute avant
+`assertResteUnAdmin`. L'**invariant** est bien vérifié (le compte d'administrateurs actifs
+ne descend jamais sous 1), mais la garde `assertResteUnAdmin` elle-même n'est pas atteinte
+par ce chemin ; elle l'est par CAS-ADM-10 (rétrogradations concurrentes), **automatisé** et
+vert dans l'exécution isolée.
+
+### 7.5 Moteur de suggestion — § 4.3 du plan
+
+Ni `services/mccSuggestion.js`, ni `services/mccCatalog.js`, ni `data/` ne figurent dans
+`git diff --name-only c9abaf3 3a7ac2e` : **le moteur est hors périmètre des deux
+changements.** Contrôle de cohérence sur les trois jeux qui écartaient du plan :
+
+| Jeu | Codes observés | Scores | `non-regression-lot1.md` | Verdict |
+| --- | --- | --- | --- | --- |
+| JD-01 | `5977, 7230, 7298, 5912, 5999` | `74, 66, 63, 57, 50` | identique | inchangé |
+| JD-01 *sans secteur* | `5977, 5999` | `54, 50` | identique | inchangé |
+| JD-10 | `5999` seul | `10` | identique | inchangé |
+
+Ces trois écarts au § 4.3 sont **exactement ceux que `non-regression-lot1.md` § 3.1 a déjà
+instruits** : ils tiennent à l'invariant « aucune proposition sans terme justificatif »
+introduit à la vague 3, et **le § 4.3 est périmé, pas le moteur**. Ils ne sont **pas**
+recomptés ici comme régressions. Les jeux JD-02 à JD-09 n'ont **pas** été rejoués (voir le
+décompte, § 10) : le moteur n'étant touché par aucun des deux commits et le lot 1 les ayant
+mesurés conformes, la dépense n'était pas justifiée. C'est un choix, pas une conformité
+supposée : ils sont comptés **non exécutés**.
+
+### 7.6 Robustesse et administration — cas BACK restés manuels
+
+| Cas | Attendu | Observé | Verdict |
+| --- | --- | --- | --- |
+| CAS-ADM-05 | Banque inexistante ou désactivée refusée à la création et à la mutation | `400 Banque 999999 introuvable` · `400 Cette banque est désactivée : aucun compte ne peut y être rattaché.` (création **et** `PUT`) | conforme |
+| CAS-ADM-07 | Mise à jour vide refusée sur compte et sur banque | `400`, `details[0].message = "Aucune modification fournie"` dans les deux cas | conforme |
+| CAS-ROB-09 | Filtres de liste invalides | `?status=INEXISTANT` → `200 {"count":0,"items":[]}` · `?role=SUPERADMIN` → `400 Rôle invalide : « SUPERADMIN »` · `?bankId=abc` et `1.5` → `400 Banque invalide : « … »` | conforme |
+| CAS-ROB-10 | Jokers et injection : aucune erreur SQL, **aucune fuite inter-banques** | agent2 (BQ002), 5 formes (`%`, `_`, `'`, `" OR 1=1 --`, `<script>`) → `200`, et `%`/`_` remontent **1** dossier, `bankId = [2]` uniquement ; `/api/mcc?search=' OR '1'='1` → `200`, `count 0` | conforme — **le cloisonnement tient sous joker** |
+| CAS-ROB-11 | Corps malformés : aucune réponse 5xx | JSON tronqué → `400 Le corps de la requête n'est pas un JSON valide.` · 2 Mo → `413 … dépasse la taille autorisée (1 Mo).` · `[]` sur `suggest` → `400 Format attendu : objet` · `Content-Type: text/plain` → **`415`** au lieu du `400` annoncé | conforme sur l'acceptation (**aucun 5xx**) ; **écart au plan sur le sous-cas (3)**, antérieur aux deux changements |
+
+L'écart de CAS-ROB-11 (3) n'est **pas** imputable à cette campagne : ni `src/app.js` ni
+`src/middleware/` ne figurent dans `git diff --name-only c9abaf3 3a7ac2e`. Le `415` est
+donc identique avant et après. Consigné en `DEF-ANT-01`.
+
+---
+
+## 8. Régressions
+
+**Aucune régression n'a été constatée.**
+
+Aucun cas identifié comme passant avant `3c03b25` n'a cessé de passer à `3a7ac2e`, ni dans
+la suite automatisée (166/166 en exécution isolée), ni sur les 45 cas du plan repris à la
+main, ni sur les chemins légitimes du correctif 403 → 404, ni sur l'historique d'une base
+peuplée avant la migration.
+
+La table `NRG-xx` est donc **vide**. Les cinq constats qui méritaient d'être ouverts le
+sont ci-dessous (§ 9), sous leur nature exacte — trou de couverture, effet de bord assumé
+de la reprise, perte de lisibilité d'une trace, défaut antérieur, défaut d'environnement.
+Aucun n'est une perte de comportement acquis, et les compter comme régressions rendrait ce
+rapport faux dans l'autre sens.
+
+---
+
+## 9. Observations et défauts antérieurs
+
+### OBS-01 — La borne « la banque du corps est ignorée » n'est gardée par aucun test
+**Gravité : majeure (couverture), nulle (comportement actuel).**
+Cas concerné : CAS-HAB-01 / borne 3 de D-3 · **Attendu** : un test tombe si le corps de la
+requête peut imposer la banque d'un dossier · **Observé** : la suite entière reste verte
+sous la mutation M4. · Reproduction : § 5.1. Le comportement, lui, est **correct**
+aujourd'hui (`bankId 2` du corps ignoré, dossier créé en BQ001). C'est l'angle mort qui est
+en cause, pas le produit. Un cas d'une ligne dans `requests.test.js` — envoyer
+`{...DEMANDE_VALIDE, bankId: 2}` en banquier BQ001 et asserter `bankId === 1` — le ferme.
+
+### OBS-02 — La reprise du journal attribue les lignes anciennes à la banque de l'auteur
+**Gravité : moyenne.**
+Cas concerné : aucun cas du plan (fonction née avec D-3) · **Attendu** (intention du
+correctif) : la banque **concernée** par l'action · **Observé** : la banque **de l'auteur**,
+pour les seules lignes antérieures à la colonne. Un banquier voit donc, dans l'historique
+repris, des lignes concernant une autre banque, et ne voit pas des lignes concernant la
+sienne. Mesure et reproduction : § 6.3. **Pas une régression** : avant D-3 le banquier
+n'avait aucun accès au journal. Le schéma assume l'approximation ; ce qui manque est qu'elle
+soit **signalée à l'utilisateur** — rien à l'écran ne dit où s'arrête l'historique repris.
+
+### OBS-03 — Un événement `MODIFICATION` de dossier peut désormais être vide
+**Gravité : mineure.**
+Cas concerné : CAS-DEM-07 / CAS-DEM-09 (aucun ne l'assertait) · **Attendu** : une ligne de
+journal dit quelque chose · **Observé** : `{"champs": [], "modifications": {}}`.
+`payload.champs` valait `Object.keys(payload)` (les champs **soumis**) et vaut désormais
+`Object.keys(modifications)` (les champs **réellement changés**). Un `PUT` qui réécrit un
+champ connu à l'identique franchit la sortie anticipée (`sets.length > 0`) mais ne produit
+plus aucune entrée dans la trace : une ligne vide s'inscrit au journal du dossier.
+
+```
+curl -s -X PUT http://127.0.0.1:4100/api/requests/1 -H "Authorization: Bearer $AG" \
+  -H 'Content-Type: application/json' -d '{"siteName":"<la valeur actuelle>"}'
+curl -s http://127.0.0.1:4100/api/requests/1/events -H "Authorization: Bearer $AG"
+→ … {"type":"MODIFICATION","payload":{"champs":[],"modifications":{}}} …
+```
+
+Aucun cas du plan ne tombe (CAS-DEM-09 porte sur `{}` et `{champInconnu}`, qui sortent bien
+en amont — vérifié conforme). Le correctif gagne par ailleurs beaucoup : valeurs avant et
+après présentes, RIB masqué (`••••••••••••••••7890`). Constat de complétude, pas de reproche.
+
+### DEF-ANT-01 — `Content-Type: text/plain` répond 415 et non 400
+**Gravité : mineure. Défaut antérieur, hors du débit de cette campagne.**
+Cas concerné : CAS-ROB-11 (3) · **Attendu au plan** : `400`, corps non analysé, champs
+obligatoires signalés par zod · **Observé** : `415 {"error":"Type de contenu non pris en
+charge : JSON attendu."}`. L'acceptation du cas (« aucune réponse 5xx ») est tenue. Ni
+`src/app.js` ni `src/middleware/` ne sont touchés par `3c03b25` ni `3a7ac2e` : le
+comportement est identique avant et après. Le plan est à amender, ou le cas à requalifier.
+
+### DEF-ENV-01 — La suite automatisée n'est pas ré-entrante
+**Gravité : majeure pour l'exploitation du banc, nulle pour le produit.**
+`tests/helpers.js` vise `clicktopay_test` par défaut et ouvre chaque fichier par un
+`TRUNCATE`/`DELETE` global. Deux exécutions simultanées se verrouillent mutuellement
+(`40P01`) et se polluent le journal. Deux exécutions sur trois ont été perdues de ce fait
+(§ 2.1, § 2.2). Le remède existe déjà et ne coûte rien : `TEST_DATABASE_URL` est honoré
+par `helpers.js`. Il gagnerait à être la voie documentée dès que plusieurs postes
+partagent une instance PostgreSQL.
+
+### Point de cohérence contrôlé, sans défaut
+La politique 404 ne s'applique pas aux banques : `PUT /api/admin/banks/:id` répond `403
+Vous ne gérez que votre propre banque.` au banquier. **Aucune fuite** pour autant : la
+banque inexistante `999` donne **le même** `403`, donc le balayage n'apprend rien. La
+différence de code entre types d'objets est un choix, pas un trou.
+
+---
+
+## 10. Décompte
+
+### 10.1 Suite automatisée
+
+| Exécution | Résultat | Lecture |
+| --- | --- | --- |
+| 1 — `npm test` (base partagée) | 166 / 100 pass / 9 fail / 57 cancelled | contention externe, `40P01` sur `clicktopay_test.users` |
+| 2 — `npm test` (base partagée) | 166 / 145 pass / 2 fail / 19 cancelled | même cause, autre symptôme |
+| **3 — isolée (`TEST_DATABASE_URL`)** | **166 / 166 pass / 0 fail / 0 cancelled** | **mesure retenue** |
+
+Aucun cas annulé pour cause d'arrêt de PostgreSQL : le service est resté disponible du
+début à la fin de la campagne.
+
+### 10.2 Cas du plan
+
+| Issue | Nombre | Détail |
+| --- | --- | --- |
+| **Rejoués** | **45** | 11 AUTH · 10 HAB · 11 DEM/WF/MCC · 8 ADM · 5 ROB |
+| **Conformes** | **41** | — |
+| **En écart, délibéré** (plan à amender) | **3** | CAS-HAB-01, CAS-HAB-04, CAS-HAB-11 — voir § 4 |
+| **En écart, antérieur** | **1** | CAS-ROB-11 (3) — `DEF-ANT-01` |
+| **Régressions** | **0** | — |
+| **Sous-cas non atteint** | **1** | CAS-AUTH-07, branche « Banque désactivée » : inatteignable par l'API seule (§ 7.1) |
+
+### 10.3 Non exécutés, et pourquoi
+
+| Cas | Raison |
+| --- | --- |
+| JD-02 à JD-09 (8 jeux du § 4.3) | moteur hors périmètre des deux commits (`git diff --name-only` ne cite ni `mccSuggestion.js`, ni `mccCatalog.js`, ni `data/`) ; mesurés conformes par `non-regression-lot1.md`. Choix assumé. |
+| CAS-MCC-05, CAS-MCC-06 | même raison |
+| CAS-ROB-12, CAS-ROB-13 | non atteints faute de temps ; aucun lien avec le code modifié |
+| CAS-HAB-09, CAS-HAB-10 | niveau Nav. — hors du périmètre BACK de cette campagne |
+| Tous les cas de filière FRONT / Nav. | idem. **L'interface a été modifiée par les deux commits** (`App.jsx`, `AuthContext.jsx`, `AdminLayout.jsx`, `AdminUsersPage.jsx`, `AdminBanksPage.jsx`, `DashboardPage.jsx`, `RequestDetailPage.jsx`) : **une campagne de non-régression en navigateur reste à faire**, notamment sur le bandeau d'erreur de CAS-HAB-04 (6), dont le libellé attendu au plan a changé. |
+
+Aucune conformité n'est supposée : tout ce qui est marqué conforme ci-dessus a été
+exécuté et observé sur le banc `4100`.
+
+---
+
+## 11. Verdict
+
+**Le périmètre acquis est intact.**
+
+1. **Suite automatisée** : 166 / 166 en exécution isolée. Les deux exécutions rouges
+   s'expliquent entièrement par une base de test partagée avec un autre poste, cause
+   établie par le `regclass` du verrou et non supposée.
+2. **Cloisonnement** : il est **plus strict** qu'avant, jamais moins. Le refus est passé de
+   403 à 404 sur les dossiers et les comptes, et l'indiscernabilité avec un objet
+   inexistant est complète sur toutes les routes éprouvées, y compris `/events`,
+   `/suggestions` et `decision`. Il tient aussi sous jokers `ILIKE` (CAS-ROB-10).
+3. **Chemins légitimes** : aucun 404 rendu à tort. L'agent sur ses dossiers, le banquier
+   sur ceux de sa banque et l'administrateur sur les trois banques répondent tous `200`.
+   Le refus opposé à un agent sur le dossier d'un collègue **reste un 403 explicite** :
+   le correctif n'a pas emporté le message dont l'utilisateur légitime a besoin.
+4. **L'agent se comporte exactement comme avant.** Aucun des 11 cas d'authentification,
+   des cas de cycle de vie ni des cas d'administration ne le voit changer de
+   comportement ; le seul changement qui le concerne est le code de retour sur un dossier
+   hors de son périmètre — un chemin d'erreur, jamais un chemin nominal.
+5. **Migration du journal** : l'historique de l'administrateur est intégralement préservé,
+   ligne pour ligne, sur une base peuplée avant le changement. Aucune ligne ne disparaît.
+6. **Tests réécrits** : trois sur quatre prouvent autant ou davantage, dont les deux cas du
+   journal qui passent de « ne protège rien » (mesuré : 18/18 verts avec le filtre retiré)
+   à « tombent sur les deux mutations ». La quatrième laisse un angle mort réel (`OBS-01`).
+
+Deux réserves, à traiter mais sans effet sur ce verdict : le trou de couverture `OBS-01`,
+et la reprise du journal `OBS-02`, dont l'approximation est assumée par le schéma mais
+n'est signalée nulle part à l'utilisateur. Enfin, l'interface a été modifiée par les deux
+commits et **n'a pas été éprouvée ici** : cette campagne couvre le BACK.
