@@ -377,3 +377,107 @@ les deux mutations, dont M2, qui est précisément le défaut corrigé.
 
 Trois réécritures sur quatre prouvent autant ou davantage. La quatrième laisse un angle
 mort qui n'ouvre aucune brèche aujourd'hui, mais qui ne verrait pas celle de demain.
+
+---
+
+## 6. La migration du journal d'administration
+
+`3a7ac2e` ajoute `admin_events.bank_id`, figée à l'écriture, et **reprend les lignes déjà
+écrites** (`schema.sql`) :
+
+```sql
+UPDATE admin_events e SET bank_id = u.bank_id
+  FROM users u WHERE e.bank_id IS NULL AND e.user_id = u.id AND e.entity <> 'MCC';
+```
+
+### 6.1 Protocole — une base peuplée *avant* le changement
+
+Une base a été montée au schéma **antérieur**, avec le code antérieur, puis peuplée, puis
+migrée avec le code de `HEAD` :
+
+```
+sudo -u postgres psql -c "CREATE DATABASE clicktopay_nr2_old OWNER clicktopay;"
+git worktree add …/wt-avant c9abaf3
+cd …/wt-avant/…/server && DATABASE_URL=…/clicktopay_nr2_old node src/db/migrate.js && node src/db/seed.js
+cd …/wt-avant/…/server && PORT=4101 DATABASE_URL=…/clicktopay_nr2_old node src/index.js &
+#  → 6 actions d'administration jouées (2 créations de compte, 1 modification d'un compte
+#    BQ002, 1 réinitialisation BQ001, 1 modification MCC, 1 création de banque)
+#  → colonne bank_id absente, vérifiée par \d admin_events
+kill $(lsof -nP -iTCP:4101 -sTCP:LISTEN -t)
+cd …/server && DATABASE_URL=…/clicktopay_nr2_old node src/db/migrate.js     # code de HEAD
+cd …/server && PORT=4101 DATABASE_URL=…/clicktopay_nr2_old node src/index.js &
+```
+
+### 6.2 L'historique de l'administrateur est intégralement préservé
+
+| | Journal ADMIN |
+| --- | --- |
+| Avant migration (code antérieur) | `total 6` — ids 6, 5, 4, 3, 2, 1 |
+| Après migration (code de `HEAD`) | `total 6` — ids 6, 5, 4, 3, 2, 1 |
+| `diff` ligne à ligne | **identique — aucune ligne perdue** |
+
+`ORDER BY` et libellés inchangés. **L'exigence « aucune ligne ne doit disparaître du
+journal de l'administrateur » est satisfaite.** La ligne `MCC` (bank_id laissé `NULL`) est
+servie à l'administrateur comme les autres : `NULL` n'élimine pas la ligne, il la met hors
+périmètre des banquiers, ce qui est l'intention.
+
+### 6.3 Mais la reprise attribue mal les lignes anciennes
+
+État de la colonne après reprise :
+
+```
+ id | entity | entity_id |            action             | user_id | bank_id
+  1 | USER   | 3         | MODIFICATION                  |       4 |       1   ← compte de BQ002
+  2 | USER   | 1         | REINITIALISATION_MOT_DE_PASSE |       4 |       1
+  3 | MCC    | 5977      | MODIFICATION                  |       4 |  (null)
+  4 | BANK   | 3         | CREATION                      |       4 |       1   ← banque créée = id 3
+  5 | USER   | 5         | CREATION                      |       4 |       1
+  6 | USER   | 6         | CREATION                      |       4 |       1   ← compte de BQ002
+```
+
+La reprise pose la banque **de l'auteur** ; or l'auteur est ici l'administrateur, rattaché
+à BQ001. Conséquences mesurées à travers l'API :
+
+| Vue | Observé | Attendu si la banque concernée avait été reconstituée |
+| --- | --- | --- |
+| Journal du banquier **BQ001** | 5 lignes, dont l'id 1 (modification d'un compte **BQ002**), l'id 6 (création d'un compte **BQ002**) et l'id 4 (création de la banque **BQ777**) | 3 lignes |
+| Journal du banquier **BQ002** | **2 lignes** — uniquement celles écrites *après* la migration | 4 lignes (les ids 1 et 6 lui reviennent) |
+
+Autrement dit, dans l'historique repris, un banquier voit des lignes qui concernent une
+autre banque, et perd des lignes qui concernent la sienne.
+
+**Ce n'est pas une régression**, et c'est important de le dire précisément : **avant D-3
+le banquier n'avait aucun accès au journal** (`routes/admin.js:55` — `requireRole('ADMIN')`
+sur tout le routeur). Aucun comportement acquis n'est donc perdu, et le cloisonnement
+n'est pas moins strict qu'avant, puisqu'il n'existait pas. Le commentaire du schéma assume
+explicitement l'approximation. Elle est néanmoins consignée en `OBS-02` : elle est
+**visible par l'utilisateur**, non signalée à l'écran, et un banquier qui lit son journal
+n'a aucun moyen de savoir où l'historique repris s'arrête.
+
+Les lignes écrites **après** la migration sont, elles, correctement attribuées : la
+création d'un banquier BQ002 et son changement de mot de passe portent `bank_id = 2` et
+n'apparaissent que dans le journal de BQ002. **Le gel à l'écriture fonctionne.**
+
+### 6.4 Le changement de sens du filtre
+
+`e.user_id IN (SELECT id FROM users WHERE bank_id = $n)` → `e.bank_id = $n`. Éprouvé par
+mutation (§ 5.3) : les deux formes sont distinguées par les nouveaux cas. Sur le banc
+`4100`, le filtrage et les totaux ont été confrontés à la base :
+
+| Filtre | `total` annoncé | `GROUP BY` en base |
+| --- | --- | --- |
+| aucun | 16 | 16 |
+| `entity=USER` | 14 | 1 CREATION + 10 MODIFICATION + 2 CHANGEMENT_MDP + 1 REINITIALISATION = 14 |
+| `entity=BANK` | 2 | 1 CREATION + 1 MODIFICATION = 2 |
+| `entity=MCC` | 0 | 0 |
+| `action=CREATION` | 2 | 2 |
+| `entity=BANK&action=CREATION` | 1 | 1 |
+| `entity=NIMPORTEQUOI` | `400 Entité inconnue : « NIMPORTEQUOI ». Valeurs acceptées : USER, BANK, MCC.` | — (pas de total silencieusement faux) |
+
+Balayage paginé complet (CAS-ADM-21), tailles de page 1, 3, 7, 10, 25 et 50 :
+
+| Taille de page | Collectés | Uniques | Perdus | Doublons | Ordre |
+| --- | --- | --- | --- | --- | --- |
+| 1 · 3 · 7 · 10 · 25 · 50 | 16 à chaque fois | 16 | **0** | **0** | identique à la page unique |
+
+**Conforme.**

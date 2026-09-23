@@ -527,3 +527,71 @@ en acceptant l'attaque distribuée. À porter au commanditaire, avec le fait que
 `README.md` annonce aujourd'hui une protection sans en nommer le prix.
 
 ---
+### RL1-08 — Le journal d'administration peut affirmer le contraire de l'état de la base
+
+**Gravité** bloquant. **Fichier** `server/src/services/admin.js:219`
+(lecture de `avant`) et `:286` (écriture du journal).
+
+**Constat.** `updateUser` lit l'état antérieur du compte **hors de la
+transaction**, sans verrou de ligne ni contrôle de version :
+
+```js
+export async function updateUser({ id, payload, user }) {
+  const avant = await getUser(id);      // ligne 219 — hors transaction
+  …
+  await withTransaction(async (client) => { … });
+```
+
+Deux modifications simultanées du même compte lisent donc le même `avant`,
+écrivent l'une après l'autre, et journalisent toutes deux par rapport à un état
+périmé. Comme `tracerChamps` (`:158`) élimine les champs dont la valeur soumise
+est égale à `avant`, la seconde est consignée **`sansEffet: true`** alors qu'elle
+a bel et bien changé la base.
+
+**Scénario qui casse (exécuté, 40 itérations, 3 menteuses dans les 4 premières).**
+Un compte agent ; deux `PUT` concurrents, l'un `{"role":"BANQUIER"}`, l'autre
+`{"role":"AGENT"}`. Les deux répondent 200.
+
+```
+itération 1: base=AGENT  journal dit=BANQUIER
+  lignes=[{"champs":{"role":{"apres":"BANQUIER","avant":"AGENT"}}},
+          {"champs":{},"sansEffet":true}]
+itération 2: idem
+itération 3: idem
+```
+
+Un contrôleur qui remonte le journal lit « le compte est passé agent →
+banquier », puis « appel sans effet ». Il conclut que le compte est banquier. Il
+est agent. **La rétrogradation n'a laissé aucune trace.** Le scénario inverse est
+tout aussi vrai : une promotion en `ADMIN` faite en second serait journalisée
+`sansEffet` et resterait invisible.
+
+Le commanditaire a décidé (D-1) que l'administrateur cumulerait saisie et
+arbitrage, et que la maîtrise du risque reposerait **entièrement** sur le
+journal. Un journal qui peut affirmer le contraire de l'état réel ne remplit pas
+cet office. C'est le défaut d'invariant caractéristique : EVO-05 a enrichi le
+*contenu* de la ligne sans s'assurer que ce contenu est **vrai**.
+
+**Correction proposée.** Descendre la lecture de l'état antérieur dans la
+transaction et la verrouiller :
+
+```js
+await withTransaction(async (client) => {
+  // Relu SOUS VERROU : la lecture hors transaction, utilisée pour les contrôles
+  // d'habilitation qui précèdent, peut être périmée au moment où l'on écrit, et
+  // le journal consignerait alors une modification « sans effet » qui en a un.
+  const { rows } = await client.query(`${SELECT_UTILISATEURS} WHERE u.id = $1 FOR UPDATE OF u`, [id]);
+  const avant = versUtilisateur(rows[0]);
+  …
+});
+```
+
+La lecture hors transaction reste utile pour refuser tôt sans tenir un verrou,
+mais **les valeurs journalisées doivent provenir de la lecture verrouillée**.
+Test de non-régression : deux `PUT` concurrents, et l'assertion que la
+concaténation des `avant`/`apres` du journal reconstitue exactement l'état final
+en base. Le même raisonnement vaut pour `updateBank` (`:455`), où la lecture est
+dans la transaction mais sans `FOR UPDATE` : la fenêtre est plus étroite, pas
+nulle.
+
+---
