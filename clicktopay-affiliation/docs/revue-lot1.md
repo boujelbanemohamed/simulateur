@@ -42,10 +42,16 @@
 
 ## 1. État du chantier et environnement
 
-*(rédaction en cours)*
+Le lot est relu à l'état `ca06470`, **arbre de travail propre**, dans un arbre
+`git worktree` séparé : aucune épreuve de cette revue n'a écrit dans l'arbre
+principal, et les mutations décrites au § 8 ont toutes été posées puis retirées
+dans cet arbre-là.
 
-La suite compte **166 tests**. Sur une base de revue dédiée, elle est **entièrement
-verte** : `# tests 166 / # pass 166 / # fail 0 / # cancelled 0`.
+La suite compte **167 tests** — un cas d'habilitation a été ajouté par `ca06470`,
+d'où l'écart avec les 166 relevés au début de la revue. Sur une base de revue
+dédiée, elle est **entièrement verte** :
+`# tests 167 / # suites 21 / # pass 167 / # fail 0 / # cancelled 0`
+(durée 50 s).
 
 *Note d'environnement, à lire avant de conclure à une régression.* Lancée sur
 `clicktopay_test`, la même suite a d'abord rendu `6 fail / 12 cancelled`, puis
@@ -103,9 +109,16 @@ sur les doublons nomme les adresses en cause plutôt que de laisser PostgreSQL
 refuser l'index sur une erreur brute : c'est ce que la fiche demandait.
 
 **Ce qui ne va pas** est consigné en **RL1-01** (le tout-ou-rien, aggravé par les
-deux évolutions de schéma postérieures), **RL1-04** (la reprise recopie la banque
-de l'auteur, c'est-à-dire précisément le défaut que le commit `3a7ac2e` venait de
-corriger) et **RL1-13** (aucun test n'exerce le garde-fou).
+deux évolutions de schéma postérieures), **RL1-12** (la reprise des lignes `USER`
+reste attachée à la banque *actuelle* du compte, et non à celle des faits) et
+**RL1-13** (aucun test n'exerce le garde-fou des doublons de casse).
+
+**Mise à jour après `ca06470`.** Le constat RL1-02 de cette revue — la reprise
+recopiait la banque de l'**auteur** — **a été corrigé** pendant la revue. Le
+tableau ci-dessus a été rejoué sur l'arbre d'aujourd'hui : la reprise part
+désormais de la **cible**. Il en subsiste le résidu décrit en RL1-12. Le constat
+RL1-02 est conservé ci-dessous, marqué **corrigé**, parce qu'il documente la
+classe de défaut et que le résidu s'y rattache.
 
 ---
 ## Constats
@@ -179,9 +192,17 @@ une fonction qui tombe, c'est l'administration entière.
 
 ---
 
-### RL1-02 — La reprise des lignes antérieures du journal recopie la banque de l'auteur : elle réintroduit, sur tout l'historique, le défaut que `3a7ac2e` venait de corriger
+### RL1-02 — ~~La reprise des lignes antérieures du journal recopie la banque de l'auteur~~ — **CORRIGÉ pendant la revue (`ca06470`)**
 
-**Gravité** bloquant. **Fichier** `server/src/db/schema.sql:216-221`.
+**Gravité** bloquant à l'énoncé, **sans objet aujourd'hui**. **Fichier**
+`server/src/db/schema.sql:212-221`.
+
+> **Statut.** Corrigé par le commit `ca06470` : la reprise part désormais de la
+> **cible** de l'action et non de son auteur, selon exactement la correction
+> proposée ci-dessous. Vérifié en exécution sur base peuplée. Le constat est
+> conservé pour mémoire ; **il en subsiste un résidu**, consigné en **RL1-12**
+> (le cas d'un compte muté d'une banque à l'autre). Ne pas le recompter dans le
+> décompte de gravité : voir le tableau du § 10.
 
 **Constat.** Le commit `3a7ac2e` a corrigé, à juste titre, le fait que le journal
 était partitionné « en interrogeant la banque actuelle de l'auteur d'une action,
