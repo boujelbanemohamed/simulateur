@@ -627,7 +627,7 @@ dans la transaction mais sans `FOR UPDATE` : la fenêtre est plus étroite, pas
 nulle.
 
 ---
-### RL1-09 — La trace détaillée des modifications de dossier et le masquage du RIB ne sont couverts par aucun test : deux mutations survivantes
+### RL1-09 — La trace détaillée des modifications de dossier et le masquage du RIB ne sont couverts par aucun test : trois mutations survivantes
 
 **Gravité** majeur. **Fichiers** `server/src/services/requests.js:85-115`
 (`masquer`, `tracerModification`) et `:200` (l'écriture de l'événement).
@@ -638,12 +638,23 @@ relevé bancaire masqué ». Ni l'une ni l'autre n'est tenue par un test. Un
 `grep` des mots `modifications`, `masquer`, `•` et `request_events` sur
 `server/tests/` ne rend **aucune** occurrence dans un cas de test.
 
-**Preuve (deux mutations, suite entière, 166 tests).**
+**Preuve (trois mutations, suite entière, 167 tests, rejouées sur l'arbre
+d'aujourd'hui `ca06470`).**
 
 | Mutation | Effet sur le produit | Résultat |
 | --- | --- | --- |
-| M-K : `payload: { champs: Object.keys(modifications), modifications }` → `payload: { champs: Object.keys(payload) }` | la trace revient aux **noms de champs seuls**, c'est-à-dire exactement l'état que le correctif condamne | `# tests 166  # pass 166  # fail 0` — **survivante** |
-| M-L : garde de `masquer` neutralisée | le **RIB en clair** entre au journal, lisible de tout administrateur | `# tests 166  # pass 166  # fail 0` — **survivante** |
+| M-02 : `payload: { champs: Object.keys(payload), modifications }` → `payload: { champs: Object.keys(payload) }` | la trace revient aux **noms de champs seuls**, c'est-à-dire exactement l'état que le correctif condamne | `# tests 167  # pass 167  # fail 0` — **survivante** |
+| M-03 : garde de `masquer` neutralisée (`champ !== 'rib'` → toujours vrai) | le **RIB en clair** entre au journal, lisible de tout administrateur | `# tests 167  # pass 167  # fail 0` — **survivante** |
+| M-15 : `if (String(ancienne) === String(nouvelle)) continue;` retiré | un champ **réécrit à l'identique** entre dans `modifications` avec `avant === apres` | `# tests 167  # pass 167  # fail 0` — **survivante** |
+
+La troisième mérite une mention particulière. Le commit `ca06470` a **modifié ce
+code pendant la revue** : `champs` porte désormais les champs *soumis* et
+`modifications` les seuls champs *changés*, et son commentaire revendique la
+distinction — « les deux diffèrent quand un champ est réécrit à l'identique, et
+c'est voulu : “il a touché au RIB sans rien y changer” est une information ».
+Une distinction revendiquée dans un commentaire et tenue par aucun cas de test
+n'est pas une décision, c'est une intention. La mutation M-15 montre qu'elle peut
+disparaître sans que rien ne bronche.
 
 Ce sont les deux mutations les plus graves de la revue, parce qu'elles portent
 sur la pièce que la décision D-1 désigne comme le seul contrôle restant : la
@@ -652,7 +663,7 @@ qui tient lieu de contrôle à quatre yeux. Rien n'empêche aujourd'hui une
 régression de la vider de son contenu, ni d'y verser un relevé d'identité
 bancaire en clair.
 
-**Correction proposée.** Deux cas de test, dans `requests.test.js` :
+**Correction proposée.** Trois cas de test, dans `requests.test.js` :
 
 1. Modifier un dossier sur trois champs dont `rib` ; relire
    `request_events.payload` ; asserter que `modifications.siteName` porte bien
@@ -732,6 +743,106 @@ if (ecoute) {
 
 Test à ajouter : après `arreterEcoute()`, reprendre un client du lot et asserter
 que `pg_listening_channels()` est vide.
+
+---
+
+### RL1-14 — Derrière un répartiteur, la clé d'adresse IP du limiteur est commune à tout le monde : onze requêtes suffisent à fermer la connexion de la plateforme entière
+
+**Gravité** bloquant. **Fichiers** `server/src/app.js` (aucun `app.set('trust proxy', …)`),
+`server/src/routes/auth.js:21-24`, `server/src/middleware/rateLimit.js:29-52`.
+
+**Constat.** EVO-11 déplace la limitation avant la validation — c'est juste, et
+c'est éprouvé (§ 8, mutation M-05). Mais la question que pose l'auteur — « protège-t-elle
+encore en production ? » — ne porte pas sur l'ordre : elle porte sur la **clé**.
+Le limiteur compte par `req.ip`. Express ne lit `X-Forwarded-For` que si
+`trust proxy` est armé, et **il ne l'est nulle part** : ni dans `createApp`, ni
+dans `config.js`, ni dans une variable d'environnement, ni dans `.env.example`.
+Or le dossier décrit un déploiement derrière un répartiteur de charge — c'est le
+README lui-même qui le dit (`README.md:419-420`), et la recette l'a exercé comme
+tel (`docs/rapport-recette.md:796`).
+
+Derrière un répartiteur, `req.ip` est donc l'adresse **du répartiteur**, identique
+pour tous. La clé `ip:…` cesse d'être « une source » pour devenir « la
+plateforme ». Les conséquences vont dans les deux sens, et elles sont toutes deux
+mauvaises.
+
+**Scénario 1 — le verrouillage collectif (exécuté, port 4400, seuil posé à 3 pour
+abréger ; en production c'est 10, donc onze requêtes).** Quatre tentatives
+annonçant quatre sources différentes et visant quatre comptes différents :
+
+```
+source 203.0.113.1 / compte inconnu1@banque.tn -> 401
+source 203.0.113.2 / compte inconnu2@banque.tn -> 401
+source 203.0.113.3 / compte inconnu3@banque.tn -> 401
+source 203.0.113.4 / compte inconnu4@banque.tn -> 429      <- le quota est commun
+
+puis un utilisateur légitime, source et compte encore différents, mot de passe JUSTE :
+source 203.0.113.99 / agent@banque.tn                -> 429  Retry-After: 60
+source 198.51.100.7 / banquier@banque.tn             -> 429  Retry-After: 60
+```
+
+Les `X-Forwarded-For` sont ignorés : les six requêtes partagent une seule clé.
+**Onze requêtes sans authentification ferment la connexion de tous les agents,
+banquiers et administrateurs de toutes les banques pendant quinze minutes.** Le
+constat RL1-07 décrivait la prise d'otage d'un compte ; celui-ci est la même
+attaque portée à l'échelle de la plateforme, et pour un coût encore moindre.
+
+**Scénario 2 — le quota d'adresse IP ne freine plus personne (exécuté).**
+`limiter.reset` (`rateLimit.js:50-52`) efface **toutes** les clés de l'appelant à
+chaque connexion réussie, clé d'IP comprise. Comme cette clé est commune, un
+attaquant qui possède **un seul compte valide** remet le compteur de tout le monde
+à zéro quand il veut :
+
+```
+seuil = 3, l'attaquant possède agent@banque.tn
+ échec (victime1) -> 401     échec (victime2) -> 401
+ SUCCÈS son compte -> 200    <- efface la clé d'IP, qui est celle de tous
+ échec (victime3) -> 401     échec (victime4) -> 401
+ SUCCÈS son compte -> 200
+ échec (victime5) -> 401     échec (victime6) -> 401
+ six échecs consommés, aucun 429.
+```
+
+Il ne reste alors que la clé de compte, dix essais par compte et par quart
+d'heure — soit exactement la protection d'avant EVO-11 pour un balayage de
+comptes, la clé d'adresse IP étant devenue inopérante.
+
+**Pourquoi aucun test ne le voit.** La suite appelle l'application par
+`supertest`, en direct : `req.ip` y vaut `::ffff:127.0.0.1` et se comporte comme
+une source unique — ce qui est, par accident, le comportement de production, mais
+les cas en tirent la conclusion inverse puisqu'ils n'ont qu'un seul appelant.
+`limitation.test.js` est par ailleurs un bon fichier, et il faut le dire : il
+repose son seuil à 3 et sa fenêtre à 60 s **avant** de charger `helpers.js`,
+précisément pour ne pas éprouver la limitation avec le seuil desserré à 10 000 des
+autres suites. La crainte de l'auteur sur ce point n'est pas fondée : le seuil
+desserré est bien cantonné.
+
+**Correction proposée.**
+
+1. **Armer la confiance au répartiteur, et elle seule** — `trust proxy` à `true`
+   fait confiance à n'importe quel `X-Forwarded-For`, y compris forgé, ce qui
+   rendrait le quota contournable d'une requête. Il faut nommer le ou les sauts :
+
+   ```js
+   // Sans cela, `req.ip` est l'adresse du répartiteur : la clé de débit devient
+   // commune à toute la plateforme, et onze requêtes ferment la connexion à tout
+   // le monde. `true` n'est pas la réponse non plus — il ferait confiance à un
+   // X-Forwarded-For forgé. On ne remonte que le nombre de sauts que l'on a.
+   app.set('trust proxy', config.proxyHops);   // 0 en exposition directe, 1 derrière un répartiteur
+   ```
+
+   avec `proxyHops: Number(process.env.TRUST_PROXY_HOPS ?? 0)` dans `config.js`,
+   une ligne dans `.env.example`, et la valeur attendue en production dite au
+   README.
+2. **Ne pas effacer la clé d'adresse IP à la remise à zéro** : une connexion
+   réussie doit vider l'ardoise *du compte*, pas celle de la source, qui est
+   partagée. `limiter.reset` gagne à ne supprimer que les clés qu'on lui désigne.
+3. **Un cas de test** qui pose `app.set('trust proxy', 1)` et vérifie que deux
+   `X-Forwarded-For` distincts consomment **deux** quotas distincts. C'est le cas
+   qui manque, et c'est pourquoi le défaut ne se voit pas.
+
+Cette correction est **indépendante d'un déport vers Redis** : déporter le
+compteur sans corriger la clé déporterait le défaut avec lui.
 
 ---
 

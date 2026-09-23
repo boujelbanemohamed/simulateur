@@ -520,6 +520,123 @@ nouvel arrivant, lui, ne retient que le second.
 
 *Capture : `c03-mdp-impose.png`.*
 
+### 4.6 La saisie en cinq étapes
+
+**Ce qui est bon.** Le découpage en cinq étapes est lisible, chaque onglet porte
+un titre et un sous-titre qui disent ce qu'il contient (« 3. Activité — Ce que
+vend le site »), on navigue librement d'une étape à l'autre par les onglets, le
+brouillon s'enregistre à n'importe quel moment, et l'étape 3 prévient l'agent que
+son texte compte : « Ce descriptif est la principale source de la proposition de
+MCC : soyez précis sur les produits ou services réellement vendus en ligne. »
+C'est bien vu et bien placé.
+
+Les constats qui suivent portent tous sur le même point : **le formulaire ne
+contrôle rien avant la toute dernière seconde**, et ce qu'il affiche entre-temps
+dit le contraire.
+
+#### UTI-31 — Défaut · majeur · On traverse les cinq étapes sans rien saisir, et l'écran déclare les étapes « faites »
+
+**Écran et parcours.** Agent → « + Nouvelle demande ».
+
+**Attendu.** « Suivant » vérifie au moins les champs marqués obligatoires de
+l'étape que l'on quitte, et l'onglet d'une étape incomplète se distingue d'une
+étape complète.
+
+**Observé.** Sur un formulaire **entièrement vierge**, quatre clics sur
+« Suivant » suffisent à atteindre l'étape 5. Aucun contrôle, aucun message,
+aucun arrêt — alors que l'étape 1 porte quatre champs marqués `*` (Nom du site,
+Adresse du site, Raison sociale, RNE) et l'étape 2 six autres.
+
+Pire, l'écran affirme le contraire de ce qui est : après l'échec de la
+soumission, les onglets **1, 2, 3 et 4 portent tous l'état « faite »**
+(`class="etape etape--faite"`), y compris les étapes 1, 2 et 3 qui concentrent les
+douze erreurs bloquantes. Le seul état que l'interface sait rendre est « faite » —
+il signifie en réalité « visitée ». Il n'existe aucun état « incomplète ».
+
+L'agent lit donc, sur la même page, un bandeau de quatorze erreurs et quatre
+étapes déclarées faites.
+
+**Reproduire.** Agent → « + Nouvelle demande » → cliquer « Suivant » quatre fois
+sans rien saisir.
+
+*Captures : `v01-vide-etape2.png` à `v04-vide-etape5.png`, `s08-retour-etape1.png`.*
+
+#### UTI-32 — Défaut · majeur · Le récapitulatif annonce qu'il ne manque que les codes MCC, alors que dix champs obligatoires sont vides
+
+**Écran et parcours.** Étape 5, « Récapitulatif avant soumission ».
+
+**Attendu.** Le bloc « Éléments manquants » de la dernière étape dit ce qui
+empêche la soumission. C'est son seul rôle, et l'agent s'y fie.
+
+**Observé, en deux temps.**
+
+1. Formulaire vierge, aucun code MCC retenu : le bloc annonce
+   « Éléments manquants — **La soumission exige : MCC Visa et MCC Mastercard.** »
+   et **rien d'autre**. Nom du site, Adresse du site, Raison sociale, RNE,
+   Prénom, Nom, E-mail, Téléphone, Adresse, Ville, Description de l'activité sont
+   tous vides et tous obligatoires ; aucun n'est nommé. Ils figurent bien au
+   récapitulatif, mais sous la forme d'un tiret cadratin (« Nom du site — »),
+   qui se lit comme « non renseigné, et sans importance ».
+2. On retient un code MCC par la recherche manuelle : **le bloc « Éléments
+   manquants » disparaît entièrement.** L'agent a désormais sous les yeux un
+   récapitulatif sans le moindre avertissement, et un bouton « Soumettre au
+   banquier ». Rien ne lui dit que son dossier est vide.
+
+Le bloc ne vérifie donc que les deux codes MCC et se tait sur tout le reste.
+
+**Reproduire.** Agent → « + Nouvelle demande » → « Suivant » ×3 → étape 4,
+« Les deux réseaux », taper `5942` dans « Recherche », cliquer le résultat →
+« Suivant » → lire l'étape 5.
+
+*Captures : `v04-vide-etape5.png` (avant), `s06-recap-incomplet.png` (après).*
+
+#### UTI-33 — Gêne · majeur · Quatorze erreurs d'un coup, sur l'étape 5, pour des champs des étapes 1, 2 et 3
+
+**Écran et parcours.** Étape 5 → « Soumettre au banquier », dans la continuité de
+`UTI-32`.
+
+**Observé.** La soumission part au serveur, revient en 400, et l'étape 5 affiche
+un bandeau de **quatorze lignes** :
+
+> Nom du site : Le nom du site est obligatoire · Adresse du site : L'adresse du
+> site est obligatoire · Adresse du site : L'adresse du site doit être une URL
+> valide (https://…) · Raison sociale : … · RNE : Le RNE est obligatoire · RNE :
+> Le RNE doit comporter 6 à 32 caractères alphanumériques · Prénom du contact : …
+> · Nom du contact : … · Adresse e-mail : Adresse e-mail invalide · Téléphone :
+> Numéro de téléphone trop court · Téléphone : Numéro de téléphone invalide ·
+> Adresse : … · Ville : … · Description de l'activité : Décrivez l'activité en 20
+> caractères minimum…
+
+Quatre griefs, au-delà du volume :
+
+1. **Aucun de ces champs n'est sur l'écran affiché.** Ils appartiennent aux
+   étapes 1, 2 et 3. Le bandeau n'offre aucun lien vers eux : il faut relever les
+   noms, revenir en arrière et les retrouver à la main.
+2. **Trois champs reçoivent deux messages pour une seule cause.** Un champ
+   « Adresse du site » vide est à la fois « obligatoire » et « doit être une URL
+   valide » ; le RNE vide est « obligatoire » et « doit comporter 6 à 32
+   caractères » ; le téléphone vide est « trop court » **et** « invalide ». Sur
+   quatorze lignes, trois sont des redites.
+3. **Le champ vide est parfois qualifié d'invalide** plutôt que de manquant —
+   « Adresse e-mail : Adresse e-mail invalide » pour un champ jamais touché,
+   comme au formulaire de comptes (`UTI-20`).
+4. **Le bandeau suit l'agent sur toutes les étapes.** En revenant à l'étape 1,
+   les quatorze lignes sont toujours là, en plus des messages placés sous les
+   champs concernés. L'agent lit alors « Le nom du site est obligatoire » deux
+   fois sur le même écran, et douze autres messages qui ne concernent pas l'étape
+   où il se trouve.
+
+**Ce qui fonctionne**, et qu'il faut porter au crédit du produit : en revenant à
+l'étape 1, les messages **sont** placés sous les bons champs
+(« Le nom du site est obligatoire » sous *Nom du site*). Le mécanisme existe donc ;
+c'est l'orchestration qui manque — contrôler à chaque étape, marquer les onglets
+fautifs, et renvoyer l'agent au premier champ en défaut.
+
+**Reproduire.** Identique à `UTI-32`, puis cliquer « Soumettre au banquier », puis
+revenir sur l'onglet « 1. Site et société ».
+
+*Capture : `s07-soumission-refusee.png`.*
+
 ### 4.2 L'explicabilité des propositions MCC
 
 C'est la raison d'être du produit : l'écran doit faire comprendre **pourquoi** un
@@ -572,35 +689,59 @@ manuels scolaires` ; « Suivant ».
 
 *Capture : `a03-mcc.png`.*
 
-#### UTI-19 — Défaut · majeur · Le même secteur déclaré justifie trois scores différents, sans autre mot à l'écran
+#### UTI-19 — Défaut · majeur · Le même secteur déclaré justifie quatre scores différents, sans autre mot à l'écran
+
+> **Remesuré à la reprise.** Ce constat avait été relevé sur un référentiel qui
+> avait dérivé. Les valeurs ci-dessous sont celles du référentiel rétabli,
+> relevées à l'écran le 23/09/2026 ; elles concordent avec le jeu de référence
+> annoncé. **Le constat est inchangé ; il est même aggravé** — le quatrième code
+> n'est plus un vendeur de perruques mais une pharmacie.
 
 **Écran et parcours.** Étape 4, dossier « cosmétiques » — celui de la
 démonstration.
 
-**Ce qui se produit.** Pour l'activité « Vente en ligne de cosmetiques naturels
-et savons artisanaux », secteur déclaré « Beauté, cosmétique et parfumerie » :
+**Ce qui se produit.** Pour l'activité « Vente en ligne de cosmetiques naturels,
+huiles essentielles et savons artisanaux fabriques en Tunisie », secteur déclaré
+« Beauté, cosmétique et parfumerie » :
 
 | Code | Libellé | Pertinence | Termes affichés |
 | --- | --- | --- | --- |
-| 5977 | Cosmétiques et parfumerie | 76 % | `cosmetiques` · `secteur : Beauté, cosmétique et parfumerie` |
+| 5977 | Cosmétiques et parfumerie | 74 % | `cosmetiques` · `secteur : Beauté, cosmétique et parfumerie` |
 | 7230 | Salons de coiffure et instituts de beauté | 66 % | `secteur : Beauté, cosmétique et parfumerie` |
 | 7298 | Spas et centres de bien-être | 63 % | `secteur : Beauté, cosmétique et parfumerie` |
-| 5698 | Perruques et postiches | 53 % | `secteur : Beauté, cosmétique et parfumerie` |
+| 5912 | **Pharmacies et parapharmacies** | 57 % | `secteur : Beauté, cosmétique et parfumerie` |
+| 5999 | Commerces de détail spécialisés divers | 50 % | `vente en ligne` |
 
-Trois codes — un salon de coiffure, un spa, un vendeur de perruques — portent
-**mot pour mot la même justification**, et s'échelonnent sur treize points. Aucun
-d'eux ne correspond à la vente de cosmétiques en ligne, et l'écran ne donne à
+Trois codes — un salon de coiffure, un spa, une pharmacie — portent **mot pour
+mot la même et unique justification**, et s'échelonnent sur neuf points. Aucun
+des trois ne correspond à la vente de cosmétiques en ligne, et l'écran ne donne à
 l'agent aucun moyen de comprendre pourquoi un salon de coiffure lui est proposé à
-66 % pour une boutique en ligne.
+66 % pour une boutique en ligne, ni pourquoi le spa vaut trois points de moins.
+
+**Deux aggravations propres au référentiel rétabli.**
+
+1. **Une pharmacie est proposée à 57 % à un vendeur de savons**, et la carte
+   porte la mention « **Vigilance renforcée** » avec la note « Vente en ligne de
+   médicaments strictement encadrée en Tunisie. » Le produit sait donc que ce
+   code engage une réglementation particulière, et le propose quand même, au
+   quatrième rang, sur la seule foi d'un secteur déclaré qui n'a rien de
+   pharmaceutique. Un agent pressé qui suit le rang sans lire classerait un
+   savonnier en pharmacie.
+2. **Le code de repli 5999 concourt avec les vrais codes**, à 50 %, justifié par
+   `vente en ligne` — un terme qui vaudrait pour n'importe quel dossier de la
+   plateforme, puisque la plateforme ne traite que du commerce en ligne. Sa
+   propre carte porte pourtant : « Code de repli : à n'utiliser que si aucun MCC
+   plus précis ne correspond à l'activité. » L'écran affiche donc, à sept points
+   du code qui le précède, un code qui se déclare lui-même de dernier recours.
 
 Le cas est plus grave que `UTI-12` parce qu'il porte sur le dossier type du
 produit : c'est ce qu'un agent verra le plus souvent.
 
 **Reproduire.** Étape 3, secteur `Beauté, cosmétique et parfumerie`, description
-`Vente en ligne de cosmetiques naturels et savons artisanaux`, mode de livraison
-`Biens physiques livrés`, « Suivant ».
+`Vente en ligne de cosmetiques naturels, huiles essentielles et savons artisanaux
+fabriques en Tunisie`, mode de livraison `Biens physiques livrés`, « Suivant ».
 
-*Capture : `b07-etape4.png`.*
+*Capture : `m01-propositions.png`.*
 
 #### UTI-13 — Défaut · majeur · Le score bouge sans que la justification bouge
 
