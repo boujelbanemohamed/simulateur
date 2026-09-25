@@ -651,6 +651,9 @@ le code du moteur.
 **Écran et parcours.** Agent → Nouvelle demande → étape 4, pour une activité
 déclarée : « Vente de livres, de bandes dessinees et de manuels scolaires ».
 
+> **Remesuré à la reprise** sur le référentiel rétabli : les six valeurs
+> ci-dessous sont retrouvées **à l'identique**. Le constat est confirmé.
+
 **Ce qui se produit.** Le moteur rend six propositions. **Quatre portent
 exactement la même justification, le seul mot « livres »** — et se classent
 pourtant à 60 %, 51 %, 49 % et 41 % :
@@ -751,6 +754,8 @@ livraison ».
 **Attendu.** Si deux saisies donnent deux classements différents, l'écran doit
 dire ce qui a changé. C'est tout l'objet de la ligne de termes.
 
+> **Remesuré à la reprise** : valeurs retrouvées à l'identique. Confirmé.
+
 **Ce qui se produit.** En passant le mode de livraison de « Biens physiques
 livrés » à « Biens numériques téléchargés », **sans toucher un seul mot de la
 description** :
@@ -783,7 +788,7 @@ manuels scolaires`, passer « Mode de livraison » de `Biens physiques livrés` 
 pertinence **à partir de l'activité déclarée**. »
 
 **Ce qui se produit.** Le nom du site, l'adresse du site et la raison sociale
-alimentent eux aussi les propositions, et peuvent les déterminer à eux seuls.
+alimentent eux aussi les propositions, et peuvent les déterminer à eux seuls. **Remesuré à la reprise : valeurs retrouvées à l'identique.**
 Trois essais, avec pour toute description la chaîne `qzxwv yjklm ptdfg` :
 
 | Ce qui est saisi en plus | Proposition rendue | Terme affiché |
@@ -815,12 +820,15 @@ Souk Bio » à l'étape 1, champ « Nom du site ».
 
 - Activité déclarée : « je vends des billets d avion en ligne pour toutes
   **compagnies** ». Le moteur propose, derrière le bon code 4511 « Compagnies
-  aériennes », **4411 Compagnies maritimes et de croisière** (45 %), **6300
-  Assurances** (41 %), **4112 Transport ferroviaire** (32 %) et — le plus
-  parlant — **5995 « Animalerie – animaux, aliments et accessoires »** (36 %).
+  aériennes » (54 %), **4411 Compagnies maritimes et de croisière** (37 %),
+  **6300 Assurances** (32 %), **4112 Transport ferroviaire** (20 %) et — le plus
+  parlant — **5995 « Animalerie – animaux, aliments et accessoires »** (25 %).
   La justification affichée pour ces quatre cartes est le seul mot `compagnies` ;
   l'animalerie est là parce que sa description contient « animaux de
-  **compagnie** ».
+  **compagnie** ». *(Valeurs remesurées à la reprise sur le référentiel rétabli ;
+  celles de la campagne précédente, relevées sur un référentiel qui avait dérivé,
+  étaient plus hautes de cinq à douze points. Le constat, lui, est inchangé : ce
+  sont les mêmes six codes, avec le même mot unique pour toute justification.)*
 - Activité déclarée : « vente de cannabis, de stupefiants et d armes a feu en
   ligne ». **Une seule proposition** est rendue : **5718 « Cheminées et
   accessoires »**, à 6 %, justifiée par le mot `feu` — tiré de « armes à feu ».
